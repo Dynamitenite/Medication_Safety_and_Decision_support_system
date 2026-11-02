@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink, Route, Routes, useLocation, useParams } from "react-router-dom";
-import { Bell, Info, List, Moon, Pill, ArrowsLeftRight, SquaresFour, GitBranch, Sun, X } from "@phosphor-icons/react";
+import { Bell, Info, List, MagnifyingGlass, Moon, Pill, ArrowsLeftRight, SquaresFour, GitBranch, Sun, X } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { ComingSoon } from "../features/aakaash/pages/ComingSoon";
+import { MedicinePage } from "../features/aakaash/pages/MedicinePage";
 import { MODULE_COMPONENTS, modulePath, SCREENS } from "../features/aakaash/registry";
 import { StatusProvider, useStatus } from "../features/aakaash/StatusContext";
 import { Sticker } from "../features/aakaash/components/Sticker";
 import { applyTheme, readTheme, type Theme } from "./theme";
 
 const ICONS: Record<string, Icon> = {
+  home: MagnifyingGlass,
+  checker: Pill,
   dashboard: SquaresFour,
-  medicine_info: Pill,
   interaction_risk: ArrowsLeftRight,
   personalized_alert: Bell,
   trace: GitBranch,
@@ -18,7 +20,7 @@ const ICONS: Record<string, Icon> = {
 };
 
 /** Screens whose tables and charts use the full width; the others are text pages. */
-const WIDE_PATHS = new Set(["/", "/trace"]);
+const WIDE_PATHS = new Set(["/dashboard", "/trace"]);
 
 function ModuleRoute() {
   const { id = "" } = useParams();
@@ -134,6 +136,7 @@ export function App() {
               {SCREENS.map((s) => (
                 <Route key={s.id} path={s.path} element={<s.Component />} />
               ))}
+              <Route path="/medicine/:setId" element={<MedicinePage />} />
               <Route path="/modules/:id" element={<ModuleRoute />} />
               <Route path="*" element={<><h1>Page not found</h1><p>Use the menu to go to a screen.</p></>} />
             </Routes>

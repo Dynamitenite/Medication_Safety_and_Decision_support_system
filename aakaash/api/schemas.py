@@ -164,3 +164,105 @@ class TraceResponse(Readiness):
     counts_by_status: dict[str, int] = Field(default_factory=dict)
     malformed_rows: list[str] = Field(default_factory=list)
     preamble: list[str] = Field(default_factory=list)
+
+
+# ---- medicines: suggest, label, alternatives, checker ------------------------------------
+SuggestType = Literal["brand", "generic", "ingredient"]
+
+
+class Suggestion(ApiModel):
+    name: str
+    type: SuggestType
+    manufacturer: str | None
+    set_id: str
+    label_count: int
+    match: Literal["prefix", "word", "substring", "fuzzy"]
+
+
+class SuggestResponse(Readiness):
+    query: str = ""
+    matcher: str = ""  # fuzzy backend actually used: rapidfuzz or difflib
+    elapsed_ms: float | None = None
+    suggestions: list[Suggestion] = Field(default_factory=list)
+
+
+class LabelSection(ApiModel):
+    key: str
+    label: str
+    text: str
+
+
+class MedicineResponse(Readiness):
+    set_id: str = ""
+    title: str = ""
+    products: list[str] = Field(default_factory=list)
+    generic_names: list[str] = Field(default_factory=list)
+    manufacturer: str | None = None
+    ingredients: list[str] = Field(default_factory=list)  # raw names as on the label
+    active_moieties: list[str] = Field(default_factory=list)  # used for matching
+    effective_time: str | None = None
+    sections: list[LabelSection] = Field(default_factory=list)
+
+
+class Alternative(ApiModel):
+    product: str
+    manufacturer: str | None
+    set_id: str
+    ingredients: list[str]
+    label_count: int
+
+
+class AlternativesResponse(Readiness):
+    set_id: str = ""
+    active_moieties: list[str] = Field(default_factory=list)
+    note: str = ""
+    total_labels: int = 0
+    alternatives: list[Alternative] = Field(default_factory=list)
+
+
+class CheckerRequest(ApiModel):
+    set_ids: list[str] = Field(min_length=2, max_length=10)
+
+
+class CheckerMedicine(ApiModel):
+    set_id: str
+    name: str
+    manufacturer: str | None
+    active_moieties: list[str]
+    has_interactions_section: bool
+
+
+class TextMatch(ApiModel):
+    sentence: str
+    matched_term: str
+    in_label_set_id: str
+    in_label_name: str
+    section: str
+    names_drug: str  # the other medicine in the pair that the sentence names
+
+
+class AppmsResult(Readiness):
+    source_label: str = "synthetic APPMS rules"
+    severity: Literal["critical", "high", "moderate"] | None = None
+    explanation: str | None = None
+
+
+class TextMatchResult(ApiModel):
+    source_label: str
+    matches: list[TextMatch]
+    matches_total: int
+    notes: list[str]
+
+
+class PairResult(ApiModel):
+    a: CheckerMedicine
+    b: CheckerMedicine
+    appms: AppmsResult
+    text_match: TextMatchResult
+    same_active_moiety: bool
+
+
+class CheckerResponse(Readiness):
+    medicines: list[CheckerMedicine] = Field(default_factory=list)
+    appms: AppmsResult = Field(default_factory=lambda: AppmsResult(status="not_ready"))
+    pairs: list[PairResult] = Field(default_factory=list)
