@@ -21,3 +21,4 @@ aakaash/artifacts/app.db
 .env
 **/.env
 aakaash/web/public/ocr/
+*.safetensors

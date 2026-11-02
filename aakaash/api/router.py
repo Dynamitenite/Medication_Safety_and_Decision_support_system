@@ -17,8 +17,9 @@ from .schemas import (AddMedicinesRequest, AddMedicinesResponse, AnalyzeRequest,
                       ConditionStatus, LoginRequest, LoginResponse, MeResponse, MedicineRecordIn,
                       MedicineRecordOut, MedicineResponse, ProfileIn, ProfileOut, ProfileOverview,
                       SuggestResponse, DDIExamplesResponse, DDILabel, DDIStatsResponse, DailyMedStatsResponse,
-                      Health, StatusResponse, TacStatsResponse, TraceResponse)
-from .services import accounts, appms, catalogue, datasets, intake, medicines, status, trace
+                      Health, StatusResponse, TacStatsResponse, TraceResponse, DDIClassifyRequest,
+                      DDIClassifyResponse, DDIMetricsResponse)
+from .services import accounts, appms, catalogue, datasets, ddi, intake, medicines, status, trace
 
 router = APIRouter(prefix="/api")
 
@@ -54,6 +55,17 @@ def dailymed_stats(settings: Settings = Depends(get_settings)) -> DailyMedStatsR
 @router.get("/datasets/tac2017/stats", response_model=TacStatsResponse)
 def tac_stats(settings: Settings = Depends(get_settings)) -> TacStatsResponse:
     return datasets.tac_stats(settings)
+
+
+@router.post("/ddi/classify", response_model=DDIClassifyResponse)
+def ddi_classify(body: DDIClassifyRequest, settings: Settings = Depends(get_settings)) -> DDIClassifyResponse:
+    """Interaction type of one sentence naming two drugs. A model estimate; it never sets a risk level."""
+    return ddi.classify(settings, body)
+
+
+@router.get("/ddi/metrics", response_model=DDIMetricsResponse)
+def ddi_metrics(settings: Settings = Depends(get_settings)) -> DDIMetricsResponse:
+    return ddi.metrics(settings)
 
 
 @router.get("/trace", response_model=TraceResponse)

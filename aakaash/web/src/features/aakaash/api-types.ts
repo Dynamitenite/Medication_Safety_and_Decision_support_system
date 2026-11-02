@@ -106,6 +106,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/ddi/classify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ddi Classify
+         * @description Interaction type of one sentence naming two drugs. A model estimate; it never sets a risk level.
+         */
+        post: operations["ddi_classify_api_ddi_classify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/ddi/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ddi Metrics */
+        get: operations["ddi_metrics_api_ddi_metrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/trace": {
         parameters: {
             query?: never;
@@ -1608,6 +1645,68 @@ export interface components {
              */
             source: "typed" | "scanned";
         };
+        /** DDIClassRow */
+        DDIClassRow: {
+            /** Precision */
+            precision: number;
+            /** Recall */
+            recall: number;
+            /** F1 */
+            f1: number;
+            /** Label */
+            label: string;
+            /** Support */
+            support: number;
+        };
+        /** DDIClassifyRequest */
+        DDIClassifyRequest: {
+            /** Sentence */
+            sentence: string;
+            /** Drug 1 */
+            drug_1: string;
+            /** Drug 2 */
+            drug_2: string;
+            /**
+             * Explain
+             * @default false
+             */
+            explain: boolean;
+        };
+        /** DDIClassifyResponse */
+        DDIClassifyResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready" | "not_markable";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /** Predicted */
+            predicted: ("effect" | "mechanism" | "advise" | "int" | "false") | null;
+            /** Probability */
+            probability: number | null;
+            /** Probabilities */
+            probabilities: {
+                [key: string]: number;
+            } | null;
+            /** Marked Text */
+            marked_text: string | null;
+            /** Words */
+            words: components["schemas"]["DDIWord"][] | null;
+            ig: components["schemas"]["DDIIgInfo"] | null;
+            model: components["schemas"]["DDIModelInfo"] | null;
+            /** Timing Ms */
+            timing_ms: {
+                [key: string]: number;
+            } | null;
+            /**
+             * Label
+             * @default Model estimate
+             */
+            label: string;
+        };
         /** DDIExample */
         DDIExample: {
             /**
@@ -1656,6 +1755,91 @@ export interface components {
             /** Examples */
             examples: components["schemas"]["DDIExample"][];
         };
+        /** DDIFaithK */
+        DDIFaithK: {
+            /** K */
+            k: number;
+            /** N */
+            n: number;
+            /** Skipped */
+            skipped: number;
+            /** Mean Drop Top K */
+            mean_drop_top_k: number | null;
+            /** Mean Drop Random K */
+            mean_drop_random_k: number | null;
+        };
+        /** DDIFaithfulness */
+        DDIFaithfulness: {
+            /** Label */
+            label: string;
+            /** Source */
+            source: string;
+            /** Seed */
+            seed: number;
+            /** Random Draws */
+            random_draws: number;
+            /** N Steps */
+            n_steps: number;
+            /** N Sentences */
+            n_sentences: number;
+            /** By K */
+            by_k: components["schemas"]["DDIFaithK"][];
+        };
+        /** DDIIgInfo */
+        DDIIgInfo: {
+            /** N Steps */
+            n_steps: number;
+            /** Delta */
+            delta: number;
+        };
+        /** DDIMetricsResponse */
+        DDIMetricsResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /** Runs */
+            runs: components["schemas"]["DDIRun"][];
+            /** Search */
+            search: components["schemas"]["DDISearchRow"][];
+            /**
+             * Search Smoke Test
+             * @default false
+             */
+            search_smoke_test: boolean;
+        };
+        /** DDIModelInfo */
+        DDIModelInfo: {
+            /** Version */
+            version: string;
+            /**
+             * Loss
+             * @enum {string}
+             */
+            loss: "ce" | "focal";
+            /** Gamma */
+            gamma: number;
+            /** Alpha */
+            alpha: string;
+            /** Encoder */
+            encoder: string;
+            /** Smoke Test */
+            smoke_test: boolean;
+        };
+        /** DDIPRF */
+        DDIPRF: {
+            /** Precision */
+            precision: number;
+            /** Recall */
+            recall: number;
+            /** F1 */
+            f1: number;
+        };
         /**
          * DDIParserStats
          * @description Counts straight from the parser, before the dev split is carved out of train.
@@ -1670,6 +1854,75 @@ export interface components {
             counts: {
                 [key: string]: number;
             };
+        };
+        /** DDIRun */
+        DDIRun: {
+            /** Name */
+            name: string;
+            /** Version */
+            version: string;
+            /** Smoke Test */
+            smoke_test: boolean;
+            /**
+             * Loss
+             * @enum {string}
+             */
+            loss: "ce" | "focal";
+            /** Gamma */
+            gamma: number;
+            /** Alpha */
+            alpha: string;
+            /** Lr Encoder */
+            lr_encoder: number;
+            /** Lr Head */
+            lr_head: number;
+            /** Best Epoch */
+            best_epoch: number;
+            /** Seed */
+            seed: number;
+            /** Encoder */
+            encoder: string;
+            /** N Train */
+            n_train: number;
+            /** N Dev */
+            n_dev: number;
+            /** N Test */
+            n_test: number | null;
+            dev: components["schemas"]["DDISplitMetrics"];
+            test: components["schemas"]["DDISplitMetrics"] | null;
+            faithfulness: components["schemas"]["DDIFaithfulness"] | null;
+        };
+        /** DDISearchRow */
+        DDISearchRow: {
+            /**
+             * Loss
+             * @enum {string}
+             */
+            loss: "ce" | "focal";
+            /** Gamma */
+            gamma: number;
+            /** Alpha */
+            alpha: string;
+            /** Lr Encoder */
+            lr_encoder: number;
+            /** Lr Head */
+            lr_head: number;
+            /** Best Epoch */
+            best_epoch: number;
+            /** Dev Micro F1 */
+            dev_micro_f1: number;
+        };
+        /** DDISplitMetrics */
+        DDISplitMetrics: {
+            /** N */
+            n: number;
+            micro: components["schemas"]["DDIPRF"];
+            /** Per Class */
+            per_class: components["schemas"]["DDIClassRow"][];
+            /** Labels */
+            labels: string[];
+            /** Confusion Matrix */
+            confusion_matrix: number[][];
         };
         /** DDISplitStats */
         DDISplitStats: {
@@ -1718,6 +1971,19 @@ export interface components {
             dev_frac: number | null;
             /** Seed */
             seed: number | null;
+        };
+        /** DDIWord */
+        DDIWord: {
+            /** Text */
+            text: string;
+            /** Start */
+            start: number;
+            /** End */
+            end: number;
+            /** Attribution */
+            attribution: number;
+            /** Is Drug */
+            is_drug: boolean;
         };
         /** DailyMedStatsResponse */
         DailyMedStatsResponse: {
@@ -2408,6 +2674,8 @@ export interface components {
             source_ingredient: string;
             /** Named Ingredient */
             named_ingredient: string;
+            /** Source Term */
+            source_term: string | null;
         };
         /** TextMatchResult */
         TextMatchResult: {
@@ -2636,6 +2904,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TacStatsResponse"];
+                };
+            };
+        };
+    };
+    ddi_classify_api_ddi_classify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DDIClassifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DDIClassifyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ddi_metrics_api_ddi_metrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DDIMetricsResponse"];
                 };
             };
         };

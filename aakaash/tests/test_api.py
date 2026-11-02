@@ -86,7 +86,7 @@ def test_health(client):
 
 def test_all_routes_under_api_prefix():
     paths = list(app.openapi()["paths"])
-    assert len(paths) == 34 and all(p.startswith("/api/") for p in paths)
+    assert len(paths) == 36 and all(p.startswith("/api/") for p in paths)
 
 
 def test_status_empty_data_is_not_ready_with_reasons(client):
@@ -100,13 +100,13 @@ def test_status_empty_data_is_not_ready_with_reasons(client):
 
 def test_status_coming_soon_modules(client):
     mods = {m["id"]: m for m in client.get("/api/status").json()["modules"]}
-    assert len(mods) == 6  # Full Patient Profile is built (My profile) and no longer listed
+    assert len(mods) == 5  # Full Patient Profile and the Focal Loss model are built and no longer listed
     assert all(m["status"] == "coming_soon" and m["owner"] == "to be confirmed"
                for m in mods.values())
     assert {k: m["stages"] for k, m in mods.items()} == {
         "allergy_check": [4], "contraindication_check": [4], "duplicate_therapy_check": [3],
         "disease_precautions": [4],
-        "deep_learning_encoder": [2, 5], "focal_loss_model": [4]}
+        "deep_learning_encoder": [2, 5]}
     assert mods["deep_learning_encoder"]["stage_names"] == ["Information Extraction",
                                                             "Recommendation Engine"]
 
@@ -129,11 +129,13 @@ def test_status_index_and_model_follow_files(client, dirs):
     art = dirs[1]
     (art / "index").mkdir()
     (art / "index" / "manifest.json").write_text(json.dumps({"encoder": "tfidf", "chunks": 3}))
-    (art / "ddi_baseline").mkdir()
-    (art / "ddi_baseline" / "model.joblib").write_bytes(b"x")
-    (art / "ddi_baseline" / "metrics.json").write_text("{}")
     comps = {c["id"]: c for c in client.get("/api/status").json()["components"]}
     assert comps["index"]["status"] == comps["encoder"]["status"] == "ready"
+    assert comps["ddi_model"]["status"] == "not_ready"  # no checkpoint in artifacts/models/ddi_focal
+    (art / "models" / "ddi_focal").mkdir(parents=True)
+    (art / "models" / "ddi_focal" / "model.safetensors").write_bytes(b"x")
+    (art / "models" / "ddi_focal" / "config.json").write_text(json.dumps({"version": "fixture", "loss": "focal"}))
+    comps = {c["id"]: c for c in client.get("/api/status").json()["components"]}
     assert comps["ddi_model"]["status"] == "ready"
 
 

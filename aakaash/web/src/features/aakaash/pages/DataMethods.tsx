@@ -5,6 +5,7 @@ import type { AppmsSummaryResponse } from "../api";
 import { Background } from "../components/Background";
 import { CatalogueSection } from "../components/CatalogueSection";
 import { DdiExamplesPanel, DdiStatsPanel } from "../components/DdiPanels";
+import { DdiModelSection } from "../components/DdiModelSection";
 import { DailyMedPanel, TacPanel } from "../components/LabelStatsPanels";
 import { ErrorBox, fmt, LoadingBox } from "../components/Panel";
 import { PatientPicker } from "../components/PatientPicker";
@@ -233,27 +234,6 @@ function Rules() {
   );
 }
 
-function Classifier() {
-  const q = useStatus();
-  const c = q.data?.components.find((x) => x.id === "ddi_model");
-  return (
-    <section className="card" aria-labelledby="clf-h">
-      <h2 id="clf-h">Interaction-type classifier</h2>
-      {q.state === "loading" && !q.data && <LoadingBox what="classifier status" />}
-      {q.state === "error" && <ErrorBox message={q.message} onRetry={q.reload} />}
-      {c &&
-        (c.status === "ready" ? (
-          <p>A trained classifier file is present. Its measured metrics are in its metrics file; they are not shown on any screen yet, and no result in the app comes from it.</p>
-        ) : (
-          <p>
-            <strong>No classifier has been trained, so there are no accuracy figures.</strong> Precision, recall and F1 per class will be
-            shown here when a training run has produced them. Any figure from a paper is quoted only as that paper's result, never as ours.
-          </p>
-        ))}
-    </section>
-  );
-}
-
 function SystemStatus() {
   const q = useStatus();
   return (
@@ -317,7 +297,7 @@ export function DataMethods() {
       <AddingMedicines />
       <DailyMedPanel />
       <Rules />
-      <Classifier />
+      <DdiModelSection />
       <DdiStatsPanel query={ddi} />
       {ddi.data?.status === "ready" && <DdiExamplesPanel labels={ddi.data.labels} />}
       <TacPanel />

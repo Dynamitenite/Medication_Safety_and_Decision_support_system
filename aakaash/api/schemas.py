@@ -388,6 +388,9 @@ class TextMatch(ApiModel):
     names_drug: str  # the other medicine in the pair that the sentence names
     source_ingredient: str  # the ingredient whose label the sentence is from
     named_ingredient: str   # the other medicine's ingredient the sentence names
+    # The term in the sentence that names the source ingredient (its label's own drug), when there is one.
+    # With matched_term it lets the interaction-type model mark both drugs. None: the sentence cannot be marked.
+    source_term: str | None = None
 
 
 class RuleHit(ApiModel):
@@ -866,3 +869,122 @@ class AddMedicinesRequest(ApiModel):
 class AddMedicinesResponse(ApiModel):
     overall: RiskLevel | None
     added: list[MedicineRecordOut]
+
+
+# ---- DDI interaction-type classifier (Focal Loss model). A model estimate only: never sets a risk level.
+
+class DDIClassifyRequest(ApiModel):
+    sentence: str = Field(min_length=1, max_length=2000)
+    drug_1: str = Field(min_length=1, max_length=100)
+    drug_2: str = Field(min_length=1, max_length=100)
+    explain: bool = False  # also return word attributions (slower)
+
+
+class DDIWord(ApiModel):
+    text: str
+    start: int
+    end: int
+    attribution: float  # signed; positive pushes toward the predicted class
+    is_drug: bool
+
+
+class DDIModelInfo(ApiModel):
+    version: str
+    loss: Literal["ce", "focal"]
+    gamma: float
+    alpha: str
+    encoder: str
+    smoke_test: bool
+
+
+class DDIIgInfo(ApiModel):
+    n_steps: int
+    delta: float  # largest absolute convergence delta of Integrated Gradients
+
+
+class DDIClassifyResponse(ApiModel):
+    status: Literal["ready", "not_ready", "not_markable"]
+    reason: str | None = None
+    fix: str | None = None
+    predicted: DDILabel | None = None
+    probability: float | None = None
+    probabilities: dict[str, float] | None = None
+    marked_text: str | None = None
+    words: list[DDIWord] | None = None
+    ig: DDIIgInfo | None = None
+    model: DDIModelInfo | None = None
+    timing_ms: dict[str, float] | None = None
+    label: str = "Model estimate"
+
+
+class DDIPRF(ApiModel):
+    precision: float
+    recall: float
+    f1: float
+
+
+class DDIClassRow(DDIPRF):
+    label: str
+    support: int
+
+
+class DDISplitMetrics(ApiModel):
+    n: int
+    micro: DDIPRF  # over the four positive classes (false ignored)
+    per_class: list[DDIClassRow]
+    labels: list[str]
+    confusion_matrix: list[list[int]]  # rows gold, columns predicted
+
+
+class DDIFaithK(ApiModel):
+    k: int
+    n: int
+    skipped: int
+    mean_drop_top_k: float | None = None
+    mean_drop_random_k: float | None = None
+
+
+class DDIFaithfulness(ApiModel):
+    label: str
+    source: str
+    seed: int
+    random_draws: int
+    n_steps: int
+    n_sentences: int
+    by_k: list[DDIFaithK]
+
+
+class DDIRun(ApiModel):
+    name: str
+    version: str
+    smoke_test: bool
+    loss: Literal["ce", "focal"]
+    gamma: float
+    alpha: str
+    lr_encoder: float
+    lr_head: float
+    best_epoch: int
+    seed: int
+    encoder: str
+    n_train: int
+    n_dev: int
+    n_test: int | None = None
+    dev: DDISplitMetrics
+    test: DDISplitMetrics | None = None
+    faithfulness: DDIFaithfulness | None = None
+
+
+class DDISearchRow(ApiModel):
+    loss: Literal["ce", "focal"]
+    gamma: float
+    alpha: str
+    lr_encoder: float
+    lr_head: float
+    best_epoch: int
+    dev_micro_f1: float
+
+
+class DDIMetricsResponse(Readiness):
+    runs: list[DDIRun] = Field(default_factory=list)
+    search: list[DDISearchRow] = Field(default_factory=list)
+    search_smoke_test: bool = False

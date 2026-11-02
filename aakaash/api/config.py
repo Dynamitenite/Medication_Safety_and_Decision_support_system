@@ -19,6 +19,16 @@ class Settings:
     trace_path: Path
     encoder_name: str
     classifier_name: str
+    ddi_model_dir_override: Path | None = None    # MEDSAFE_DDI_MODEL_DIR
+    ddi_metrics_dir_override: Path | None = None  # MEDSAFE_DDI_METRICS_DIR
+
+    @property
+    def ddi_model_dir(self) -> Path:
+        return self.ddi_model_dir_override or self.artifacts_dir / "models" / "ddi_focal"
+
+    @property
+    def ddi_metrics_dir(self) -> Path:
+        return self.ddi_metrics_dir_override or self.artifacts_dir / "metrics"
 
     def _roots(self) -> list[tuple[Path, str]]:
         """Known absolute locations and the repo-relative name shown instead, longest first."""
@@ -48,11 +58,14 @@ class Settings:
 
 def get_settings() -> Settings:
     """FastAPI dependency. Override with MEDSAFE_DATA_DIR, MEDSAFE_ARTIFACTS_DIR,
-    MEDSAFE_ENCODER, MEDSAFE_DDI_CLASSIFIER."""
+    MEDSAFE_ENCODER, MEDSAFE_DDI_CLASSIFIER, MEDSAFE_DDI_MODEL_DIR, MEDSAFE_DDI_METRICS_DIR."""
+    opt = lambda k: Path(os.environ[k]) if os.environ.get(k) else None
     return Settings(
         data_dir=Path(os.environ.get("MEDSAFE_DATA_DIR", REPO_ROOT / "data")),
         artifacts_dir=Path(os.environ.get("MEDSAFE_ARTIFACTS_DIR", AAKAASH_DIR / "artifacts")),
         trace_path=AAKAASH_DIR / "PAPER_TRACE.md",
         encoder_name=os.environ.get("MEDSAFE_ENCODER", "tfidf"),
-        classifier_name=os.environ.get("MEDSAFE_DDI_CLASSIFIER", "linear_baseline"),
+        classifier_name=os.environ.get("MEDSAFE_DDI_CLASSIFIER", "focal"),
+        ddi_model_dir_override=opt("MEDSAFE_DDI_MODEL_DIR"),
+        ddi_metrics_dir_override=opt("MEDSAFE_DDI_METRICS_DIR"),
     )

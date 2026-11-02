@@ -4,6 +4,7 @@ import { Warning } from "@phosphor-icons/react";
 import type { AllergyFinding, AnalyzeResponse, CheckerMedicine, PairFinding, RiskLevel } from "../api";
 import { SEVERITY_LABEL } from "../format";
 import { Disclaimer } from "./Disclaimer";
+import { InteractionType } from "./InteractionType";
 import { ErrorBox, NotReadyBox } from "./Panel";
 import { Sticker } from "./Sticker";
 import { findingId } from "../viz/graph";
@@ -89,6 +90,7 @@ function PairCard({ p }: { p: PairFinding }) {
             {p.text_match.matches.map((m, i) => (
               <li key={i}>
                 <blockquote>{m.sentence}</blockquote>
+                {m.source_term && <InteractionType sentence={m.sentence} drug1={m.source_term} drug2={m.matched_term} disclosure />}
                 <p className="small muted">
                   From the US label for <strong>{m.source_ingredient}</strong> (<Link to={`/label/${m.in_label_set_id}`}>{m.in_label_name}</Link>),
                   section “{m.section}”. Names <strong>{m.named_ingredient}</strong>, in {m.names_drug}.

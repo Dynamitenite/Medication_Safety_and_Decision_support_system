@@ -647,3 +647,22 @@ mark.find-hit.current { background: rgb(var(--c-accent) / 0.55); }
   .course-bar { grid-template-columns: 1fr; gap: 5px; }
 }
 @media (prefers-reduced-motion: reduce) { .finding-flash { scroll-behavior: auto; } }
+
+/* Interaction type (model estimate) on label sentences, the "Why?" view, and the model section of /about/data */
+.ddi-type { margin: 6px 0 0; }
+.ddi-type-line { margin: 4px 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.ddi-disclosure { margin: 6px 0 0; }
+.ddi-disclosure > summary, .ddi-why > summary { font-size: 0.875rem; }
+.ddi-why { margin: 4px 0 0; }
+.attr-sentence { margin: 6px 0; padding: 8px 12px; background: rgb(var(--c-raised)); border-radius: 6px; line-height: 1.8; overflow-wrap: anywhere; }
+.attr { border-radius: 3px; padding: 1px 0; }
+.attr-pos { background: rgb(var(--c-accent) / calc(0.08 + var(--a, 0) * 0.5)); }
+.attr-neg { text-decoration: underline dotted; text-decoration-thickness: calc(1px + var(--a, 0) * 2px); text-underline-offset: 3px; }
+.attr-drug { font-weight: 600; box-shadow: 0 0 0 1px rgb(var(--c-line)); padding: 1px 3px; }
+.defs { margin: 8px 0; }
+.defs > div { display: grid; grid-template-columns: minmax(150px, 14rem) 1fr; gap: 4px 16px; padding: 6px 0; border-bottom: 1px solid rgb(var(--c-line)); }
+.defs dt { font-weight: 500; }
+.defs dd { margin: 0; }
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 0 24px; }
+.cm td.cm-diag { font-weight: 600; background: rgb(var(--c-accent) / 0.1); }
+@media (max-width: 560px) { .defs > div { grid-template-columns: 1fr; } }

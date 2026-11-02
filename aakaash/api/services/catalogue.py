@@ -16,6 +16,7 @@ from fastapi import HTTPException
 from medsafe import appms as appms_data
 from medsafe.appms_match import ingredient_keys
 from medsafe.catalogue import FUZZY_BACKEND, Catalogue, LabelLinker
+from medsafe.ddi_text import find_source_term
 from medsafe.names import mentions, norm, pairs
 from medsafe.synonyms import canonical, read_rows
 
@@ -314,7 +315,8 @@ def _text(settings: Settings, idx, a: _Med, b: _Med) -> TextMatchResult:
                     found.append(TextMatch(sentence=m["sentence"], matched_term=m["matched_term"],
                                            in_label_set_id=g.ref, in_label_name=g.label_name or g.ref,
                                            section="Drug interactions", names_drug=tgt.out.name,
-                                           source_ingredient=g.name, named_ingredient=t.name))
+                                           source_ingredient=g.name, named_ingredient=t.name,
+                                           source_term=find_source_term(m["sentence"], m["matched_term"], g.terms)))
     return TextMatchResult(source_label=TEXT_MATCH_LABEL, matches=found[:MAX_MATCHES_PER_PAIR],
                            matches_total=len(found), notes=list(dict.fromkeys(notes)))
 

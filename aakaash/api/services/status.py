@@ -12,9 +12,9 @@ from ..config import Settings
 from ..modules import COMING_SOON, IN_SCOPE_STAGES, STAGE_NAMES
 from ..schemas import ComponentStatus, ModuleStatus, StageInfo, StatusResponse
 from . import datasets
+from . import ddi as ddi_service
 
 INDEX_MANIFEST = "index/manifest.json"            # written when the retrieval index is built
-DDI_MODEL_FILES = ("ddi_baseline/model.joblib", "ddi_baseline/metrics.json")  # written when the classifier is trained
 
 
 def _read_json(path: Path) -> dict | None:
@@ -85,14 +85,14 @@ def _encoder(s: Settings) -> ComponentStatus:
 
 def _ddi_model(s: Settings) -> ComponentStatus:
     base = dict(id="ddi_model", label=f"DDI classifier (configured: {s.classifier_name})")
-    missing = [f for f in DDI_MODEL_FILES if not (s.artifacts_dir / f).is_file()]
-    if missing:
-        return ComponentStatus(
-            status="not_ready", **base,
-            reason=f"The interaction classifier has not been trained yet. Missing in {s.display(s.artifacts_dir)}: "
-                   f"{', '.join(missing)}.",
-            fix="Train the classifier on the DDI corpus. The training step is not written yet.")
-    return ComponentStatus(status="ready", **base, detail={"classifier": s.classifier_name})
+    st = ddi_service.model_state(s)
+    if not st["ready"]:
+        return ComponentStatus(status="not_ready", **base, reason=st["reason"],
+                               fix="Train on Colab and place the checkpoint in artifacts/models")
+    cfg = st["cfg"] or {}
+    return ComponentStatus(status="ready", **base, detail={
+        "classifier": s.classifier_name, "version": str(cfg.get("version", "unknown")),
+        "loss": str(cfg.get("loss", "unknown")), "smoke_test": "yes" if cfg.get("smoke_test") else "no"})
 
 
 def _catalogue(s: Settings) -> ComponentStatus:

@@ -9,6 +9,7 @@ import { PatientPicker } from "../components/PatientPicker";
 import type { PickedPatient } from "../components/PatientPicker";
 import { MedicineSearch } from "../components/MedicineSearch";
 import type { Recent } from "../components/MedicineSearch";
+import { InteractionType } from "../components/InteractionType";
 import { Sticker } from "../components/Sticker";
 
 const MIN = 2;
@@ -121,6 +122,7 @@ function PairCard({ p }: { p: PairResult }) {
                   <blockquote>
                     <Highlight text={m.sentence} term={m.matched_term} />
                   </blockquote>
+                  {m.source_term && <InteractionType sentence={m.sentence} drug1={m.source_term} drug2={m.matched_term} active={open} />}
                   <p className="small muted">
                     From the US label for <strong>{m.source_ingredient}</strong> (
                     <Link to={`/label/${m.in_label_set_id}`}>{m.in_label_name}</Link>), section “{m.section}”. Names{" "}

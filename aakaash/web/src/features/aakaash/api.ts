@@ -57,6 +57,11 @@ export type AllergyFinding = S["AllergyFinding"];
 export type AnalyzedMedicine = S["AnalyzedMedicine"];
 export type RiskLevel = S["LevelledHit"]["level"];
 export type AddMedicinesResponse = S["AddMedicinesResponse"];
+export type DDIClassifyResponse = S["DDIClassifyResponse"];
+export type DDIWord = S["DDIWord"];
+export type DDIMetricsResponse = S["DDIMetricsResponse"];
+export type DDIRun = S["DDIRun"];
+export type DDISplitMetrics = S["DDISplitMetrics"];
 export type Readiness = { status: "ready" | "not_ready"; reason?: string | null; fix?: string | null };
 
 const BASE: string = import.meta.env.VITE_API_BASE ?? "";
@@ -177,6 +182,9 @@ export const api = {
   analyze: (medicines: CourseIn[]) => send<AnalyzeResponse>("POST", "/api/analyze", { medicines }),
   addMedicines: (items: CourseIn[], acknowledgedWarning: boolean) =>
     send<AddMedicinesResponse>("POST", "/api/medicine-records/batch", { items, acknowledged_warning: acknowledgedWarning }),
+  ddiClassify: (sentence: string, drug1: string, drug2: string, explain: boolean) =>
+    send<DDIClassifyResponse>("POST", "/api/ddi/classify", { sentence, drug_1: drug1, drug_2: drug2, explain }),
+  ddiMetrics: () => get<DDIMetricsResponse>("/api/ddi/metrics"),
   check: (catalogueIds: string[], names: string[] = []) =>
     request<CheckerResponse>("/api/checker", {
       method: "POST",
