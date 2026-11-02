@@ -86,13 +86,13 @@ def test_health(client):
 
 def test_all_routes_under_api_prefix():
     paths = list(app.openapi()["paths"])
-    assert len(paths) == 15 and all(p.startswith("/api/") for p in paths)
+    assert len(paths) == 18 and all(p.startswith("/api/") for p in paths)
 
 
 def test_status_empty_data_is_not_ready_with_reasons(client):
     body = client.get("/api/status").json()
     comps = {c["id"]: c for c in body["components"]}
-    assert set(comps) == {"ddi_data", "tac_data", "dailymed_data", "encoder", "index", "ddi_model"}
+    assert set(comps) == {"ddi_data", "tac_data", "dailymed_data", "encoder", "index", "ddi_model", "catalogue"}
     for c in comps.values():
         assert c["status"] == "not_ready" and c["reason"] and c["fix"]
     assert body["active_encoder"] == "tfidf" and body["active_classifier"] == "linear_baseline"

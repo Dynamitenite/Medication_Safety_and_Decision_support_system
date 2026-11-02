@@ -10,7 +10,7 @@ from fastapi import HTTPException
 
 from medsafe import appms
 from medsafe.appms import AppmsData, AppmsMissing
-from medsafe.appms_match import IngredientMatcher
+from medsafe.appms_match import IngredientMatcher, ingredient_keys
 
 from ..config import Settings
 from ..schemas import (AppmsLabelRef, AppmsLookupResponse, AppmsMatchSummary, AppmsUnmatched, AppmsMedication, AppmsPatient, AppmsPatientResponse,
@@ -146,7 +146,9 @@ def lookup(settings: Settings, drug_a: str, drug_b: str) -> AppmsLookupResponse:
     d = get_data(settings)
     if d is None:
         return _not_ready(AppmsLookupResponse, settings)
-    r = appms.find_rule(d, drug_a, drug_b)
+    # same name keys as the checker: case, trailing salt words and medsafe/synonyms.csv
+    r = next((r for x in sorted(ingredient_keys(drug_a)) for y in sorted(ingredient_keys(drug_b))
+              if (r := appms.find_rule(d, x, y))), None)
     if r is None:
         return AppmsLookupResponse(status="ready", drug_a=drug_a, drug_b=drug_b, matched=False,
                                    message=appms.NO_MATCH_TEXT)

@@ -8,10 +8,11 @@ from fastapi import APIRouter, Depends, Query
 
 from .config import Settings, get_settings
 from .schemas import (AlternativesResponse, AppmsLookupResponse, AppmsPatientResponse,
-                      AppmsPatientsResponse, AppmsSummaryResponse, CheckerRequest, CheckerResponse, MedicineResponse,
+                      AppmsPatientsResponse, AppmsSummaryResponse, BrandAlternativesResponse, BrandResponse,
+                      CatalogueSummaryResponse, CheckerRequest, CheckerResponse, MedicineResponse,
                       SuggestResponse, DDIExamplesResponse, DDILabel, DDIStatsResponse, DailyMedStatsResponse,
                       Health, StatusResponse, TacStatsResponse, TraceResponse)
-from .services import appms, datasets, medicines, status, trace
+from .services import appms, catalogue, datasets, medicines, status, trace
 
 router = APIRouter(prefix="/api")
 
@@ -57,22 +58,39 @@ def get_trace(settings: Settings = Depends(get_settings)) -> TraceResponse:
 @router.get("/medicine/suggest", response_model=SuggestResponse)
 def medicine_suggest(q: str = Query("", max_length=100), limit: int = Query(8, ge=1, le=25),
                      settings: Settings = Depends(get_settings)) -> SuggestResponse:
-    return medicines.suggest(settings, q, limit)
+    return catalogue.suggest(settings, q, limit)
 
 
-@router.get("/medicine/{set_id}", response_model=MedicineResponse)
-def medicine_label(set_id: str, settings: Settings = Depends(get_settings)) -> MedicineResponse:
+@router.get("/medicine/{catalogue_id}", response_model=BrandResponse)
+def medicine_brand(catalogue_id: str, settings: Settings = Depends(get_settings)) -> BrandResponse:
+    return catalogue.brand(settings, catalogue_id)
+
+
+@router.get("/medicine/{catalogue_id}/alternatives", response_model=BrandAlternativesResponse)
+def medicine_alternatives(catalogue_id: str, include_discontinued: bool = False,
+                          limit: int = Query(100, ge=1, le=1000),
+                          settings: Settings = Depends(get_settings)) -> BrandAlternativesResponse:
+    return catalogue.alternatives(settings, catalogue_id, include_discontinued, limit)
+
+
+@router.get("/catalogue/summary", response_model=CatalogueSummaryResponse)
+def catalogue_summary(settings: Settings = Depends(get_settings)) -> CatalogueSummaryResponse:
+    return catalogue.summary(settings)
+
+
+@router.get("/label/{set_id}", response_model=MedicineResponse)
+def label_text(set_id: str, settings: Settings = Depends(get_settings)) -> MedicineResponse:
     return medicines.medicine(settings, set_id)
 
 
-@router.get("/medicine/{set_id}/alternatives", response_model=AlternativesResponse)
-def medicine_alternatives(set_id: str, settings: Settings = Depends(get_settings)) -> AlternativesResponse:
+@router.get("/label/{set_id}/alternatives", response_model=AlternativesResponse)
+def label_alternatives(set_id: str, settings: Settings = Depends(get_settings)) -> AlternativesResponse:
     return medicines.alternatives(settings, set_id)
 
 
 @router.post("/checker", response_model=CheckerResponse)
 def checker(body: CheckerRequest, settings: Settings = Depends(get_settings)) -> CheckerResponse:
-    return medicines.check(settings, body.set_ids, body.names)
+    return catalogue.check(settings, body.catalogue_ids, body.names)
 
 
 @router.get("/appms/summary", response_model=AppmsSummaryResponse)

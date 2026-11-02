@@ -49,6 +49,11 @@ def main() -> None:
             "moieties": rec["active_moieties"],
             "moieties_raw": rec["active_moieties_raw"],
             "manufacturer": rec["manufacturer"],
+            "title": rec["title"],
+            "effective_time": rec["effective_time"],
+            # sections with text: the catalogue picks the default label for an ingredient by this
+            "sections": sorted(k for k, v in rec["sections"].items()
+                               if any(s["text"].strip() for s in v)),
             "source": rec["source"],
             "member": rec["member"],
         })

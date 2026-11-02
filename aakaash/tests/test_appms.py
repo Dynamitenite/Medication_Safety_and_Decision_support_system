@@ -5,8 +5,10 @@ from fastapi.testclient import TestClient
 
 from api.app import app
 from api.config import Settings, get_settings
-from api.services import appms as appms_service, medicines
+from api.services import appms as appms_service, catalogue as catalogue_service
 from medsafe import appms
+
+from fixtures_catalogue import write_artifacts
 
 PATIENTS = """patient_id,age_years,gender,state,district,residence_type,primary_condition,secondary_condition,reported_drug_allergy,egfr_category,data_origin
 P1,40,Female,StateA,DistX,Urban,Condone,None,None,60-89,SYNTHETIC
@@ -40,8 +42,10 @@ def client(tmp_path):
     settings = Settings(data_dir=tmp_path / "data", artifacts_dir=tmp_path / "art",
                         trace_path=tmp_path / "t.md", encoder_name="tfidf", classifier_name="x")
     app.dependency_overrides[get_settings] = lambda: settings
+    catalogue_service.clear_cache()
     yield TestClient(app), settings
     app.dependency_overrides.clear()
+    catalogue_service.clear_cache()
 
 
 def test_loader_types_and_none_values(client):
@@ -104,17 +108,20 @@ def test_lookup_match_order_case_and_no_match(client):
     assert c.get("/api/appms/lookup?drug_a=x").status_code == 422
 
 
-def test_checker_rule_severity(client, monkeypatch):
+def test_lookup_uses_synonyms(client, tmp_path):
     c, s = client
-    names = s.artifacts_dir
-    names.mkdir(exist_ok=True)
-    labels = {sid: {"set_id": sid, "title": "t", "product_names": [n], "active_moieties": [m],
-                    "manufacturer": "M", "sections": {}}
-              for sid, n, m in (("1", "Alpha", "alphadrug"), ("2", "Beta", "BETADRUG"), ("3", "Other", "zzz"))}
-    monkeypatch.setattr(medicines, "get_index", lambda settings: object())
-    monkeypatch.setattr(medicines, "load_label", lambda settings, idx, sid: labels[sid])
-    body = c.post("/api/checker", json={"set_ids": ["1", "2", "3"]}).json()
+    rules = s.data_dir / "appms" / "ddi_seed_rules.csv"
+    rules.write_text(RULES + "Warfarin,Acetaminophen,High,Cat3,Mech3,Watch INR,Src3\n", encoding="utf-8")
+    r = c.get("/api/appms/lookup", params={"drug_a": "Paracetamol", "drug_b": "warfarin sodium"}).json()
+    assert r["matched"] and r["rule"]["drug_b"] == "Acetaminophen"
+
+
+def test_checker_rule_severity_by_generic_name(client):
+    c, s = client
+    write_artifacts(s.artifacts_dir)
+    body = c.post("/api/checker", json={"names": ["Alphadrug", "BETADRUG", "Zzz"]}).json()
     assert body["appms"]["status"] == "ready"
     first = body["pairs"][0]
     assert first["appms"]["severity"] == "high" and "Do the careful thing" in first["appms"]["explanation"]
+    assert {first["appms"]["hits"][0]["a_ingredient"], first["appms"]["hits"][0]["b_ingredient"]} == {"Alphadrug", "BETADRUG"}
     assert all(p["appms"]["severity"] is None for p in body["pairs"][1:])

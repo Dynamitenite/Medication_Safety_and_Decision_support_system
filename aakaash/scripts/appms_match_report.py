@@ -23,9 +23,11 @@ def main() -> None:
     m = IngredientMatcher(names["labels"])
     counts = Counter(x.drug_name for x in d.medications)
     print(f"DailyMed labels indexed: {len(names['labels'])} (sample run: {names['is_sample']})")
-    print(f"{'drug name':28}{'rows':>6}{'labels':>8}")
+    # first label = the one the sample-patient view links to
+    print(f"{'drug name':28}{'rows':>6}{'labels':>8}  first label set id")
     for n, c in sorted(counts.items(), key=lambda t: (-t[1], t[0])):
-        print(f"{n:28}{c:>6}{len(m.match(n)):>8}")
+        hits = m.match(n)
+        print(f"{n:28}{c:>6}{len(hits):>8}  {hits[0]['set_id'] if hits else '-'}")
     hit = {n for n in counts if m.match(n)}
     rows = sum(c for n, c in counts.items() if n in hit)
     print(f"\nmedication rows: {len(d.medications)}; matched to >=1 label: {rows}; unmatched: {len(d.medications) - rows}")

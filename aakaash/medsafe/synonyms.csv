@@ -1,0 +1,33 @@
+name,maps_to,kind,note
+paracetamol,acetaminophen,INN/USAN name equivalence,INN paracetamol; USAN acetaminophen
+amoxycillin,amoxicillin,INN/USAN name equivalence,BAN spelling amoxycillin; INN and USAN amoxicillin
+salbutamol,albuterol,INN/USAN name equivalence,INN salbutamol; USAN albuterol
+levosalbutamol,levalbuterol,INN/USAN name equivalence,levosalbutamol; USAN levalbuterol
+adrenaline,epinephrine,INN/USAN name equivalence,BAN adrenaline; INN and USAN epinephrine
+noradrenaline,norepinephrine,INN/USAN name equivalence,BAN noradrenaline; INN and USAN norepinephrine
+frusemide,furosemide,INN/USAN name equivalence,BAN frusemide; INN and USAN furosemide
+beclometasone,beclomethasone,INN/USAN name equivalence,INN beclometasone; USAN beclomethasone
+ursodeoxycholic acid,ursodiol,INN/USAN name equivalence,INN ursodeoxycholic acid; USAN ursodiol
+cefalexin,cephalexin,INN/USAN name equivalence,INN cefalexin; USAN cephalexin
+torasemide,torsemide,INN/USAN name equivalence,INN torasemide; USAN torsemide
+sodium valproate,valproic acid,INN/USAN name equivalence,salt of valproic acid; same active moiety (valproate)
+thyroxine,levothyroxine,INN/USAN name equivalence,BAN thyroxine (L-thyroxine); INN and USAN levothyroxine
+rifampicin,rifampin,INN/USAN name equivalence,INN rifampicin; USAN rifampin
+norethisterone,norethindrone,INN/USAN name equivalence,INN norethisterone; USAN norethindrone
+nicotinamide,niacinamide,INN/USAN name equivalence,INN nicotinamide; USAN niacinamide
+glibenclamide,glyburide,INN/USAN name equivalence,INN glibenclamide; USAN glyburide
+ciclosporin,cyclosporine,INN/USAN name equivalence,INN ciclosporin; USAN cyclosporine
+mesalazine,mesalamine,INN/USAN name equivalence,INN mesalazine; USAN mesalamine
+methylergometrine,methylergonovine,INN/USAN name equivalence,INN methylergometrine; USAN methylergonovine
+phenobarbitone,phenobarbital,INN/USAN name equivalence,BAN phenobarbitone; INN and USAN phenobarbital
+sulphacetamide,sulfacetamide,INN/USAN name equivalence,BAN spelling sulphacetamide; INN and USAN sulfacetamide
+suxamethonium,succinylcholine,INN/USAN name equivalence,INN suxamethonium; USAN succinylcholine
+phytomenadione,phytonadione,INN/USAN name equivalence,INN phytomenadione; USAN phytonadione
+isoprenaline,isoproterenol,INN/USAN name equivalence,INN isoprenaline; USAN isoproterenol
+pethidine,meperidine,INN/USAN name equivalence,INN pethidine; USAN meperidine
+orciprenaline,metaproterenol,INN/USAN name equivalence,INN orciprenaline; USAN metaproterenol
+vitamin d3,cholecalciferol,INN/USAN name equivalence,common vitamin name; INN colecalciferol; USAN cholecalciferol
+vitamin c,ascorbic acid,INN/USAN name equivalence,common vitamin name; INN and USAN ascorbic acid
+vitamin b6 (pyridoxine),pyridoxine,INN/USAN name equivalence,common vitamin name with the INN in brackets
+tazobactum,tazobactam,spelling fix,misspelling in the catalogue (2113 rows)
+levo-carnitine,levocarnitine,spelling fix,hyphenated spelling in the catalogue

@@ -134,9 +134,7 @@ def client(tmp_path):
 
 def test_no_name_index_is_not_ready(client):
     c, _ = client
-    for r in (c.get("/api/medicine/suggest?q=met"), c.get("/api/medicine/1"),
-              c.get("/api/medicine/1/alternatives"),
-              c.post("/api/checker", json={"set_ids": ["1", "2"]})):
+    for r in (c.get("/api/label/1"), c.get("/api/label/1/alternatives")):
         body = r.json()
         assert r.status_code == 200 and body["status"] == "not_ready"
         assert "build_names.py" in body["fix"]
@@ -147,62 +145,19 @@ def _with_index(settings):
     (settings.artifacts_dir / "names.json").write_text(json.dumps({"labels": LABELS}), encoding="utf-8")
 
 
-def test_suggest_endpoint_and_matcher_reported(client):
+def test_label_alternatives_endpoint_and_unknown_id(client):
     c, s = client
     _with_index(s)
-    body = c.get("/api/medicine/suggest?q=quux&limit=3").json()
-    assert body["status"] == "ready" and body["suggestions"][0]["name"] == "Quuxapril"
-    assert body["matcher"] in ("rapidfuzz", "difflib") and body["elapsed_ms"] is not None
-
-
-def test_alternatives_endpoint_and_unknown_id(client):
-    c, s = client
-    _with_index(s)
-    body = c.get("/api/medicine/1/alternatives").json()
+    body = c.get("/api/label/1/alternatives").json()
     assert body["status"] == "ready" and body["total_labels"] == 2
     assert "Not necessarily interchangeable" in body["note"]
-    assert c.get("/api/medicine/nope/alternatives").status_code == 404
+    assert c.get("/api/label/nope/alternatives").status_code == 404
 
 
 def test_label_zip_missing_is_reported(client):
     c, s = client
     _with_index(s)
-    assert c.get("/api/medicine/1").status_code == 503
-
-
-def test_checker_validation(client):
-    c, s = client
-    _with_index(s)
-    assert c.post("/api/checker", json={"set_ids": ["1"]}).status_code == 422
-    assert c.post("/api/checker", json={"set_ids": [str(i) for i in range(11)]}).status_code == 422
-    assert c.post("/api/checker", json={"set_ids": ["1", "1"]}).status_code == 422
-
-
-def test_checker_pairs_appms_not_ready_and_text_match(client, monkeypatch):
-    c, s = client
-    _with_index(s)
-    parsed = {
-        "1": {"set_id": "1", "title": "t", "product_names": ["Zorvex"], "active_moieties": ["foobarin"],
-              "manufacturer": "A", "sections": {"drug_interactions": [
-                  {"text": "Quuxapril raises levels. Unrelated sentence."}]}},
-        "4": {"set_id": "4", "title": "t", "product_names": ["Quuxapril"], "active_moieties": ["quuxapril"],
-              "manufacturer": "A", "sections": {}},
-        "6": {"set_id": "6", "title": "t", "product_names": ["Abc"], "active_moieties": ["abc"],
-              "manufacturer": "A", "sections": {}},
-    }
-    monkeypatch.setattr(medicines, "load_label", lambda settings, idx, sid: parsed[sid])
-    body = c.post("/api/checker", json={"set_ids": ["1", "4", "6"]}).json()
-    assert body["status"] == "ready" and len(body["pairs"]) == 3
-    assert body["appms"]["status"] == "not_ready" and body["appms"]["fix"] == __import__("api.services.appms", fromlist=["FIX"]).FIX
-    first = body["pairs"][0]                       # most text matches sorts first within unflagged
-    assert {first["a"]["set_id"], first["b"]["set_id"]} == {"1", "4"}
-    assert first["appms"]["status"] == "not_ready"
-    tm = first["text_match"]
-    assert tm["matches_total"] == 1 and tm["matches"][0]["sentence"] == "Quuxapril raises levels."
-    assert tm["matches"][0]["section"] == "Drug interactions"
-    assert any("no Drug Interactions section" in n for n in tm["notes"])  # label 4 has none
-    quiet = [p for p in body["pairs"] if "6" in (p["a"]["set_id"], p["b"]["set_id"])][0]
-    assert quiet["text_match"]["matches_total"] == 0
+    assert c.get("/api/label/1").status_code == 503
 
 
 # ---- APPMS name to label matching (hand-written fixtures) -------------------------------
@@ -216,11 +171,10 @@ def test_ingredient_matcher_strips_form_words_only():
     ]
     m = IngredientMatcher(labels)
     assert [l["set_id"] for l in m.match("Enalapril")] == ["1"]
-    assert m.match("Salbutamol") == []  # a name difference is not guessed
+    assert [l["set_id"] for l in m.match("Salbutamol")] == ["2"]  # medsafe/synonyms.csv, exact
+    assert m.match("Salbutamols") == []  # no fuzzy matching
 
 
-def test_checker_name_only_pairs_need_two_medicines(monkeypatch):
-    from api.app import app
-    from fastapi.testclient import TestClient
+def test_checker_needs_two_medicines():
     c = TestClient(app)
-    assert c.post("/api/checker", json={"set_ids": [], "names": ["Solo"]}).status_code == 422
+    assert c.post("/api/checker", json={"catalogue_ids": [], "names": ["Solo"]}).status_code == 422

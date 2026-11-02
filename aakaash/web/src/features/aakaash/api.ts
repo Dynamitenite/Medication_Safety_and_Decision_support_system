@@ -15,7 +15,14 @@ export type TacStatsResponse = S["TacStatsResponse"];
 export type TraceResponse = S["TraceResponse"];
 export type TraceRow = S["TraceRow"];
 export type SuggestResponse = S["SuggestResponse"];
-export type Suggestion = S["Suggestion"];
+export type BrandSuggestion = S["BrandSuggestion"];
+export type BrandResponse = S["BrandResponse"];
+export type BrandRow = S["BrandRow"];
+export type IngredientDetail = S["IngredientDetail"];
+export type LabelRef = S["LabelRef"];
+export type BrandAlternativesResponse = S["BrandAlternativesResponse"];
+export type AlternativeBrand = S["AlternativeBrand"];
+export type CatalogueSummaryResponse = S["CatalogueSummaryResponse"];
 export type MedicineResponse = S["MedicineResponse"];
 export type AlternativesResponse = S["AlternativesResponse"];
 export type CheckerResponse = S["CheckerResponse"];
@@ -28,7 +35,6 @@ export type AppmsLookupResponse = S["AppmsLookupResponse"];
 export type AppmsPatient = S["AppmsPatient"];
 export type AppmsMedication = S["AppmsMedication"];
 export type AppmsLabelRef = S["AppmsLabelRef"];
-export type NamePairResult = S["NamePairResult"];
 export type Readiness = { status: "ready" | "not_ready"; reason?: string | null; fix?: string | null };
 
 const BASE: string = import.meta.env.VITE_API_BASE ?? "";
@@ -85,12 +91,18 @@ export const api = {
   trace: () => get<TraceResponse>("/api/trace"),
   suggest: (q: string, signal?: AbortSignal, limit = 8) =>
     get<SuggestResponse>(`/api/medicine/suggest?${new URLSearchParams({ q, limit: String(limit) })}`, signal),
-  medicine: (id: string) => get<MedicineResponse>(`/api/medicine/${encodeURIComponent(id)}`),
-  alternatives: (id: string) => get<AlternativesResponse>(`/api/medicine/${encodeURIComponent(id)}/alternatives`),
-  check: (setIds: string[], names: string[] = []) =>
+  brand: (id: string) => get<BrandResponse>(`/api/medicine/${encodeURIComponent(id)}`),
+  brandAlternatives: (id: string, includeDiscontinued: boolean) =>
+    get<BrandAlternativesResponse>(
+      `/api/medicine/${encodeURIComponent(id)}/alternatives?${new URLSearchParams({ include_discontinued: String(includeDiscontinued) })}`,
+    ),
+  catalogueSummary: () => get<CatalogueSummaryResponse>("/api/catalogue/summary"),
+  label: (setId: string) => get<MedicineResponse>(`/api/label/${encodeURIComponent(setId)}`),
+  labelAlternatives: (setId: string) => get<AlternativesResponse>(`/api/label/${encodeURIComponent(setId)}/alternatives`),
+  check: (catalogueIds: string[], names: string[] = []) =>
     request<CheckerResponse>("/api/checker", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ set_ids: setIds, names }),
+      body: JSON.stringify({ catalogue_ids: catalogueIds, names }),
     }),
 };

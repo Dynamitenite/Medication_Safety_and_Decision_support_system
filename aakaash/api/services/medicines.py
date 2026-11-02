@@ -1,30 +1,23 @@
 # SOURCE: NOT IN PAPERS. Reads artifacts/names.json (scripts/build_names.py) and re-parses single
 # labels from the DailyMed zips with medsafe.spl. Missing data gives status="not_ready"; nothing
-# is invented. The APPMS rule lookup (services/appms.py) is reported not_ready when data/appms
-# is absent.
-"""Name search, label view, same-active-moiety list and the pair checker."""
+# is invented. The brand search and the checker live in services/catalogue.py.
+"""US label view (text tabs) and the same-active-moiety label list, by DailyMed set id."""
 from __future__ import annotations
 
 import io
 import json
 import threading
-import time
 import zipfile
 from functools import lru_cache
 from pathlib import Path
 
 from fastapi import HTTPException
 
-from medsafe import appms as appms_data
-from medsafe.appms_match import ingredient_keys, label_keys
-from medsafe.names import FUZZY_BACKEND, NameIndex, mentions, pairs
+from medsafe.names import NameIndex
 from medsafe.spl import parse_label
 
 from ..config import Settings
-from . import appms as appms_service
-from ..schemas import (Alternative, AlternativesResponse, AppmsResult, CheckerMedicine,
-                       CheckerResponse, LabelSection, MedicineResponse, NamePairResult, PairResult, SuggestResponse,
-                       Suggestion, TextMatch, TextMatchResult)
+from ..schemas import Alternative, AlternativesResponse, LabelSection, MedicineResponse
 
 NAMES_FILE = "names.json"
 DAILYMED_DIRNAME = "dailymed_rx"
@@ -34,32 +27,9 @@ SECTION_ORDER = [("boxed_warning", "Boxed warning"), ("indications", "Indication
                  ("precautions", "Precautions"), ("drug_interactions", "Drug interactions"),
                  ("adverse_reactions", "Adverse reactions"),
                  ("specific_populations", "Use in specific populations")]
-TEXT_MATCH_LABEL = ("Sentences in each label's Drug Interactions section that name the other medicine. "
-                    "Class-level mentions (for example 'anticoagulants') are not detected.")
-RULES_LABEL = "Interaction rules"
-SEV_RANK = {"Critical": 0, "High": 1, "Moderate": 2}
-
-
-def _rule_from_keys(settings: Settings, data, ka: set[str], kb: set[str]) -> AppmsResult:
-    """Interaction rules for two medicines, given their active-ingredient keys (any combination)."""
-    if data is None:
-        return AppmsResult(status="not_ready", source_label=RULES_LABEL,
-                           reason="The interaction rules are not loaded.", fix=appms_service.FIX)
-    hits = [r for x in ka for y in kb if (r := appms_data.find_rule(data, x, y))]
-    if not hits:
-        return AppmsResult(status="ready", source_label=RULES_LABEL)
-    r = min(hits, key=lambda h: SEV_RANK[h.severity])
-    return AppmsResult(status="ready", source_label=RULES_LABEL, severity=r.severity.lower(),
-                       explanation=f"{r.interaction_category}. {r.mechanism_or_risk}. {r.explanation_or_action}.")
-
-
-def _rule_lookup(settings: Settings, data, a: dict, b: dict) -> AppmsResult:
-    return _rule_from_keys(settings, data, label_keys(a), label_keys(b))
-
 
 ALT_NOTE = ("Same active ingredient, matched on its active moiety. Not necessarily "
             "interchangeable. Confirm with a pharmacist.")
-MAX_MATCHES_PER_PAIR = 12
 
 _lock = threading.Lock()
 _index: dict[str, NameIndex] = {}
@@ -93,17 +63,6 @@ def _not_ready(cls, settings: Settings, **kw):
     return cls(status="not_ready",
                reason=f"The name index {settings.display(names_path(settings))} is missing.",
                fix="Run scripts/build_names.py from the aakaash folder.", **kw)
-
-
-def suggest(settings: Settings, q: str, limit: int) -> SuggestResponse:
-    idx = get_index(settings)
-    if idx is None:
-        return _not_ready(SuggestResponse, settings, query=q)
-    t0 = time.perf_counter()
-    rows = idx.suggest(q, limit)
-    ms = (time.perf_counter() - t0) * 1000
-    return SuggestResponse(status="ready", query=q, matcher=FUZZY_BACKEND, elapsed_ms=round(ms, 2),
-                           suggestions=[Suggestion(**r) for r in rows])
 
 
 @lru_cache(maxsize=64)
@@ -157,70 +116,3 @@ def alternatives(settings: Settings, set_id: str) -> AlternativesResponse:
         status="ready", set_id=set_id, active_moieties=moi, note=ALT_NOTE,
         total_labels=sum(r["label_count"] for r in rows),
         alternatives=[Alternative(**r) for r in rows])
-
-
-def _med(lab: dict) -> CheckerMedicine:
-    name = lab["product_names"][0] if lab["product_names"] else lab["title"]
-    return CheckerMedicine(set_id=lab["set_id"], name=name, manufacturer=lab["manufacturer"],
-                           active_moieties=lab["active_moieties"],
-                           has_interactions_section=bool(lab["sections"].get("drug_interactions")))
-
-
-def _interaction_text(lab: dict) -> str:
-    return "\n".join(s["text"] for s in lab["sections"].get("drug_interactions", []))
-
-
-def _text_match(a: dict, b: dict) -> TextMatchResult:
-    found, notes = [], []
-    for src, tgt in ((a, b), (b, a)):
-        text = _interaction_text(src)
-        src_med, tgt_med = _med(src), _med(tgt)
-        if not text:
-            notes.append(f"The label for {src_med.name} has no Drug Interactions section in the parsed text.")
-            continue
-        for m in mentions(text, tgt):
-            found.append(TextMatch(sentence=m["sentence"], matched_term=m["matched_term"],
-                                   in_label_set_id=src_med.set_id, in_label_name=src_med.name,
-                                   section="Drug interactions", names_drug=tgt_med.name))
-    total = len(found)
-    return TextMatchResult(source_label=TEXT_MATCH_LABEL, matches=found[:MAX_MATCHES_PER_PAIR],
-                           matches_total=total, notes=notes)
-
-
-def check(settings: Settings, set_ids: list[str], names: list[str] | None = None) -> CheckerResponse:
-    names = [n.strip() for n in (names or []) if n.strip()]
-    if len(set(set_ids)) != len(set_ids):
-        raise HTTPException(422, "Each medicine can be added only once.")
-    if len({n.lower() for n in names}) != len(names):
-        raise HTTPException(422, "Each medicine can be added only once.")
-    if len(set_ids) + len(names) < 2:
-        raise HTTPException(422, "Add at least 2 medicines.")
-    idx = get_index(settings)
-    if idx is None:
-        return _not_ready(CheckerResponse, settings)
-    labels = {sid: load_label(settings, idx, sid) for sid in set_ids}
-    out = []
-    rules = appms_service.get_data(settings)
-    rules_status = (AppmsResult(status="ready", source_label=RULES_LABEL) if rules is not None else
-                    _rule_lookup(settings, None, {}, {}))
-    for x, y in pairs(set_ids):
-        a, b = labels[x], labels[y]
-        shared = bool(set(a["active_moieties"]) & set(b["active_moieties"]))
-        out.append(PairResult(a=_med(a), b=_med(b), appms=_rule_lookup(settings, rules, a, b),
-                              text_match=_text_match(a, b), same_active_moiety=shared))
-    # rule severity first (Critical, High, Moderate, unflagged); then more text matches first
-    rank = {"critical": 0, "high": 1, "moderate": 2, None: 3}
-    out.sort(key=lambda p: (rank[p.appms.severity], -p.text_match.matches_total))
-    # pairs with a medicine that has no label: rules only, by name
-    entries = ([(_med(labels[s]).name, label_keys(labels[s]), True) for s in set_ids] +
-               [(n, ingredient_keys(n), False) for n in names])
-    name_pairs = []
-    for i, (na, ka, ia) in enumerate(entries):
-        for nb, kb, ib in entries[i + 1:]:
-            if ia and ib:
-                continue
-            name_pairs.append(NamePairResult(a=na, b=nb, a_in_database=ia, b_in_database=ib,
-                                             appms=_rule_from_keys(settings, rules, ka, kb)))
-    name_pairs.sort(key=lambda p: rank[p.appms.severity])
-    return CheckerResponse(status="ready", medicines=[_med(labels[s]) for s in set_ids],
-                           appms=rules_status, pairs=out, name_pairs=name_pairs)

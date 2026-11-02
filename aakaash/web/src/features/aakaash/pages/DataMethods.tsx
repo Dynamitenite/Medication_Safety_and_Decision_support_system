@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { AppmsSummaryResponse } from "../api";
 import { Background } from "../components/Background";
+import { CatalogueSection } from "../components/CatalogueSection";
 import { DdiExamplesPanel, DdiStatsPanel } from "../components/DdiPanels";
 import { DailyMedPanel, TacPanel } from "../components/LabelStatsPanels";
 import { ErrorBox, fmt, LoadingBox } from "../components/Panel";
@@ -22,10 +23,17 @@ function Sources() {
       <h2 id="src-h">Where the information comes from</h2>
       <dl className="kv">
         <div>
-          <dt>Medicine labels (search, medicine page, label text)</dt>
+          <dt>Medicine list (search, medicine page, alternatives)</dt>
+          <dd>
+            An Indian medicine catalogue from a public GitHub dataset (details in the next section): brand names, manufacturers,
+            composition, pack sizes and prices.
+          </dd>
+        </div>
+        <div>
+          <dt>US label text (per ingredient)</dt>
           <dd>
             Prescription drug labels from DailyMed (US National Library of Medicine), read from its release zip files. The text shown
-            is the label text as published; nothing is generated or rewritten.
+            is the label text as published; nothing is generated or rewritten. Indian brands are linked to these labels by ingredient.
             {d && (
               <>
                 {" "}
@@ -76,9 +84,9 @@ function DoesNot() {
         </li>
         <li>Severity is a simplified label. Real risk depends on dose, duration, kidney and liver function, age and clinical context.</li>
         <li>Label text matching finds sentences that name the other medicine. It misses class-level mentions (for example “anticoagulants”) and cannot judge clinical importance.</li>
-        <li>Alternatives are matched on the active moiety of the active ingredient. That groups products that share a moiety but are not interchangeable. A pharmacist confirms any substitution.</li>
-        <li>A drug name can match only combination-product labels; the chip then shows the combination's name.</li>
-        <li>Matching a sample patient's drug name to labels uses the active-ingredient name, ignoring a trailing salt or hydrate word, and nothing else. A name written differently (for example Salbutamol for albuterol) is not matched, and is shown as not in the database.</li>
+        <li>Alternatives are other brands with the same full set of ingredients and the same strengths as written. They are not necessarily interchangeable (release form, inactive ingredients and quality can differ). A pharmacist confirms any substitution.</li>
+        <li>The checker treats a medicine as its set of ingredients. The label-text check reads the Drug Interactions section of one US label per ingredient (the one with the most label sections), not every US label.</li>
+        <li>Matching a sample patient's drug name to labels uses the active-ingredient name, ignoring a trailing salt or hydrate word, plus the exact name equivalences listed below (for example Salbutamol and albuterol). Nothing is matched by similar spelling.</li>
         <li>The interaction rules were not trained or scored against; the synthetic labels are a pure function of nine rules.</li>
       </ul>
     </section>
@@ -175,6 +183,7 @@ export function DataMethods() {
       </p>
 
       <Sources />
+      <CatalogueSection />
       <DoesNot />
       <DailyMedPanel />
       <Rules />

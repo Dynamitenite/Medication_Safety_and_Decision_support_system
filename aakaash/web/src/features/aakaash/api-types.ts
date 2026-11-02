@@ -140,15 +140,15 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/medicine/{set_id}": {
+    "/api/medicine/{catalogue_id}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        /** Medicine Label */
-        get: operations["medicine_label_api_medicine__set_id__get"];
+        /** Medicine Brand */
+        get: operations["medicine_brand_api_medicine__catalogue_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -157,7 +157,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/medicine/{set_id}/alternatives": {
+    "/api/medicine/{catalogue_id}/alternatives": {
         parameters: {
             query?: never;
             header?: never;
@@ -165,7 +165,58 @@ export interface paths {
             cookie?: never;
         };
         /** Medicine Alternatives */
-        get: operations["medicine_alternatives_api_medicine__set_id__alternatives_get"];
+        get: operations["medicine_alternatives_api_medicine__catalogue_id__alternatives_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/catalogue/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalogue Summary */
+        get: operations["catalogue_summary_api_catalogue_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/label/{set_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Label Text */
+        get: operations["label_text_api_label__set_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/label/{set_id}/alternatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Label Alternatives */
+        get: operations["label_alternatives_api_label__set_id__alternatives_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -275,6 +326,35 @@ export interface components {
             ingredients: string[];
             /** Label Count */
             label_count: number;
+        };
+        /** AlternativeBrand */
+        AlternativeBrand: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Type */
+            type: string;
+            /** Pack Size */
+            pack_size: string;
+            /** Price */
+            price: number | null;
+            /** Discontinued */
+            discontinued: boolean;
+            /** Composition */
+            composition: string;
+            /** Ingredients */
+            ingredients: string[];
+            /** Composition Incomplete */
+            composition_incomplete: boolean;
+            /** Composition Conflict */
+            composition_conflict: boolean;
+            /** Price Difference */
+            price_difference: number | null;
+            /** Different Pack Size */
+            different_pack_size: boolean;
         };
         /** AlternativesResponse */
         AlternativesResponse: {
@@ -472,6 +552,8 @@ export interface components {
             severity: ("critical" | "high" | "moderate") | null;
             /** Explanation */
             explanation: string | null;
+            /** Hits */
+            hits: components["schemas"]["RuleHit"][];
         };
         /** AppmsRuleMatch */
         AppmsRuleMatch: {
@@ -572,23 +654,297 @@ export interface components {
             /** Rows */
             rows: number;
         };
-        /** CheckerMedicine */
-        CheckerMedicine: {
-            /** Set Id */
-            set_id: string;
+        /** BrandAlternativesResponse */
+        BrandAlternativesResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /**
+             * Id
+             * @default
+             */
+            id: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /**
+             * Price Note
+             * @default
+             */
+            price_note: string;
+            /** Caveats */
+            caveats: string[];
+            /**
+             * Strength Stated
+             * @default true
+             */
+            strength_stated: boolean;
+            /**
+             * Include Discontinued
+             * @default false
+             */
+            include_discontinued: boolean;
+            /**
+             * Same Total
+             * @default 0
+             */
+            same_total: number;
+            /** Same */
+            same: components["schemas"]["AlternativeBrand"][];
+            /**
+             * Other Strength Groups Total
+             * @default 0
+             */
+            other_strength_groups_total: number;
+            /** Other Strength */
+            other_strength: components["schemas"]["StrengthGroup"][];
+        };
+        /** BrandResponse */
+        BrandResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            brand: components["schemas"]["BrandRow"] | null;
+            /** Ingredient Details */
+            ingredient_details: components["schemas"]["IngredientDetail"][];
+            /** Short Composition */
+            short_composition: string | null;
+            /**
+             * Secondary Source Label
+             * @default
+             */
+            secondary_source_label: string;
+            /** Secondary Interactions */
+            secondary_interactions: components["schemas"]["SecondaryInteraction"][];
+            /**
+             * Price Note
+             * @default
+             */
+            price_note: string;
+            /**
+             * Label Note
+             * @default
+             */
+            label_note: string;
+            /**
+             * Default Label Rule
+             * @default
+             */
+            default_label_rule: string;
+        };
+        /** BrandRow */
+        BrandRow: {
+            /** Id */
+            id: string;
             /** Name */
             name: string;
             /** Manufacturer */
             manufacturer: string | null;
-            /** Active Moieties */
-            active_moieties: string[];
-            /** Has Interactions Section */
-            has_interactions_section: boolean;
+            /** Type */
+            type: string;
+            /** Pack Size */
+            pack_size: string;
+            /** Price */
+            price: number | null;
+            /** Discontinued */
+            discontinued: boolean;
+            /** Composition */
+            composition: string;
+            /** Ingredients */
+            ingredients: string[];
+            /** Composition Incomplete */
+            composition_incomplete: boolean;
+            /** Composition Conflict */
+            composition_conflict: boolean;
+        };
+        /** BrandSuggestion */
+        BrandSuggestion: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Type */
+            type: string;
+            /** Pack Size */
+            pack_size: string;
+            /** Price */
+            price: number | null;
+            /** Discontinued */
+            discontinued: boolean;
+            /** Composition */
+            composition: string;
+            /** Ingredients */
+            ingredients: string[];
+            /** Composition Incomplete */
+            composition_incomplete: boolean;
+            /** Composition Conflict */
+            composition_conflict: boolean;
+            /**
+             * Match
+             * @enum {string}
+             */
+            match: "prefix" | "word" | "ingredient" | "substring" | "fuzzy";
+            /** Matched Ingredient */
+            matched_ingredient: string | null;
+        };
+        /** CatalogueSummaryResponse */
+        CatalogueSummaryResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /**
+             * Source
+             * @default
+             */
+            source: string;
+            /**
+             * Licence
+             * @default
+             */
+            licence: string;
+            /**
+             * Original Source
+             * @default
+             */
+            original_source: string;
+            /** File Date */
+            file_date: string | null;
+            /** Built At */
+            built_at: string | null;
+            /**
+             * Brands
+             * @default 0
+             */
+            brands: number;
+            /**
+             * Discontinued
+             * @default 0
+             */
+            discontinued: number;
+            /**
+             * Composition Incomplete
+             * @default 0
+             */
+            composition_incomplete: number;
+            /**
+             * Composition Conflict
+             * @default 0
+             */
+            composition_conflict: number;
+            /**
+             * From Full Composition
+             * @default 0
+             */
+            from_full_composition: number;
+            /**
+             * Price Not Stated
+             * @default 0
+             */
+            price_not_stated: number;
+            /**
+             * Distinct Ingredients
+             * @default 0
+             */
+            distinct_ingredients: number;
+            /**
+             * Ingredients Linked
+             * @default 0
+             */
+            ingredients_linked: number;
+            /**
+             * Ingredients Linked Combination Only
+             * @default 0
+             */
+            ingredients_linked_combination_only: number;
+            /**
+             * Brands All Linked
+             * @default 0
+             */
+            brands_all_linked: number;
+            /**
+             * Brands Complete
+             * @default 0
+             */
+            brands_complete: number;
+            /**
+             * Brands Complete All Linked
+             * @default 0
+             */
+            brands_complete_all_linked: number;
+            /**
+             * Secondary Interaction Rows
+             * @default 0
+             */
+            secondary_interaction_rows: number;
+            /** Dailymed Parts Loaded */
+            dailymed_parts_loaded: string[];
+            /**
+             * Dailymed Labels Loaded
+             * @default 0
+             */
+            dailymed_labels_loaded: number;
+            /** Top Unlinked */
+            top_unlinked: components["schemas"]["UnlinkedIngredient"][];
+            /** Synonyms */
+            synonyms: components["schemas"]["SynonymRow"][];
+        };
+        /** CheckerIngredient */
+        CheckerIngredient: {
+            /** Name */
+            name: string;
+            /** Us Name */
+            us_name: string | null;
+            /** Label Set Id */
+            label_set_id: string | null;
+            /** Label Name */
+            label_name: string | null;
+        };
+        /** CheckerMedicine */
+        CheckerMedicine: {
+            /** Key */
+            key: string;
+            /** Catalogue Id */
+            catalogue_id: string | null;
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "brand" | "generic";
+            /** Ingredients */
+            ingredients: components["schemas"]["CheckerIngredient"][];
+            /** Composition Incomplete */
+            composition_incomplete: boolean;
         };
         /** CheckerRequest */
         CheckerRequest: {
-            /** Set Ids */
-            set_ids?: string[];
+            /** Catalogue Ids */
+            catalogue_ids?: string[];
             /** Names */
             names?: string[];
         };
@@ -608,8 +964,6 @@ export interface components {
             appms: components["schemas"]["AppmsResult"];
             /** Pairs */
             pairs: components["schemas"]["PairResult"][];
-            /** Name Pairs */
-            name_pairs: components["schemas"]["NamePairResult"][];
         };
         /** ComponentStatus */
         ComponentStatus: {
@@ -822,6 +1176,44 @@ export interface components {
              */
             status: "ok";
         };
+        /** IngredientDetail */
+        IngredientDetail: {
+            /** Name */
+            name: string;
+            /** Strength */
+            strength: string | null;
+            /** Key */
+            key: string;
+            /** Us Name */
+            us_name: string | null;
+            /** Link Method */
+            link_method: ("ingredient name" | "active moiety") | null;
+            /** Combination Only */
+            combination_only: boolean;
+            /** Moieties */
+            moieties: string[];
+            /** Labels */
+            labels: components["schemas"]["LabelRef"][];
+        };
+        /** LabelRef */
+        LabelRef: {
+            /** Set Id */
+            set_id: string;
+            /** Title */
+            title: string;
+            /** Product */
+            product: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Sections */
+            sections: number;
+            /** Effective Time */
+            effective_time: string | null;
+            /** Single Ingredient */
+            single_ingredient: boolean;
+            /** Default */
+            default: boolean;
+        };
         /** LabelSection */
         LabelSection: {
             /** Key */
@@ -889,29 +1281,56 @@ export interface components {
              */
             owner: string;
         };
-        /**
-         * NamePairResult
-         * @description A pair where at least one medicine has no label: interaction rules only.
-         */
-        NamePairResult: {
-            /** A */
-            a: string;
-            /** B */
-            b: string;
-            /** A In Database */
-            a_in_database: boolean;
-            /** B In Database */
-            b_in_database: boolean;
-            appms: components["schemas"]["AppmsResult"];
-        };
         /** PairResult */
         PairResult: {
             a: components["schemas"]["CheckerMedicine"];
             b: components["schemas"]["CheckerMedicine"];
             appms: components["schemas"]["AppmsResult"];
             text_match: components["schemas"]["TextMatchResult"];
-            /** Same Active Moiety */
-            same_active_moiety: boolean;
+            /** Shared Ingredients */
+            shared_ingredients: string[];
+            secondary: components["schemas"]["SecondaryResult"];
+            /** Notes */
+            notes: string[];
+        };
+        /** RuleHit */
+        RuleHit: {
+            /** A Ingredient */
+            a_ingredient: string;
+            /** B Ingredient */
+            b_ingredient: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "critical" | "high" | "moderate";
+            /** Explanation */
+            explanation: string;
+        };
+        /** SecondaryHit */
+        SecondaryHit: {
+            /** In Product */
+            in_product: string;
+            /** Drug */
+            drug: string;
+            /** Effect */
+            effect: string;
+            /** Matches Ingredient */
+            matches_ingredient: string;
+        };
+        /** SecondaryInteraction */
+        SecondaryInteraction: {
+            /** Drug */
+            drug: string;
+            /** Effect */
+            effect: string;
+        };
+        /** SecondaryResult */
+        SecondaryResult: {
+            /** Source Label */
+            source_label: string;
+            /** Hits */
+            hits: components["schemas"]["SecondaryHit"][];
         };
         /** StageInfo */
         StageInfo: {
@@ -937,6 +1356,19 @@ export interface components {
             /** Data Dir */
             data_dir: string;
         };
+        /** StrengthGroup */
+        StrengthGroup: {
+            /** Composition */
+            composition: string;
+            /** Brands Total */
+            brands_total: number;
+            /** Lowest Price */
+            lowest_price: number | null;
+            /** Strength Stated */
+            strength_stated: boolean;
+            /** Brands */
+            brands: components["schemas"]["AlternativeBrand"][];
+        };
         /** SuggestResponse */
         SuggestResponse: {
             /**
@@ -960,29 +1392,21 @@ export interface components {
             matcher: string;
             /** Elapsed Ms */
             elapsed_ms: number | null;
-            /** Suggestions */
-            suggestions: components["schemas"]["Suggestion"][];
+            /** Matches */
+            matches: components["schemas"]["BrandSuggestion"][];
+            /** Similar */
+            similar: components["schemas"]["BrandSuggestion"][];
         };
-        /** Suggestion */
-        Suggestion: {
+        /** SynonymRow */
+        SynonymRow: {
             /** Name */
             name: string;
-            /**
-             * Type
-             * @enum {string}
-             */
-            type: "brand" | "generic" | "ingredient";
-            /** Manufacturer */
-            manufacturer: string | null;
-            /** Set Id */
-            set_id: string;
-            /** Label Count */
-            label_count: number;
-            /**
-             * Match
-             * @enum {string}
-             */
-            match: "prefix" | "word" | "substring" | "fuzzy";
+            /** Maps To */
+            maps_to: string;
+            /** Kind */
+            kind: string;
+            /** Note */
+            note: string;
         };
         /** TacStatsResponse */
         TacStatsResponse: {
@@ -1036,6 +1460,10 @@ export interface components {
             section: string;
             /** Names Drug */
             names_drug: string;
+            /** Source Ingredient */
+            source_ingredient: string;
+            /** Named Ingredient */
+            named_ingredient: string;
         };
         /** TextMatchResult */
         TextMatchResult: {
@@ -1096,6 +1524,15 @@ export interface components {
              * @enum {string}
              */
             status_kind: "untested" | "ran" | "verified" | "unknown";
+        };
+        /** UnlinkedIngredient */
+        UnlinkedIngredient: {
+            /** Name */
+            name: string;
+            /** Us Name */
+            us_name: string | null;
+            /** Rows */
+            rows: number;
         };
         /** ValidationError */
         ValidationError: {
@@ -1311,7 +1748,92 @@ export interface operations {
             };
         };
     };
-    medicine_label_api_medicine__set_id__get: {
+    medicine_brand_api_medicine__catalogue_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    medicine_alternatives_api_medicine__catalogue_id__alternatives_get: {
+        parameters: {
+            query?: {
+                include_discontinued?: boolean;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                catalogue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandAlternativesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    catalogue_summary_api_catalogue_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogueSummaryResponse"];
+                };
+            };
+        };
+    };
+    label_text_api_label__set_id__get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1342,7 +1864,7 @@ export interface operations {
             };
         };
     };
-    medicine_alternatives_api_medicine__set_id__alternatives_get: {
+    label_alternatives_api_label__set_id__alternatives_get: {
         parameters: {
             query?: never;
             header?: never;

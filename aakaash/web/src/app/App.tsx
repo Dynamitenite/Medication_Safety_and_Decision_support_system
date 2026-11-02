@@ -4,6 +4,7 @@ import { List, MagnifyingGlass, Moon, Pill, Sun, X } from "@phosphor-icons/react
 import type { Icon } from "@phosphor-icons/react";
 import { ComingSoon } from "../features/aakaash/pages/ComingSoon";
 import { DataMethods } from "../features/aakaash/pages/DataMethods";
+import { LabelPage } from "../features/aakaash/pages/LabelPage";
 import { MedicinePage } from "../features/aakaash/pages/MedicinePage";
 import { Trace } from "../features/aakaash/pages/Trace";
 import { Disclaimer } from "../features/aakaash/components/Disclaimer";
@@ -135,7 +136,8 @@ export function App() {
               <Route path="/about" element={<Navigate to="/about/data" replace />} />
               <Route path="/dashboard" element={<Navigate to="/about/data" replace />} />
               <Route path="/trace" element={<Navigate to="/about/trace" replace />} />
-              <Route path="/medicine/:setId" element={<MedicinePage />} />
+              <Route path="/medicine/:id" element={<MedicinePage />} />
+              <Route path="/label/:setId" element={<LabelPage />} />
               <Route path="/modules/:id" element={<ModuleRoute />} />
               <Route path="*" element={<><h1>Page not found</h1><p>Use the menu to go to a screen.</p></>} />
             </Routes>

@@ -166,26 +166,137 @@ class TraceResponse(Readiness):
     preamble: list[str] = Field(default_factory=list)
 
 
-# ---- medicines: suggest, label, alternatives, checker ------------------------------------
-SuggestType = Literal["brand", "generic", "ingredient"]
-
-
-class Suggestion(ApiModel):
+# ---- catalogue: suggest, brand, alternatives ---------------------------------------------
+class BrandRow(ApiModel):
+    id: str
     name: str
-    type: SuggestType
     manufacturer: str | None
-    set_id: str
-    label_count: int
-    match: Literal["prefix", "word", "substring", "fuzzy"]
+    type: str
+    pack_size: str
+    price: float | None  # rupees per pack as listed; None when the catalogue lists 0
+    discontinued: bool
+    composition: str
+    ingredients: list[str]
+    composition_incomplete: bool  # two listed ingredients and no full composition: may hold more
+    composition_conflict: bool    # the catalogue's two composition fields disagree
+
+
+class BrandSuggestion(BrandRow):
+    match: Literal["prefix", "word", "ingredient", "substring", "fuzzy"]
+    matched_ingredient: str | None  # set when the hit is on an ingredient name
 
 
 class SuggestResponse(Readiness):
     query: str = ""
     matcher: str = ""  # fuzzy backend actually used: rapidfuzz or difflib
     elapsed_ms: float | None = None
-    suggestions: list[Suggestion] = Field(default_factory=list)
+    matches: list[BrandSuggestion] = Field(default_factory=list)
+    similar: list[BrandSuggestion] = Field(default_factory=list)
 
 
+class LabelRef(ApiModel):
+    set_id: str
+    title: str
+    product: str
+    manufacturer: str | None
+    sections: int  # sections with text; the default label has the most
+    effective_time: str | None
+    single_ingredient: bool
+    default: bool
+
+
+class IngredientDetail(ApiModel):
+    name: str  # as written in the catalogue
+    strength: str | None  # None: not stated
+    key: str
+    us_name: str | None  # the US name when it differs (medsafe/synonyms.csv)
+    link_method: Literal["ingredient name", "active moiety"] | None
+    combination_only: bool  # only combination-product labels carry this ingredient
+    moieties: list[str]
+    labels: list[LabelRef]
+
+
+class SecondaryInteraction(ApiModel):
+    drug: str
+    effect: str
+
+
+class BrandResponse(Readiness):
+    brand: BrandRow | None = None
+    ingredient_details: list[IngredientDetail] = Field(default_factory=list)
+    short_composition: str | None = None  # the other composition field when the two disagree
+    secondary_source_label: str = ""
+    secondary_interactions: list[SecondaryInteraction] = Field(default_factory=list)
+    price_note: str = ""
+    label_note: str = ""
+    default_label_rule: str = ""
+
+
+class AlternativeBrand(BrandRow):
+    price_difference: float | None  # this price minus the selected brand's price
+    different_pack_size: bool
+
+
+class StrengthGroup(ApiModel):
+    composition: str
+    brands_total: int
+    lowest_price: float | None
+    strength_stated: bool
+    brands: list[AlternativeBrand]
+
+
+class BrandAlternativesResponse(Readiness):
+    id: str = ""
+    note: str = ""
+    price_note: str = ""
+    caveats: list[str] = Field(default_factory=list)
+    strength_stated: bool = True
+    include_discontinued: bool = False
+    same_total: int = 0
+    same: list[AlternativeBrand] = Field(default_factory=list)
+    other_strength_groups_total: int = 0
+    other_strength: list[StrengthGroup] = Field(default_factory=list)
+
+
+class SynonymRow(ApiModel):
+    name: str
+    maps_to: str
+    kind: str
+    note: str
+
+
+class UnlinkedIngredient(ApiModel):
+    name: str
+    us_name: str | None
+    rows: int
+
+
+class CatalogueSummaryResponse(Readiness):
+    source: str = ""
+    licence: str = ""
+    original_source: str = ""
+    file_date: str | None = None
+    built_at: str | None = None
+    brands: int = 0
+    discontinued: int = 0
+    composition_incomplete: int = 0
+    composition_conflict: int = 0
+    from_full_composition: int = 0
+    price_not_stated: int = 0
+    distinct_ingredients: int = 0
+    ingredients_linked: int = 0
+    ingredients_linked_combination_only: int = 0
+    brands_all_linked: int = 0
+    brands_complete: int = 0
+    brands_complete_all_linked: int = 0
+    secondary_interaction_rows: int = 0
+    dailymed_parts_loaded: list[str] = Field(default_factory=list)
+    dailymed_labels_loaded: int = 0
+    top_unlinked: list[UnlinkedIngredient] = Field(default_factory=list)
+    synonyms: list[SynonymRow] = Field(default_factory=list)
+
+
+# ---- DailyMed label (text tabs) -----------------------------------------------------------
 class LabelSection(ApiModel):
     key: str
     label: str
@@ -220,18 +331,28 @@ class AlternativesResponse(Readiness):
     alternatives: list[Alternative] = Field(default_factory=list)
 
 
+# ---- checker ------------------------------------------------------------------------------
 class CheckerRequest(ApiModel):
-    set_ids: list[str] = Field(default_factory=list, max_length=10)
-    # medicines with no DailyMed label: only the interaction rules can be looked up, by name
+    catalogue_ids: list[str] = Field(default_factory=list, max_length=10)
+    # generic names (for example a sample patient's medicines): each is one ingredient
     names: list[str] = Field(default_factory=list, max_length=10)
 
 
+class CheckerIngredient(ApiModel):
+    name: str
+    us_name: str | None
+    label_set_id: str | None  # reference label used for the label-text match
+    label_name: str | None
+
+
 class CheckerMedicine(ApiModel):
-    set_id: str
+    key: str
+    catalogue_id: str | None
     name: str
     manufacturer: str | None
-    active_moieties: list[str]
-    has_interactions_section: bool
+    kind: Literal["brand", "generic"]
+    ingredients: list[CheckerIngredient]
+    composition_incomplete: bool
 
 
 class TextMatch(ApiModel):
@@ -241,12 +362,22 @@ class TextMatch(ApiModel):
     in_label_name: str
     section: str
     names_drug: str  # the other medicine in the pair that the sentence names
+    source_ingredient: str  # the ingredient whose label the sentence is from
+    named_ingredient: str   # the other medicine's ingredient the sentence names
+
+
+class RuleHit(ApiModel):
+    a_ingredient: str
+    b_ingredient: str
+    severity: Literal["critical", "high", "moderate"]
+    explanation: str
 
 
 class AppmsResult(Readiness):
     source_label: str = "Interaction rules"
     severity: Literal["critical", "high", "moderate"] | None = None
     explanation: str | None = None
+    hits: list[RuleHit] = Field(default_factory=list)
 
 
 class TextMatchResult(ApiModel):
@@ -256,28 +387,32 @@ class TextMatchResult(ApiModel):
     notes: list[str]
 
 
+class SecondaryHit(ApiModel):
+    in_product: str
+    drug: str
+    effect: str
+    matches_ingredient: str
+
+
+class SecondaryResult(ApiModel):
+    source_label: str
+    hits: list[SecondaryHit]
+
+
 class PairResult(ApiModel):
     a: CheckerMedicine
     b: CheckerMedicine
     appms: AppmsResult
     text_match: TextMatchResult
-    same_active_moiety: bool
-
-
-class NamePairResult(ApiModel):
-    """A pair where at least one medicine has no label: interaction rules only."""
-    a: str
-    b: str
-    a_in_database: bool
-    b_in_database: bool
-    appms: AppmsResult
+    shared_ingredients: list[str]
+    secondary: SecondaryResult
+    notes: list[str]
 
 
 class CheckerResponse(Readiness):
     medicines: list[CheckerMedicine] = Field(default_factory=list)
     appms: AppmsResult = Field(default_factory=lambda: AppmsResult(status="not_ready"))
     pairs: list[PairResult] = Field(default_factory=list)
-    name_pairs: list[NamePairResult] = Field(default_factory=list)
 
 
 # ---- APPMS interaction rules -------------------------------------------------------------

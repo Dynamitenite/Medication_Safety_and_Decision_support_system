@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Warning, X } from "@phosphor-icons/react";
 import { api } from "../api";
-import type { CheckerResponse, NamePairResult, PairResult } from "../api";
+import type { CheckerMedicine, CheckerResponse, PairResult } from "../api";
 import { Disclaimer } from "../components/Disclaimer";
 import { ErrorBox, NotReadyBox } from "../components/Panel";
 import { PatientPicker } from "../components/PatientPicker";
@@ -14,9 +14,9 @@ import { Sticker } from "../components/Sticker";
 const MIN = 2;
 const MAX = 10;
 
-/** A chip. `set_id` is absent for a medicine with no label in our database: it is still looked up in the
- *  interaction rules, by name. */
-type Chosen = { key: string; set_id?: string; name: string; manufacturer?: string | null };
+/** A chip. A brand comes from the catalogue (`id`); a sample patient's medicine is a generic name,
+ *  checked as that one ingredient. */
+type Chosen = { key: string; id?: string; name: string; manufacturer?: string | null; detail: string };
 
 type Tone = "critical" | "high" | "moderate" | "none";
 const TONE_TEXT: Record<Tone, string> = {
@@ -42,48 +42,78 @@ function Highlight({ text, term }: { text: string; term: string }) {
   );
 }
 
+const ingList = (m: CheckerMedicine) => m.ingredients.map((g) => g.name).join(" + ");
+
+function MedName({ m }: { m: CheckerMedicine }) {
+  return (
+    <span>
+      {m.catalogue_id ? <Link to={`/medicine/${m.catalogue_id}`} onClick={(e) => e.stopPropagation()}>{m.name}</Link> : m.name}
+      <span className="chip-ings">{m.kind === "generic" ? "generic name" : ingList(m)}</span>
+    </span>
+  );
+}
+
 function PairCard({ p }: { p: PairResult }) {
   const [open, setOpen] = useState(false);
   const tone = pairTone(p);
   const n = p.text_match.matches_total;
-  const id = `pair-${p.a.set_id}-${p.b.set_id}`;
+  const id = `pair-${p.a.key}-${p.b.key}`.replace(/[^A-Za-z0-9-]/g, "-");
   return (
     <li className={`pair pair-${tone}`}>
       <button type="button" className="pair-head" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
         <span className="pair-names">
           {p.a.name} <span className="muted">+</span> {p.b.name}
+          <span className="chip-ings">
+            {p.a.kind === "generic" ? "generic name" : ingList(p.a)} · {p.b.kind === "generic" ? "generic name" : ingList(p.b)}
+          </span>
         </span>
         <span className="pair-tags">
           <span className={`badge badge-sev sev-${tone}`}>{TONE_TEXT[tone]}</span>
           <Sticker>{n ? `${n} label text ${n === 1 ? "mention" : "mentions"}` : "no label text mention"}</Sticker>
+          {p.shared_ingredients.length > 0 && <Sticker tone="danger">Same ingredient</Sticker>}
         </span>
       </button>
       <div id={id} className="pair-body" hidden={!open}>
+        <p className="small muted">
+          <MedName m={p.a} /> <MedName m={p.b} />
+        </p>
+        {p.shared_ingredients.length > 0 && (
+          <p className="small">
+            <Warning size={14} aria-hidden="true" /> Both contain {p.shared_ingredients.join(", ")}. Taking both may double the dose of
+            that ingredient.
+          </p>
+        )}
+        {p.notes.map((t) => (
+          <p key={t} className="small">
+            <Sticker wrap>Check</Sticker> {t}
+          </p>
+        ))}
         <section aria-label="Interaction rules">
           <h3>Interaction rules</h3>
-          <p className="small muted">{p.appms.source_label}</p>
           {p.appms.status === "not_ready" ? (
             <NotReadyBox reason={p.appms.reason} fix={p.appms.fix} />
-          ) : p.appms.severity ? (
-            <p>
-              <strong>{TONE_TEXT[tone]}.</strong> {p.appms.explanation}
-            </p>
+          ) : p.appms.hits.length ? (
+            <ul className="evidence">
+              {p.appms.hits.map((h, i) => (
+                <li key={i}>
+                  <p>
+                    <strong>{TONE_TEXT[h.severity]}.</strong> {h.explanation}
+                  </p>
+                  <p className="small muted">
+                    Matched ingredients: {h.a_ingredient} and {h.b_ingredient}.
+                  </p>
+                </li>
+              ))}
+            </ul>
           ) : (
             <p>No known interaction found in our rules. This does not mean the combination is safe.</p>
           )}
         </section>
         <section aria-label="Label text">
-          <h3>Label text</h3>
+          <h3>Label text (US FDA)</h3>
           <p className="small muted">{p.text_match.source_label}</p>
-          {p.same_active_moiety && (
-            <p className="small">
-              <Warning size={14} aria-hidden="true" /> Both labels share an active moiety.
-            </p>
-          )}
           {n === 0 ? (
-            <p>
-              No sentence in either label's Drug Interactions section names the other medicine. This does not mean the combination is safe.
-            </p>
+            <p>No sentence in these labels' Drug Interactions sections names the other medicine. This does not mean the combination is safe.</p>
           ) : (
             <ul className="evidence">
               {p.text_match.matches.map((m, i) => (
@@ -92,8 +122,9 @@ function PairCard({ p }: { p: PairResult }) {
                     <Highlight text={m.sentence} term={m.matched_term} />
                   </blockquote>
                   <p className="small muted">
-                    From the label for <Link to={`/medicine/${m.in_label_set_id}`}>{m.in_label_name}</Link>, section “{m.section}”.
-                    Names: {m.names_drug}.
+                    From the US label for <strong>{m.source_ingredient}</strong> (
+                    <Link to={`/label/${m.in_label_set_id}`}>{m.in_label_name}</Link>), section “{m.section}”. Names{" "}
+                    <strong>{m.named_ingredient}</strong>, in {m.names_drug}.
                   </p>
                 </li>
               ))}
@@ -108,44 +139,20 @@ function PairCard({ p }: { p: PairResult }) {
             </p>
           ))}
         </section>
-        <Disclaimer />
-      </div>
-    </li>
-  );
-}
-
-function NamePairCard({ p }: { p: NamePairResult }) {
-  const [open, setOpen] = useState(false);
-  const tone: Tone = p.appms.status === "ready" && p.appms.severity ? p.appms.severity : "none";
-  const id = `name-pair-${p.a}-${p.b}`.replace(/\s+/g, "-");
-  const missing = [!p.a_in_database && p.a, !p.b_in_database && p.b].filter(Boolean).join(" and ");
-  return (
-    <li className={`pair pair-${tone}`}>
-      <button type="button" className="pair-head" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
-        <span className="pair-names">
-          {p.a} <span className="muted">+</span> {p.b}
-        </span>
-        <span className="pair-tags">
-          <span className={`badge badge-sev sev-${tone}`}>{TONE_TEXT[tone]}</span>
-          <Sticker>interaction rules only</Sticker>
-        </span>
-      </button>
-      <div id={id} className="pair-body" hidden={!open}>
-        <section aria-label="Interaction rules">
-          <h3>Interaction rules</h3>
-          {p.appms.status === "not_ready" ? (
-            <NotReadyBox reason={p.appms.reason} fix={p.appms.fix} />
-          ) : p.appms.severity ? (
-            <p>
-              <strong>{TONE_TEXT[tone]}.</strong> {p.appms.explanation}
-            </p>
-          ) : (
-            <p>No known interaction found in our rules. This does not mean the combination is safe.</p>
-          )}
-        </section>
-        <p className="small muted">
-          {missing} {missing.includes(" and ") ? "are" : "is"} not in our database, so there is no label text to check for this pair.
-        </p>
+        {p.secondary.hits.length > 0 && (
+          <section aria-label="Interactions listed with the product">
+            <h3>Interactions listed with the product</h3>
+            <p className="small muted">{p.secondary.source_label}</p>
+            <ul className="evidence">
+              {p.secondary.hits.map((h, i) => (
+                <li key={i}>
+                  {h.in_product} lists <strong>{h.drug}</strong>
+                  {h.effect ? ` (listed effect: ${h.effect})` : ""}, which matches {h.matches_ingredient}.
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <Disclaimer />
       </div>
     </li>
@@ -161,7 +168,7 @@ export function Checker() {
   const [note, setNote] = useState("");
 
   const add = (s: Recent) => {
-    if (chosen.some((c) => c.key === s.set_id)) {
+    if (chosen.some((c) => c.key === s.id)) {
       setNote(`${s.name} is already in the list.`);
       return;
     }
@@ -170,7 +177,7 @@ export function Checker() {
       return;
     }
     setNote(`${s.name} added.`);
-    setChosen([...chosen, { key: s.set_id, set_id: s.set_id, name: s.name, manufacturer: s.manufacturer }]);
+    setChosen([...chosen, { key: s.id, id: s.id, name: s.name, manufacturer: s.manufacturer, detail: s.composition }]);
     setResult({ state: "idle" });
   };
   const remove = (key: string) => {
@@ -179,27 +186,24 @@ export function Checker() {
     setResult({ state: "idle" });
     setNote(c ? `${c.name} removed.` : "");
   };
-  // Replaces the list with the patient's medicines. A medicine with no label stays as a name-only chip.
+  // Replaces the list with the patient's medicines. Each is a generic name, checked as that ingredient.
   const loadPatient = ({ patient, medications }: PickedPatient) => {
     const seen = new Set<string>();
     const list: Chosen[] = [];
     for (const m of medications) {
-      const k = m.label?.set_id ?? `name:${m.drug_name.toLowerCase()}`;
+      const k = `name:${m.drug_name.toLowerCase()}`;
       if (seen.has(k)) continue;
       seen.add(k);
-      list.push(m.label
-        ? { key: k, set_id: m.label.set_id, name: m.label.name, manufacturer: m.label.manufacturer }
-        : { key: k, name: m.drug_name });
+      list.push({ key: k, name: m.drug_name, detail: `generic name · ${m.strength}` });
     }
     setChosen(list.slice(0, MAX));
     setResult({ state: "idle" });
-    const missing = list.filter((c) => !c.set_id).length;
-    setNote(`Loaded ${list.length} medicines from patient ${patient.patient_id}.${missing ? ` ${missing} not in our database.` : ""}`);
+    setNote(`Loaded ${list.length} medicines from patient ${patient.patient_id}.`);
   };
   const run = () => {
     setResult({ state: "loading" });
     api
-      .check(chosen.flatMap((c) => (c.set_id ? [c.set_id] : [])), chosen.flatMap((c) => (c.set_id ? [] : [c.name])))
+      .check(chosen.flatMap((c) => (c.id ? [c.id] : [])), chosen.flatMap((c) => (c.id ? [] : [c.name])))
       .then((data) => setResult({ state: "ok", data }))
       .catch((e: unknown) => setResult({ state: "error", message: e instanceof Error ? e.message : String(e) }));
   };
@@ -209,30 +213,27 @@ export function Checker() {
     <>
       <h1>Interaction checker</h1>
       <p className="lead">
-        Add {MIN} to {MAX} medicines. Each pair is checked against our interaction rules and against the label text. The two results
-        are shown separately. Nothing is stored.
+        Add {MIN} to {MAX} medicines. Each medicine is checked by its ingredients: every pair is looked up in our interaction rules and
+        in the US label text for each ingredient. The results are shown separately. Nothing is stored.
       </p>
       <section className="card" aria-labelledby="pick-h">
         <h2 id="pick-h">Medicines</h2>
         <MedicineSearch
           label="Add a medicine"
-          placeholder="Search by brand, generic name or ingredient"
+          placeholder="Search by brand or ingredient"
           value={text}
           onValueChange={setText}
           onSelect={add}
           clearOnSelect
-          hint="Each pick is one specific label (a product from one manufacturer)."
+          hint="Each pick is one brand. Its ingredients are what is checked."
         />
         <ul className="chip-list" aria-label="Selected medicines">
           {chosen.map((c) => (
             <li key={c.key} className="chip">
               <span>
                 {c.name}
-                {c.set_id ? (
-                  <span className="small muted"> · {c.manufacturer ?? "manufacturer not stated"}</span>
-                ) : (
-                  <span className="chip-flag small"> · not in our database</span>
-                )}
+                {c.id && <span className="small muted"> · {c.manufacturer ?? "manufacturer not stated"}</span>}
+                <span className="chip-ings">{c.detail}</span>
               </span>
               <button type="button" className="btn btn-plain btn-icon btn-sm" aria-label={`Remove ${c.name}`} onClick={() => remove(c.key)}>
                 <X size={14} />
@@ -257,7 +258,9 @@ export function Checker() {
 
       <section className="card" aria-labelledby="patient-h">
         <h2 id="patient-h">Load a sample patient</h2>
-        <p className="panel-hint">Fills the list above with that patient's medicines. It replaces what is there now.</p>
+        <p className="panel-hint">
+          Fills the list above with that patient's medicines (generic names). It replaces what is there now; you can then add brands.
+        </p>
         <PatientPicker label="Find a sample patient" showCard={false} onPick={loadPatient} />
       </section>
 
@@ -284,7 +287,8 @@ export function Checker() {
             {result.data.appms.status === "not_ready" && (
               <div className="notice" role="status">
                 <div className="notice-title">
-                  <Sticker>Unavailable</Sticker>{result.data.appms.source_label}
+                  <Sticker>Unavailable</Sticker>
+                  {result.data.appms.source_label}
                 </div>
                 <p>{result.data.appms.reason}</p>
                 <p className="muted">
@@ -295,10 +299,7 @@ export function Checker() {
             )}
             <ul className="pair-list">
               {result.data.pairs.map((p) => (
-                <PairCard key={p.a.set_id + p.b.set_id} p={p} />
-              ))}
-              {result.data.name_pairs.map((p) => (
-                <NamePairCard key={p.a + "|" + p.b} p={p} />
+                <PairCard key={p.a.key + "|" + p.b.key} p={p} />
               ))}
             </ul>
             <Disclaimer />

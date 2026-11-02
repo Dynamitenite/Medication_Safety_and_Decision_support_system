@@ -95,10 +95,19 @@ def _ddi_model(s: Settings) -> ComponentStatus:
     return ComponentStatus(status="ready", **base, detail={"classifier": s.classifier_name})
 
 
+def _catalogue(s: Settings) -> ComponentStatus:
+    base = dict(id="catalogue", label="Medicine catalogue (India)")
+    path = s.artifacts_dir / "catalogue.json"
+    if not path.is_file():
+        return ComponentStatus(status="not_ready", **base, reason=f"{s.display(path)} is missing.",
+                               fix="Put the catalogue CSVs in data/indian_meds and run scripts/build_catalogue.py.")
+    return ComponentStatus(status="ready", **base, detail={"file_bytes": path.stat().st_size})
+
+
 def get_status(s: Settings) -> StatusResponse:
     return StatusResponse(
         components=[_ddi_data(s), _tac_data(s), _dailymed_data(s), _encoder(s), _index(s),
-                    _ddi_model(s)],
+                    _ddi_model(s), _catalogue(s)],
         modules=[ModuleStatus(id=m.id, label=m.label, stages=list(m.stages),
                               stage_names=[STAGE_NAMES[x] for x in m.stages])
                  for m in COMING_SOON],

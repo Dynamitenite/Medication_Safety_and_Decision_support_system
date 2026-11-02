@@ -226,3 +226,14 @@ Proposed defaults for the DDI baseline (all NOT IN PAPERS; no answer needed unle
 **Q8. Severity tiers.** CLAUDE.md mentions P10's Critical/High/Advisory labels with my own assignment rules. Your web-app prompt allows only one fixed advice sentence in the alert. Should tiers be **left out** of the alert (my reading), or added?
 
 **Q9. Teammates' code.** No teammate folders or `main` branch exist in this repo. Where does the team app live (repo/branch), and is it React + FastAPI? That decides how `router.py` and `src/features/aakaash/` get merged later. This does not block building.
+
+---
+
+## 6. Update 2026-11-02: Indian medicine catalogue as the primary medicine list
+
+- The medicine list is now the Indian catalogue (public GitHub "Indian-Medicine-Dataset", `data/indian_meds/`, gitignored). `scripts/build_catalogue.py` writes `artifacts/catalogue.json`; it needs `artifacts/names.json` (`scripts/build_names.py`) for the DailyMed links.
+- DailyMed is now the ingredient-level evidence source: each catalogue ingredient links to US labels by exact ingredient name, else active moiety, after the exact equivalences in `medsafe/synonyms.csv`.
+- Endpoints: `/api/medicine/suggest` (matches and similar), `/api/medicine/{catalogue_id}`, `/api/medicine/{catalogue_id}/alternatives`, `/api/catalogue/summary`, `/api/label/{set_id}` and `/api/label/{set_id}/alternatives` (the former `/api/medicine/{set_id}` label endpoints), `POST /api/checker {catalogue_ids, names}`.
+- Web routes: `/medicine/:id` is a brand page; `/label/:setId` is a US label page; old `/medicine/<uuid>` links redirect to `/label/<uuid>`.
+- Not built: a patient store. There is no `patient_medicine` table in this repo; the patient workflow will be built later on the catalogue, storing catalogue ids.
+- Real numbers (part6 of DailyMed only) are in `PAPER_TRACE.md` and on `/about/data`.
