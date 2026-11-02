@@ -179,6 +179,8 @@ class BrandRow(ApiModel):
     ingredients: list[str]
     composition_incomplete: bool  # two listed ingredients and no full composition: may hold more
     composition_conflict: bool    # the catalogue's two composition fields disagree
+    composition_repeated: bool    # the same ingredient is listed more than once, often at different strengths
+    form_family: str              # dosage-form family from the name and pack label (medsafe/forms.py); "unknown"
 
 
 class BrandSuggestion(BrandRow):
@@ -202,6 +204,10 @@ class LabelRef(ApiModel):
     sections: int  # sections with text; the default label has the most
     effective_time: str | None
     single_ingredient: bool
+    form: str | None  # dosage form(s) from the label's SPL, e.g. "Tablet, film coated"
+    route: str | None
+    form_family: str  # family used for matching; "unknown" when the SPL form could not be placed
+    form_inferred: bool  # no form in the SPL: the family comes from words in the title
     default: bool
 
 
@@ -213,6 +219,7 @@ class IngredientDetail(ApiModel):
     link_method: Literal["ingredient name", "active moiety"] | None
     combination_only: bool  # only combination-product labels carry this ingredient
     moieties: list[str]
+    form_match: Literal["matched", "none", "brand_form_unknown", "no_label"]  # default label vs the brand's form
     labels: list[LabelRef]
 
 
@@ -230,6 +237,8 @@ class BrandResponse(Readiness):
     price_note: str = ""
     label_note: str = ""
     default_label_rule: str = ""
+    form_note: str = ""  # shown for an ingredient whose form_match is "none"
+    form_unknown_note: str = ""  # shown for an ingredient whose form_match is "brand_form_unknown"
 
 
 class AlternativeBrand(BrandRow):
@@ -252,8 +261,14 @@ class BrandAlternativesResponse(Readiness):
     caveats: list[str] = Field(default_factory=list)
     strength_stated: bool = True
     include_discontinued: bool = False
+    form_family: str = "unknown"  # the selected product's family
     same_total: int = 0
     same: list[AlternativeBrand] = Field(default_factory=list)
+    different_form_total: int = 0
+    different_form: list[AlternativeBrand] = Field(default_factory=list)
+    form_not_stated_total: int = 0
+    form_not_stated: list[AlternativeBrand] = Field(default_factory=list)
+    other_strength_other_form_hidden: int = 0
     other_strength_groups_total: int = 0
     other_strength: list[StrengthGroup] = Field(default_factory=list)
 

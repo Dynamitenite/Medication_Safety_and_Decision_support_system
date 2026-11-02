@@ -39,13 +39,22 @@ ROWS = [
     row("17", "Calacet Tablet", "Calcium Acetate (667mg)"),
     row("18", "Potchlor Syrup", "Potassium Chloride (500mg)"),
     row("19", "Potcit Syrup", "Potassium Citrate (1100mg)"),
+    row("20", "Parasyp 650 Syrup", "Paracetamol (650mg)", price="25", pack="bottle of 60 ml Syrup"),
+    row("21", "Paradrops 650", "Paracetamol (650mg)", price="22", pack="bottle of 15 ml Drop"),
+    row("22", "Calpara 650 Dry Syrup", "Paracetamol (500mg)", price="12", pack="bottle of 30 ml Oral Suspension"),
+    row("23", "Estrosplit Tablet", "Estradiol (1mg)", "Estradiol (1mg)",
+        salt="Estradiol (1mg) + Estradiol (1mg)", price="18"),
 ]
 
 SECTIONS = ["indications", "drug_interactions", "adverse_reactions"]
 
 
-def lab(sid, product, ings, moieties, sections=SECTIONS, eff="20200101", maker="US Maker"):
-    return {"set_id": sid, "products": [product], "generic": [], "ingredients": ings, "moieties": moieties,
+TABLET = [{"form": "TABLET", "routes": ["ORAL"]}]
+INJECTION = [{"form": "INJECTION, SOLUTION", "routes": ["INTRAVENOUS"]}]
+
+
+def lab(sid, product, ings, moieties, sections=SECTIONS, eff="20200101", maker="US Maker", forms=TABLET):
+    return {"dosage_forms": forms, "set_id": sid, "products": [product], "generic": [], "ingredients": ings, "moieties": moieties,
             "moieties_raw": [m.upper() for m in moieties], "manufacturer": maker, "title": product,
             "effective_time": eff, "sections": list(sections), "source": "x.zip!in.zip", "member": "a.xml"}
 
@@ -56,11 +65,15 @@ LABELS = [
     lab("L-warf", "Warfarin Sodium Tablets", ["WARFARIN SODIUM"], ["warfarin"]),
     lab("L-metf", "Metformin Tablets", ["METFORMIN HYDROCHLORIDE"], ["metformin"]),
     lab("L-combo", "Metformin and Glipizide", ["METFORMIN HYDROCHLORIDE", "GLIPIZIDE"], ["metformin", "glipizide"]),
-    lab("L-nacl", "Sodium Chloride Injection", ["SODIUM CHLORIDE"], ["sodium cation", "chloride ion"]),
-    lab("L-cacl", "Calcium Chloride Injection", ["CALCIUM CHLORIDE"], ["calcium cation", "chloride ion"]),
+    lab("L-nacl", "Sodium Chloride Injection", ["SODIUM CHLORIDE"], ["sodium cation", "chloride ion"], forms=INJECTION),
+    lab("L-cacl", "Calcium Chloride Injection", ["CALCIUM CHLORIDE"], ["calcium cation", "chloride ion"], forms=INJECTION),
     lab("L-kcl", "Potassium Chloride Tablets", ["POTASSIUM CHLORIDE"], ["potassium cation", "chloride ion"]),
-    lab("L-albut", "Albuterol Inhaler", ["ALBUTEROL SULFATE"], ["albuterol"]),
-    lab("L-empty", "Blood Bag", ["SODIUM CITRATE"], ["sodium citrate"], sections=[]),
+    lab("L-albut", "Albuterol Inhaler", ["ALBUTEROL SULFATE"], ["albuterol"],
+        forms=[{"form": "AEROSOL, METERED", "routes": ["RESPIRATORY (INHALATION)"]}]),
+    lab("L-empty", "Blood Bag", ["SODIUM CITRATE"], ["sodium citrate"], sections=[], forms=[]),
+    # most sections, but an injection: a tablet brand must not default to it
+    lab("L-apap-inj", "Acetaminophen Injection", ["ACETAMINOPHEN"], ["acetaminophen"],
+        sections=SECTIONS + ["boxed_warning"], forms=INJECTION),
 ]
 
 # parsed label text for the checker (what medicines.load_label would return)
@@ -69,6 +82,7 @@ PARSED = {
         {"text": "Acetaminophen may raise the INR. Monitor closely. Unrelated sentence."}]}},
     "L-apap-2": {"set_id": "L-apap-2", "sections": {"drug_interactions": [{"text": "No drugs named here."}]}},
     "L-apap-1": {"set_id": "L-apap-1", "sections": {}},
+    "L-apap-inj": {"set_id": "L-apap-inj", "sections": {}},
     "L-metf": {"set_id": "L-metf", "sections": {}},
     "L-albut": {"set_id": "L-albut", "sections": {}},
 }

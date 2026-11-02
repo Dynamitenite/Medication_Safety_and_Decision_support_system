@@ -84,7 +84,7 @@ function DoesNot() {
         </li>
         <li>Severity is a simplified label. Real risk depends on dose, duration, kidney and liver function, age and clinical context.</li>
         <li>Label text matching finds sentences that name the other medicine. It misses class-level mentions (for example “anticoagulants”) and cannot judge clinical importance.</li>
-        <li>Alternatives are other brands with the same full set of ingredients and the same strengths as written. They are not necessarily interchangeable (release form, inactive ingredients and quality can differ). A pharmacist confirms any substitution.</li>
+        <li>Alternatives are other brands with the same full set of ingredients, the same strengths as written and the same dosage form family (worked out from the pack label and name: oral solid, oral liquid, injectable and so on). Products in another form are listed apart, and products whose form could not be determined are listed as “Form not stated”. They are not necessarily interchangeable (release form, inactive ingredients and quality can differ). A pharmacist confirms any substitution.</li>
         <li>The checker treats a medicine as its set of ingredients. The label-text check reads the Drug Interactions section of one US label per ingredient (the one with the most label sections), not every US label.</li>
         <li>Matching a sample patient's drug name to labels uses the active-ingredient name, ignoring a trailing salt or hydrate word, plus the exact name equivalences listed below (for example Salbutamol and albuterol). Nothing is matched by similar spelling.</li>
         <li>The interaction rules were not trained or scored against; the synthetic labels are a pure function of nine rules.</li>

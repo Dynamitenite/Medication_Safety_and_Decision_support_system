@@ -351,6 +351,10 @@ export interface components {
             composition_incomplete: boolean;
             /** Composition Conflict */
             composition_conflict: boolean;
+            /** Composition Repeated */
+            composition_repeated: boolean;
+            /** Form Family */
+            form_family: string;
             /** Price Difference */
             price_difference: number | null;
             /** Different Pack Size */
@@ -693,12 +697,36 @@ export interface components {
              */
             include_discontinued: boolean;
             /**
+             * Form Family
+             * @default unknown
+             */
+            form_family: string;
+            /**
              * Same Total
              * @default 0
              */
             same_total: number;
             /** Same */
             same: components["schemas"]["AlternativeBrand"][];
+            /**
+             * Different Form Total
+             * @default 0
+             */
+            different_form_total: number;
+            /** Different Form */
+            different_form: components["schemas"]["AlternativeBrand"][];
+            /**
+             * Form Not Stated Total
+             * @default 0
+             */
+            form_not_stated_total: number;
+            /** Form Not Stated */
+            form_not_stated: components["schemas"]["AlternativeBrand"][];
+            /**
+             * Other Strength Other Form Hidden
+             * @default 0
+             */
+            other_strength_other_form_hidden: number;
             /**
              * Other Strength Groups Total
              * @default 0
@@ -745,6 +773,16 @@ export interface components {
              * @default
              */
             default_label_rule: string;
+            /**
+             * Form Note
+             * @default
+             */
+            form_note: string;
+            /**
+             * Form Unknown Note
+             * @default
+             */
+            form_unknown_note: string;
         };
         /** BrandRow */
         BrandRow: {
@@ -770,6 +808,10 @@ export interface components {
             composition_incomplete: boolean;
             /** Composition Conflict */
             composition_conflict: boolean;
+            /** Composition Repeated */
+            composition_repeated: boolean;
+            /** Form Family */
+            form_family: string;
         };
         /** BrandSuggestion */
         BrandSuggestion: {
@@ -795,6 +837,10 @@ export interface components {
             composition_incomplete: boolean;
             /** Composition Conflict */
             composition_conflict: boolean;
+            /** Composition Repeated */
+            composition_repeated: boolean;
+            /** Form Family */
+            form_family: string;
             /**
              * Match
              * @enum {string}
@@ -1192,6 +1238,11 @@ export interface components {
             combination_only: boolean;
             /** Moieties */
             moieties: string[];
+            /**
+             * Form Match
+             * @enum {string}
+             */
+            form_match: "matched" | "none" | "brand_form_unknown" | "no_label";
             /** Labels */
             labels: components["schemas"]["LabelRef"][];
         };
@@ -1211,6 +1262,14 @@ export interface components {
             effective_time: string | null;
             /** Single Ingredient */
             single_ingredient: boolean;
+            /** Form */
+            form: string | null;
+            /** Route */
+            route: string | null;
+            /** Form Family */
+            form_family: string;
+            /** Form Inferred */
+            form_inferred: boolean;
             /** Default */
             default: boolean;
         };

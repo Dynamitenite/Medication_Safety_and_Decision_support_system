@@ -177,6 +177,7 @@ def parse_label(data: bytes, source: str = "", member: str = "") -> dict:
     moieties, names, generics = [], [], []
     active = []  # (classCode, name, moiety or None), one per distinct substance
     seen_substances = set()
+    dosage_forms, seen_forms = [], set()  # [{form, routes}] per distinct product form
     for el in root.iter():
         n = _ln(el)
         if n == "ingredient":
@@ -203,6 +204,16 @@ def parse_label(data: bytes, source: str = "", member: str = "") -> dict:
             nm = _first_child(el, "name")
             if nm is not None and nm.text:
                 names.append(nm.text.strip())
+            # real paths (part6): manufacturedProduct/manufacturedProduct/formCode and, on the outer
+            # one, consumedIn/substanceAdministration/routeCode (both carry a displayName)
+            form_el = _descend(el, "manufacturedProduct", "formCode")
+            if form_el is not None and form_el.get("displayName"):
+                routes = sorted({r.get("displayName") for r in el.iter()
+                                 if _ln(r) == "routeCode" and r.get("displayName")})
+                pair = (form_el.get("displayName"), tuple(routes))
+                if pair not in seen_forms:
+                    seen_forms.add(pair)
+                    dosage_forms.append({"form": pair[0], "routes": list(pair[1])})
         elif n == "genericMedicine":  # real path: .../asEntityWithGeneric/genericMedicine/name
             g = _clean_text(_first_child(el, "name"))
             if g:
@@ -236,6 +247,7 @@ def parse_label(data: bytes, source: str = "", member: str = "") -> dict:
         "product_names": sorted(set(names)),
         "generic_names": sorted({g.lower(): g for g in reversed(generics)}.values()),
         "manufacturer": manufacturer,
+        "dosage_forms": dosage_forms,
         "ingredients": sorted({normalize_ingredient(i) for i in ingredients if i}),
         "ingredients_raw": sorted(set(ingredients)),
         "active_moieties": sorted({normalize_ingredient(i) for i in moiety_raw if i}),

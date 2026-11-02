@@ -9,6 +9,12 @@ import { Sticker } from "../components/Sticker";
 import { useApi } from "../useApi";
 
 const SHOW = 10;
+
+/** "Tablet, film coated · Oral", or the family inferred from the title when the label states no form. */
+const labelForm = (l: { form: string | null; route: string | null; form_family: string; form_inferred: boolean }) => {
+  if (l.form_inferred) return `${l.form_family} (inferred from title)`;
+  return l.form ? (l.route ? `${l.form} · ${l.route}` : l.form) : "form not stated";
+};
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const rupees = (n: number | null | undefined) =>
@@ -35,7 +41,7 @@ function IngredientChips({ items }: { items: IngredientDetail[] }) {
 }
 
 /** US label text for one ingredient, with a picker when several US labels carry it. */
-function LabelSection({ ing, choice, onChoose, rule, note }: { ing: IngredientDetail; choice: string | null; onChoose: (id: string) => void; rule: string; note: string }) {
+function LabelSection({ ing, choice, onChoose, rule, note, formNote, formUnknownNote }: { ing: IngredientDetail; choice: string | null; onChoose: (id: string) => void; rule: string; note: string; formNote: string; formUnknownNote: string }) {
   const chosen = ing.labels.find((l) => l.set_id === choice) ?? ing.labels[0];
   const lab = useApi(() => (chosen ? api.label(chosen.set_id) : Promise.resolve(null)), [chosen?.set_id]);
   const selectId = `label-pick-${ing.key}`;
@@ -63,12 +69,25 @@ function LabelSection({ ing, choice, onChoose, rule, note }: { ing: IngredientDe
             <select id={selectId} value={chosen.set_id} onChange={(e) => onChoose(e.target.value)} disabled={ing.labels.length < 2}>
               {ing.labels.map((l) => (
                 <option key={l.set_id} value={l.set_id}>
-                  {l.manufacturer ?? "manufacturer not stated"} · {l.product || l.title} · {l.sections} sections{l.default ? " (default)" : ""}
+                  {l.manufacturer ?? "manufacturer not stated"} · {l.product || l.title} · {labelForm(l)} · {l.sections} sections{l.default ? " (default)" : ""}
                 </option>
               ))}
             </select>
           </div>
           <p className="small muted">{rule}</p>
+          <p className="small">
+            <Sticker>Form</Sticker> {labelForm(chosen)}
+          </p>
+          {ing.form_match === "none" && (
+            <p className="small">
+              <Sticker wrap>Different form</Sticker> {formNote}.
+            </p>
+          )}
+          {ing.form_match === "brand_form_unknown" && (
+            <p className="small">
+              <Sticker wrap>Form unknown</Sticker> {formUnknownNote}
+            </p>
+          )}
           {lab.state === "error" && <ErrorBox message={lab.message} onRetry={lab.reload} />}
           {lab.state !== "error" && !lab.data && <Skeleton lines={8} />}
           {lab.data?.status === "not_ready" && <NotReadyBox reason={lab.data.reason} fix={lab.data.fix} />}
@@ -86,7 +105,7 @@ function LabelSection({ ing, choice, onChoose, rule, note }: { ing: IngredientDe
   );
 }
 
-function AltRow({ a }: { a: AlternativeBrand }) {
+function AltRow({ a, showForm }: { a: AlternativeBrand; showForm?: boolean }) {
   const diff = priceDiff(a.price_difference);
   return (
     <li>
@@ -99,6 +118,7 @@ function AltRow({ a }: { a: AlternativeBrand }) {
         {diff && <span className="small muted"> · {diff}</span>}
       </span>
       <span className="alt-tags">
+        {showForm && <Sticker>Form: {a.form_family}</Sticker>}
         {a.discontinued && <Sticker>Discontinued</Sticker>}
         {a.different_pack_size && <Sticker>Different pack size</Sticker>}
         {(a.composition_incomplete || a.composition_conflict) && <Sticker wrap>Composition may be incomplete</Sticker>}
@@ -107,10 +127,31 @@ function AltRow({ a }: { a: AlternativeBrand }) {
   );
 }
 
-function Alternatives({ id, data, showDisc, setShowDisc }: { id: string; data: BrandAlternativesResponse; showDisc: boolean; setShowDisc: (v: boolean) => void }) {
+/** A list of alternative brands, cheapest first, with a Show-all toggle. */
+function AltList({ rows, total, showForm }: { rows: AlternativeBrand[]; total: number; showForm?: boolean }) {
   const [all, setAll] = useState(false);
-  useEffect(() => setAll(false), [id, showDisc]);
-  const shown = all ? data.same : data.same.slice(0, SHOW);
+  const shown = all ? rows : rows.slice(0, SHOW);
+  return (
+    <>
+      <p className="small muted">
+        {total} {total === 1 ? "brand" : "brands"}, cheapest first.{total > rows.length && ` Showing the ${rows.length} cheapest.`}
+      </p>
+      <ul className="alt-rows">
+        {shown.map((a) => (
+          <AltRow key={a.id} a={a} showForm={showForm} />
+        ))}
+      </ul>
+      {rows.length > SHOW && (
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAll(!all)}>
+          {all ? "Show fewer" : `Show ${rows.length}`}
+        </button>
+      )}
+    </>
+  );
+}
+
+function Alternatives({ id, data, showDisc, setShowDisc }: { id: string; data: BrandAlternativesResponse; showDisc: boolean; setShowDisc: (v: boolean) => void }) {
+  const unknownForm = data.form_family === "unknown";
   return (
     <>
       <p>
@@ -126,28 +167,33 @@ function Alternatives({ id, data, showDisc, setShowDisc }: { id: string; data: B
         <input type="checkbox" checked={showDisc} onChange={(e) => setShowDisc(e.target.checked)} />
         Show discontinued
       </label>
-      <h3>Same ingredients and strength</h3>
+      <h3>
+        Same ingredients, strength and form {!unknownForm && <span className="small muted">({data.form_family})</span>}
+      </h3>
       {data.same_total === 0 ? (
         <p className="muted">
-          {data.strength_stated ? "No other brand in our database has the same ingredients and strength." : "Not available: the strength is not stated."}
+          {!data.strength_stated
+            ? "Not available: the strength is not stated."
+            : unknownForm
+              ? "Not available: the dosage form of this product could not be determined."
+              : "No other brand in our database has the same ingredients, strength and form."}
         </p>
       ) : (
-        <>
-          <p className="small muted">
-            {data.same_total} {data.same_total === 1 ? "brand" : "brands"}, cheapest first.
-            {data.same_total > data.same.length && ` Showing the ${data.same.length} cheapest.`}
-          </p>
-          <ul className="alt-rows">
-            {shown.map((a) => (
-              <AltRow key={a.id} a={a} />
-            ))}
-          </ul>
-          {data.same.length > SHOW && (
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAll(!all)}>
-              {all ? "Show fewer" : `Show ${data.same.length}`}
-            </button>
-          )}
-        </>
+        <AltList key={`${id}-${showDisc}-same`} rows={data.same} total={data.same_total} />
+      )}
+      {data.different_form_total > 0 && (
+        <div className="alt-other-form">
+          <h3>Same ingredients, different form</h3>
+          <p className="small muted">Same ingredients and strength, but not the same dosage form. Ask a pharmacist before using one in place of the selected product.</p>
+          <AltList key={`${id}-${showDisc}-diff`} rows={data.different_form} total={data.different_form_total} showForm />
+        </div>
+      )}
+      {data.form_not_stated_total > 0 && (
+        <div className="alt-other-form">
+          <h3>Form not stated</h3>
+          <p className="small muted">Same ingredients and strength, but the dosage form could not be determined from the name or pack label.</p>
+          <AltList key={`${id}-${showDisc}-unk`} rows={data.form_not_stated} total={data.form_not_stated_total} />
+        </div>
       )}
       <h3>Same ingredients, different strength</h3>
       {data.other_strength.length === 0 ? (
@@ -258,6 +304,7 @@ function BrandPage({ id }: { id: string }) {
           items={[
             ["Manufacturer", b.manufacturer ?? "not stated"],
             ["Pack size", b.pack_size || "not stated"],
+            ["Dosage form", b.form_family === "unknown" ? "not stated" : b.form_family],
             ["Price", <>{rupees(b.price)} per pack <span className="small muted">· {d.price_note}</span></>],
             ["Type", b.type || "not stated"],
           ]}
@@ -267,6 +314,12 @@ function BrandPage({ id }: { id: string }) {
         {b.composition_incomplete && (
           <p className="small">
             <Sticker wrap>Composition may be incomplete</Sticker> Only two ingredients are listed for this product. It may contain more.
+          </p>
+        )}
+        {b.composition_repeated && (
+          <p className="small">
+            <Sticker wrap>Repeated ingredient</Sticker> The catalogue lists the same ingredient more than once, with different strengths
+            (for example the parts of a multi-part pack or a layered tablet). The strengths are shown as listed and are not added up.
           </p>
         )}
         {b.composition_conflict && (
@@ -290,7 +343,7 @@ function BrandPage({ id }: { id: string }) {
             </div>
           )}
           <LabelSection ing={ing} choice={params.get("label")} onChoose={(v) => set({ label: v, tab: "" })}
-            rule={d.default_label_rule} note={d.label_note} />
+            rule={d.default_label_rule} note={d.label_note} formNote={d.form_note} formUnknownNote={d.form_unknown_note} />
         </>
       ) : (
         <section className="card">

@@ -31,10 +31,18 @@ CATALOGUE_FILE = "catalogue.json"
 PRICE_NOTE = "Prices may be out of date."
 LABEL_NOTE = ("This brand itself is not in the US FDA label source. The text shown is from a US label for the same "
               "ingredient; strength, formulation and advice can differ from this brand.")
-DEFAULT_LABEL_RULE = ("When several US labels exist for an ingredient, the one with the most label sections is shown "
-                      "first (ties: the most recent label, then the label id). Labels for single-ingredient products "
+DEFAULT_LABEL_RULE = ("When several US labels exist for an ingredient, the first one shown is the label in the same "
+                      "dosage form as this product (taken from the label's own form and route), then the one with the "
+                      "most label sections (ties: the most recent label, then the label id). Labels for single-ingredient products "
                       "are used; a combination-product label is used only when there is no single-ingredient label.")
-ALT_NOTE = "Same ingredients and strength. Not necessarily interchangeable. Confirm with a pharmacist."
+ALT_NOTE = "Same ingredients, strength and form. Not necessarily interchangeable. Confirm with a pharmacist."
+DIFF_FORM_NOTE = ("Same ingredients and strength, but a different dosage form. These are not substitutes for the "
+                  "selected product.")
+NO_FORM_NOTE = "Same ingredients and strength, but the dosage form is not stated, so it could not be compared."
+FORM_NOTE = "No US label in the same form; showing a label for the same ingredient in another form"
+FORM_UNKNOWN_NOTE = ("The dosage form of this product could not be determined, so the label shown was not chosen by form.")
+REPEATED_NOTE = ("The catalogue lists the same ingredient more than once, with different strengths (for example the "
+                 "parts of a multi-part pack or a layered tablet). The strengths are shown as listed and are not added up.")
 INCOMPLETE_NOTE = ("Composition may be incomplete: the catalogue lists only two ingredients for this product, and "
                    "it may contain more.")
 CONFLICT_NOTE = "The catalogue gives two different compositions for this product; the fuller one is used."
@@ -109,7 +117,8 @@ def brand(settings: Settings, cid: str) -> BrandResponse:
         ingredient_details=[IngredientDetail(**x) for x in d["ingredient_details"]],
         short_composition=d["short_composition"], secondary_source_label=SECONDARY_LABEL,
         secondary_interactions=[SecondaryInteraction(**x) for x in d["secondary_interactions"]],
-        price_note=PRICE_NOTE, label_note=LABEL_NOTE, default_label_rule=DEFAULT_LABEL_RULE)
+        price_note=PRICE_NOTE, label_note=LABEL_NOTE, default_label_rule=DEFAULT_LABEL_RULE,
+        form_note=FORM_NOTE, form_unknown_note=FORM_UNKNOWN_NOTE)
 
 
 def alternatives(settings: Settings, cid: str, include_discontinued: bool, limit: int) -> BrandAlternativesResponse:
@@ -125,12 +134,23 @@ def alternatives(settings: Settings, cid: str, include_discontinued: bool, limit
         caveats.append(CONFLICT_NOTE + " Treat the match as unconfirmed.")
     if not a["strength_stated"]:
         caveats.append("The strength of this product is not stated, so no brand can be matched on strength.")
+    if cat.repeated(i):
+        caveats.append(REPEATED_NOTE)
+    if a["form_family"] == "unknown":
+        caveats.append("The dosage form of this product could not be determined from its name or pack label, so no "
+                       "brand is listed as the same form.")
+    if a["other_strength_other_form_hidden"]:
+        caveats.append(f"{a['other_strength_other_form_hidden']} products with the same ingredients at other strengths "
+                       "are in a different dosage form and are not listed.")
     if a["flagged_in_same"]:
         caveats.append("Brands marked “composition may be incomplete” list only two ingredients and may contain more.")
     return BrandAlternativesResponse(
         status="ready", id=cid, note=ALT_NOTE, price_note=PRICE_NOTE, caveats=caveats,
-        strength_stated=a["strength_stated"], include_discontinued=include_discontinued,
+        strength_stated=a["strength_stated"], include_discontinued=include_discontinued, form_family=a["form_family"],
         same_total=a["same_total"], same=[AlternativeBrand(**x) for x in a["same"]],
+        different_form_total=a["different_form_total"], different_form=[AlternativeBrand(**x) for x in a["different_form"]],
+        form_not_stated_total=a["form_not_stated_total"], form_not_stated=[AlternativeBrand(**x) for x in a["form_not_stated"]],
+        other_strength_other_form_hidden=a["other_strength_other_form_hidden"],
         other_strength_groups_total=a["other_strength_groups_total"],
         other_strength=[StrengthGroup(**{**g, "brands": [AlternativeBrand(**x) for x in g["brands"]]})
                         for g in a["other_strength"]])
@@ -192,9 +212,10 @@ def _label_name(cat: Catalogue, set_id: str) -> str:
 def _brand_med(cat: Catalogue, cid: str) -> _Med:
     i = _row(cat, cid)
     ings = []
+    fam = cat.family(i)
     for ing, _, written in cat.comps[cat.comp[i]]["items"]:
         x = cat.ingredients[ing]
-        ids = x["link"]["set_ids"]
+        ids, _ = cat.ordered_labels(x["link"]["set_ids"], fam)
         ings.append(_Ing(written, x["key"], x["us_name"], ids, x["link"]["moieties"],
                          _label_name(cat, ids[0]) if ids else None, x["link"]["combination_only"]))
     out = CheckerMedicine(key=cid, catalogue_id=cid, name=cat.names[i],

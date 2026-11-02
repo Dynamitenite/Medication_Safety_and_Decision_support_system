@@ -15,6 +15,7 @@ from collections import Counter, defaultdict
 from typing import Iterable
 
 from .appms_match import ingredient_keys, label_keys
+from .forms import UNKNOWN, classify_label, classify_product
 from .names import norm
 from .synonyms import canonical
 
@@ -30,6 +31,7 @@ SHORT_FIELDS = ("short_composition1", "short_composition2")
 EMPTY_INTERACTIONS = '{"drug": [], "brand": [], "effect": []}'
 FLAG_INCOMPLETE = 1  # two short fields and no salt_composition: the short fields hold at most two
 FLAG_CONFLICT = 2    # salt_composition and the short fields disagree; salt_composition is used
+FLAG_REPEATED = 4    # one ingredient is listed more than once (often with different strengths)
 MIN_PREFIX = 2
 MIN_SIMILAR = 3
 MAX_SIMILAR = 4
@@ -145,19 +147,31 @@ class LabelLinker:
                 "moieties": sorted({m for i in chosen for m in self.labels[i]["moieties"]})}
 
 
+def _sentence(text: str) -> str:
+    return text[:1] + text[1:].lower()
+
+
 def label_record(l: dict) -> dict:
+    """Name-index label -> the compact record kept in catalogue.json. The form families come from
+    the SPL formCode and routeCode; with no form in the SPL they come from the title and
+    form_inferred is True."""
+    fams, inferred = classify_label(l.get("dosage_forms"), l.get("title"))
+    pf = l.get("dosage_forms") or []
+    forms = list(dict.fromkeys(_sentence(p["form"]) for p in pf))
+    routes = list(dict.fromkeys(_sentence(r) for p in pf for r in p["routes"]))
     return {"title": l.get("title") or "", "product": l["products"][0] if l["products"] else "",
             "manufacturer": l["manufacturer"], "sections": len(l.get("sections", [])),
             "effective_time": l.get("effective_time"), "moieties": l["moieties"],
-            "single": len(set(l["moieties"])) == 1}
+            "single": len(set(l["moieties"])) == 1,
+            "forms": forms, "routes": routes, "families": fams, "form_inferred": inferred}
 
 
 # ---- build --------------------------------------------------------------------------------
 def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int = 20) -> tuple[dict, dict]:
     """Catalogue rows (dicts with the updated CSV's columns) + names.json labels -> (catalogue
     data, report). The data is columnar with interned strings to keep it small in memory."""
-    interned: dict[str, dict[str, int]] = {"mfr": {}, "pack": {}, "type": {}}
-    lists: dict[str, list[str]] = {"mfr": [], "pack": [], "type": []}
+    interned: dict[str, dict[str, int]] = {"mfr": {}, "pack": {}, "type": {}, "form": {}}
+    lists: dict[str, list[str]] = {"mfr": [], "pack": [], "type": [], "form": []}
 
     def intern(kind: str, v: str) -> int:
         d = interned[kind]
@@ -171,11 +185,13 @@ def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int =
     ing_ix: dict[str, int] = {}
     ing_names: list[Counter] = []
     ing_rows: list[int] = []
-    cols: dict[str, list] = {k: [] for k in ("id", "name", "mfr", "pack", "type", "price", "disc", "comp", "flags")}
+    cols: dict[str, list] = {k: [] for k in ("id", "name", "mfr", "pack", "type", "form", "price", "disc", "comp", "flags")}
     short_text: dict[str, str] = {}
     secondary: dict[str, list] = {}
     rep = Counter()
     bad_items: list[tuple[str, str]] = []
+    form_terms: Counter = Counter()
+    form_where: Counter = Counter()
 
     for r in rows:
         used, short, flags = composition_source(r)
@@ -203,7 +219,7 @@ def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int =
                     ing_names.append(Counter())
                     ing_rows.append(0)
                 out.append([ing_ix[k], it["strength"], it["name"]])
-            comps.append({"text": text, "items": out})
+            comps.append({"text": text, "items": out, "repeated": len({o[0] for o in out}) != len(out)})
         for ing, _, written in comps[c]["items"]:
             ing_names[ing][written] += 1
             ing_rows[ing] += 1
@@ -213,6 +229,12 @@ def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int =
         cols["mfr"].append(intern("mfr", clean(r["manufacturer_name"])))
         cols["pack"].append(intern("pack", clean(r["pack_size_label"])))
         cols["type"].append(intern("type", clean(r["type"])))
+        fam, term, where = classify_product(clean(r["name"]), clean(r["pack_size_label"]))
+        cols["form"].append(intern("form", fam))
+        form_terms[(fam, term)] += 1
+        form_where[where] += 1
+        if comps[c]["repeated"]:
+            flags |= FLAG_REPEATED
         cols["price"].append(price if price > 0 else None)
         cols["disc"].append(1 if clean(r["Is_discontinued"]).upper() == "TRUE" else 0)
         cols["comp"].append(c)
@@ -227,6 +249,7 @@ def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int =
         rep["discontinued"] += cols["disc"][-1]
         rep["composition_incomplete"] += bool(flags & FLAG_INCOMPLETE)
         rep["composition_conflict"] += bool(flags & FLAG_CONFLICT)
+        rep["composition_repeated"] += bool(flags & FLAG_REPEATED)
         rep["price_not_stated"] += price <= 0
         rep["from_salt_composition"] += bool(split_salt(r.get("salt_composition")))
 
@@ -245,10 +268,18 @@ def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int =
                                                           "moieties": ln["moieties"]}})
 
     data = {"brands": cols, "manufacturers": lists["mfr"], "packs": lists["pack"], "types": lists["type"],
+            "forms": lists["form"],
             "compositions": comps, "ingredients": ingredients, "labels": used_labels,
             "short_composition": short_text, "secondary_interactions": secondary}
     report = link_report(data)
-    report.update({k: rep[k] for k in ("rows", "discontinued", "composition_incomplete", "composition_conflict",
+    fam_count = Counter(lists["form"][f] for f in cols["form"])
+    report["dosage_form"] = {
+        "families": dict(fam_count.most_common()), "unknown_share": round(fam_count[UNKNOWN] / max(len(cols["form"]), 1), 4),
+        "decided_by": {str(k): v for k, v in form_where.items()},
+        "top_terms": [{"term": t, "family": f, "products": n} for (f, t), n in form_terms.most_common(21) if t][:20],
+        "labels_by_family": dict(Counter(f for v in used_labels.values() for f in v["families"])),
+        "labels_form_inferred": sum(1 for v in used_labels.values() if v["form_inferred"])}
+    report.update({k: rep[k] for k in ("rows", "discontinued", "composition_incomplete", "composition_conflict", "composition_repeated",
                                        "price_not_stated", "from_salt_composition", "unparseable_items",
                                        "rows_with_unparseable_items", "interactions_unreadable")})
     report["unparseable_sample"] = bad_items
@@ -300,6 +331,8 @@ class Catalogue:
         self.mfr_ix: list[int] = b["mfr"]
         self.pack_ix: list[int] = b["pack"]
         self.type_ix: list[int] = b["type"]
+        self.forms: list[str] = data.get("forms") or [UNKNOWN]   # dosage-form families (medsafe/forms.py)
+        self.form_ix: list[int] = b.get("form") or [0] * len(self.ids)
         self.price: list[float | None] = b["price"]
         self.disc: list[int] = b["disc"]
         self.comp: list[int] = b["comp"]
@@ -372,6 +405,12 @@ class Catalogue:
     def _look(self, i: int) -> tuple:
         return (self._sorted_keys[self._alpha[i]], self.mfr_ix[i], self.comp[i])
 
+    def family(self, i: int) -> str:
+        return self.forms[self.form_ix[i]]
+
+    def repeated(self, i: int) -> bool:
+        return bool(self.flags[i] & FLAG_REPEATED)
+
     def incomplete(self, i: int) -> bool:
         return bool(self.flags[i] & FLAG_INCOMPLETE)
 
@@ -386,7 +425,8 @@ class Catalogue:
                 "type": self.types[self.type_ix[i]], "pack_size": self.packs[self.pack_ix[i]], "price": self.price[i],
                 "discontinued": bool(self.disc[i]), "composition": self.comps[self.comp[i]]["text"],
                 "ingredients": self.ingredient_names(i), "composition_incomplete": self.incomplete(i),
-                "composition_conflict": self.conflict(i)}
+                "composition_conflict": self.conflict(i), "composition_repeated": self.repeated(i),
+                "form_family": self.family(i)}
 
     # ---- suggest ------------------------------------------------------------------------
     def suggest(self, q: str, limit: int = 8) -> tuple[list[dict], list[dict]]:
@@ -478,24 +518,46 @@ class Catalogue:
         return self._finish(cand, cap)
 
     # ---- brand detail -------------------------------------------------------------------
+    @staticmethod
+    def _few(items: list[str]) -> str | None:
+        return (", ".join(items[:2]) + (" + more" if len(items) > 2 else "")) or None
+
     def label_ref(self, set_id: str, default: bool) -> dict:
         l = self.labels.get(set_id, {})
         return {"set_id": set_id, "title": l.get("title", ""), "product": l.get("product", ""),
                 "manufacturer": l.get("manufacturer"), "sections": l.get("sections", 0),
                 "effective_time": l.get("effective_time"), "single_ingredient": l.get("single", True),
-                "default": default}
+                "form": self._few(l.get("forms", [])), "route": self._few(l.get("routes", [])),
+                "form_family": " / ".join(l.get("families") or [UNKNOWN]),
+                "form_inferred": bool(l.get("form_inferred", False)), "default": default}
 
-    def ingredient_info(self, ing: int, strength: str | None, written: str) -> dict:
+    def ordered_labels(self, set_ids: list[str], family: str) -> tuple[list[str], str]:
+        """The ingredient's label ids with the default first, and how the form matched.
+        Default: the first label (most sections, latest, set id) whose form families include the
+        brand's family; else the first label as before. Match is 'matched', 'none',
+        'brand_form_unknown' or 'no_label'."""
+        if not set_ids:
+            return [], "no_label"
+        if family == UNKNOWN:
+            return list(set_ids), "brand_form_unknown"
+        hit = next((k for k, s in enumerate(set_ids) if family in (self.labels.get(s, {}).get("families") or ())), None)
+        if hit is None:
+            return list(set_ids), "none"
+        return [set_ids[hit]] + [s for k, s in enumerate(set_ids) if k != hit], "matched"
+
+    def ingredient_info(self, ing: int, strength: str | None, written: str, family: str = UNKNOWN) -> dict:
         x = self.ingredients[ing]
         ln = x["link"]
+        ids, match = self.ordered_labels(ln["set_ids"], family)
         return {"name": written, "strength": strength, "key": x["key"], "us_name": x["us_name"],
                 "link_method": ln["method"], "combination_only": ln["combination_only"],
-                "moieties": ln["moieties"],
-                "labels": [self.label_ref(s, k == 0) for k, s in enumerate(ln["set_ids"])]}
+                "moieties": ln["moieties"], "form_match": match,
+                "labels": [self.label_ref(s, k == 0) for k, s in enumerate(ids)]}
 
     def detail(self, i: int) -> dict:
+        fam = self.family(i)
         return {**self.row(i),
-                "ingredient_details": [self.ingredient_info(ing, st, w) for ing, st, w in self.comps[self.comp[i]]["items"]],
+                "ingredient_details": [self.ingredient_info(ing, st, w, fam) for ing, st, w in self.comps[self.comp[i]]["items"]],
                 "short_composition": self.short_composition.get(self.ids[i]),
                 "secondary_interactions": [{"drug": d, "effect": e} for d, e in self.secondary.get(self.ids[i], [])]}
 
@@ -523,16 +585,27 @@ class Catalogue:
 
     def alternatives(self, sel: int, include_discontinued: bool = False, limit: int = 100,
                      group_limit: int = 5) -> dict:
-        """Other brands with the same full ingredient set AND the same strengths, cheapest first,
-        and separately the same ingredient set at other strengths. Combinations match only on the
-        full set. A product whose strength is not stated is never in the same-strength group."""
+        """Other brands with the same full ingredient set AND the same strengths, cheapest first, split
+        by dosage-form family: `same` (the selected product's family), `different_form` (another known
+        family) and `form_not_stated` (family unknown). `same` is empty when the selected product's own
+        form is unknown. Separately, the same ingredient set at other strengths in the same family.
+        Combinations match only on the full set. A product whose strength is not stated is never in
+        the same-strength groups."""
         c = self.comp[sel]
+        fam = self.family(sel)
         sk, tk = self._set_key[c], self._str_key[c]
         same_comps = self._by_str.get(tk, []) if tk is not None else []
-        same = self._by_price(self._collect(same_comps, sel, include_discontinued))
+        pool = self._by_price(self._collect(same_comps, sel, include_discontinued))
+        same = [i for i in pool if fam != UNKNOWN and self.family(i) == fam]
+        diff = [i for i in pool if self.family(i) not in (fam, UNKNOWN)]
+        unknown = [i for i in pool if self.family(i) == UNKNOWN]
         other_comps = [x for x in self._by_set.get(sk, []) if tk is None or self._str_key[x] != tk]
         groups: dict = defaultdict(list)
+        hidden = 0
         for i in self._collect(other_comps, sel, include_discontinued):
+            if self.family(i) != fam:
+                hidden += 1
+                continue
             k = self._str_key[self.comp[i]]
             groups[k if k is not None else ("comp", self.comp[i])].append(i)
         other = []
@@ -543,7 +616,11 @@ class Catalogue:
                           "strength_stated": self._str_key[self.comp[rows[0]]] is not None,
                           "brands": [self._alt_row(i, sel) for i in rows[:group_limit]]})
         other.sort(key=lambda g: (-g["brands_total"], g["composition"]))
-        return {"strength_stated": tk is not None, "same_total": len(same),
+        return {"strength_stated": tk is not None, "form_family": fam, "same_total": len(same),
                 "same": [self._alt_row(i, sel) for i in same[:limit]],
+                "different_form_total": len(diff), "different_form": [self._alt_row(i, sel) for i in diff[:limit]],
+                "form_not_stated_total": len(unknown),
+                "form_not_stated": [self._alt_row(i, sel) for i in unknown[:limit]],
                 "other_strength_groups_total": len(other), "other_strength": other[:20],
-                "flagged_in_same": sum(1 for i in same if self.flags[i])}
+                "other_strength_other_form_hidden": hidden,
+                "flagged_in_same": sum(1 for i in same if self.flags[i] & (FLAG_INCOMPLETE | FLAG_CONFLICT))}

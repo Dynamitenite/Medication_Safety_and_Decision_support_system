@@ -128,5 +128,25 @@ class ActiveIngredientClasses(unittest.TestCase):
         self.assertEqual((r["ingredients"], r["ingredient_source"]), (["ipratropium bromide"], "ACTIR"))
 
 
+class DosageFormTest(unittest.TestCase):
+    """formCode sits at manufacturedProduct/manufacturedProduct/formCode and routeCode under the outer
+    product's consumedIn (the nesting seen in real part6 labels); container forms are not taken."""
+
+    XML = (f'<document {NS}><setId root="SET-FORM"/><title>FormDrug</title><subject><manufacturedProduct>'
+           '<manufacturedProduct><name>FormBrand</name><formCode code="C42931" displayName="TABLET, FILM COATED"/>'
+           '<asContent><containerPackagedProduct><formCode code="C43173" displayName="BOTTLE, PLASTIC"/>'
+           '</containerPackagedProduct></asContent></manufacturedProduct>'
+           '<consumedIn><substanceAdministration><routeCode code="C38288" displayName="ORAL"/>'
+           '</substanceAdministration></consumedIn></manufacturedProduct></subject></document>').encode()
+
+    def test_form_and_route(self):
+        rec = spl.parse_label(self.XML)
+        self.assertEqual(rec["dosage_forms"], [{"form": "TABLET, FILM COATED", "routes": ["ORAL"]}])
+
+    def test_no_form(self):
+        rec = spl.parse_label(f'<document {NS}><setId root="S"/><title>t</title></document>'.encode())
+        self.assertEqual(rec["dosage_forms"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

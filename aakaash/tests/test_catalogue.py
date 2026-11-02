@@ -8,6 +8,7 @@ from api.services import appms as appms_service, catalogue as catalogue_service,
 from medsafe.appms_match import ingredient_keys
 from medsafe.catalogue import (FLAG_CONFLICT, FLAG_INCOMPLETE, Catalogue, LabelLinker, build,
                                composition_source, parse_interactions, parse_item, strength_key)
+from medsafe.forms import classify_label, classify_product, classify_spl
 from medsafe.synonyms import KINDS, canonical, read_rows
 
 from fixtures_catalogue import LABELS, PARSED, ROWS, lab, row, write_artifacts
@@ -107,7 +108,7 @@ def test_linking_default_label_and_single_ingredient_first(built):
     by_key = {x["key"]: x for x in built[0]["ingredients"]}
     apap = by_key["acetaminophen"]
     assert apap["name"] == "Paracetamol" and apap["us_name"] == "acetaminophen"
-    assert apap["link"]["set_ids"] == ["L-apap-2", "L-apap-1"]            # more sections first
+    assert apap["link"]["set_ids"] == ["L-apap-inj", "L-apap-2", "L-apap-1"]  # more sections first, form ignored here
     assert by_key["metformin"]["link"]["set_ids"] == ["L-metf"]            # combination label not used
     assert by_key["metformin"]["link"]["method"] == "active moiety"
     assert by_key["albuterol"]["link"]["set_ids"] == ["L-albut"]          # Salbutamol via the synonym list
@@ -173,6 +174,86 @@ def test_strength_not_stated_never_same_strength(cat):
     assert a["strength_stated"] is False and a["same"] == []
 
 
+# ---- dosage form -----------------------------------------------------------------------------
+@pytest.mark.parametrize("name,pack,family", [
+    ("Augmentin 625 Duo Tablet", "strip of 10 tablets", "oral solid"),
+    ("Augmentin Duo Dry Syrup", "bottle of 30 ml Oral Suspension", "oral liquid"),
+    ("Xyz 500 Injection", "vial of 10 ml Injection", "injectable"),
+    ("Moxi Eye Drops", "bottle of 5 ml Eye Drop", "eye/ear"),
+    ("Allegra Nasal Spray", "bottle of 120 MDI Nasal Spray", "nasal"),
+    ("Asthalin Rotacaps", "packet of 30 capsules", "inhalation"),          # specific name beats a generic pack word
+    ("Amlenox Oral Paste", "tube of 5 gm Paste", "mouth/throat"),
+    ("Betnovate Cream", "tube of 20 gm Cream", "topical"),
+    ("Mystery Drops", "bottle of 15 ml Drop", "unknown"),                  # bare 'drop' does not say how it is taken
+    ("Foo Solution", "bottle of 60 ml Solution", "unknown"),
+    ("Foo Mouth Dissolving Tablet", "strip of 10 tablets", "oral solid"),
+])
+def test_product_form_family(name, pack, family):
+    assert classify_product(name, pack)[0] == family
+
+
+def test_pack_label_wins_then_name():
+    assert classify_product("Plain Name", "strip of 10 tablets")[:3:2] == ("oral solid", "pack")
+    assert classify_product("Plain Syrup", "bottle")[:3:2] == ("oral liquid", "name")
+    assert classify_product("Plain", "bottle") == ("unknown", None, None)
+
+
+@pytest.mark.parametrize("form,routes,family", [
+    ("TABLET, FILM COATED", ["ORAL"], "oral solid"),
+    ("INJECTION, SOLUTION", ["INTRAVENOUS"], "injectable"),
+    ("SOLUTION", ["ORAL"], "oral liquid"),
+    ("SOLUTION", ["INTRAVENOUS"], "injectable"),
+    ("SOLUTION", ["TOPICAL"], "topical"),
+    ("SUSPENSION", ["OPHTHALMIC"], "eye/ear"),            # the route beats the generic word
+    ("POWDER, FOR SUSPENSION", ["ORAL"], "oral liquid"),
+    ("AEROSOL, METERED", ["RESPIRATORY (INHALATION)"], "inhalation"),
+    ("RINSE", ["ORAL"], "unknown"),
+])
+def test_spl_form_family(form, routes, family):
+    assert classify_spl(form, routes) == family
+
+
+def test_label_without_form_is_inferred_from_title():
+    assert classify_label([{"form": "TABLET", "routes": ["ORAL"]}], "x") == (["oral solid"], False)
+    assert classify_label([], "Amoxicillin oral suspension") == (["oral liquid"], True)
+    assert classify_label([], "Blood Bag") == (["unknown"], True)
+
+
+def test_alternatives_split_by_form(cat):
+    a = cat.alternatives(ix(cat, "Calpara 650 Tablet"))
+    assert [r["name"] for r in a["same"]] == ["Dolotest 650 Tablet"]
+    assert [r["name"] for r in a["different_form"]] == ["Parasyp 650 Syrup"]
+    assert [r["name"] for r in a["form_not_stated"]] == ["Paradrops 650"]
+    # other strengths keep the form: the 500mg dry syrup is hidden and counted, the 500mg tablet is listed
+    assert [g["composition"] for g in a["other_strength"]] == ["Paracetamol (500mg)"]
+    assert [r["name"] for r in a["other_strength"][0]["brands"]] == ["Parafen 500 Tablet"]
+    assert a["other_strength_other_form_hidden"] == 1
+    # a product of unknown form has no main group; its same-strength products are all listed apart
+    u = cat.alternatives(ix(cat, "Paradrops 650"))
+    assert u["same"] == [] and u["form_family"] == "unknown"
+    assert {r["name"] for r in u["different_form"]} == {"Calpara 650 Tablet", "Parasyp 650 Syrup", "Dolotest 650 Tablet"}
+    assert u["form_not_stated"] == []
+
+
+def test_default_label_follows_the_brand_form(cat):
+    tab = cat.detail(ix(cat, "Dolotest 650 Tablet"))["ingredient_details"][0]
+    assert tab["form_match"] == "matched" and tab["labels"][0]["set_id"] == "L-apap-2"
+    syrup = cat.detail(ix(cat, "Parasyp 650 Syrup"))["ingredient_details"][0]
+    assert syrup["form_match"] == "none" and syrup["labels"][0]["set_id"] == "L-apap-inj"   # old rule, plus a note
+    unk = cat.detail(ix(cat, "Paradrops 650"))["ingredient_details"][0]
+    assert unk["form_match"] == "brand_form_unknown" and unk["labels"][0]["set_id"] == "L-apap-inj"
+    none = cat.detail(ix(cat, "Amoxyna Tablet"))["ingredient_details"][0]
+    assert none["form_match"] == "no_label"
+
+
+def test_repeated_ingredient_is_flagged_not_summed(cat, built):
+    i = ix(cat, "Estrosplit Tablet")
+    assert cat.repeated(i) and cat.row(i)["composition_repeated"]
+    assert cat.row(i)["composition"] == "Estradiol (1mg) + Estradiol (1mg)"      # as listed
+    assert built[1]["composition_repeated"] == 1 and not cat.repeated(ix(cat, "Metfo 500 Tablet"))
+    assert built[1]["dosage_form"]["families"]["oral solid"] > 0
+
+
 # ---- API -------------------------------------------------------------------------------------
 @pytest.fixture
 def client(tmp_path, monkeypatch):
@@ -204,13 +285,18 @@ def test_brand_alternatives_and_summary_endpoints(client):
     assert d["brand"]["name"] == "Dolotest 650 Tablet" and d["price_note"] == "Prices may be out of date."
     ing = d["ingredient_details"][0]
     assert ing["name"] == "Paracetamol" and ing["us_name"] == "acetaminophen"
-    assert [l["set_id"] for l in ing["labels"]] == ["L-apap-2", "L-apap-1"] and ing["labels"][0]["default"]
+    # a tablet brand: the tablet label with the most sections is first, the injection label is not the default
+    assert [l["set_id"] for l in ing["labels"]] == ["L-apap-2", "L-apap-inj", "L-apap-1"] and ing["labels"][0]["default"]
+    assert ing["form_match"] == "matched" and ing["labels"][1]["form"] == "Injection, solution"
+    assert ing["labels"][1]["route"] == "Intravenous" and ing["labels"][0]["form_family"] == "oral solid"
     w = c.get("/api/medicine/14").json()
     assert [x["drug"] for x in w["secondary_interactions"]] == ["Paracetamol", "Aspirin"]
     assert "origin not stated" in w["secondary_source_label"]
     a = c.get("/api/medicine/1/alternatives").json()
-    assert a["note"] == "Same ingredients and strength. Not necessarily interchangeable. Confirm with a pharmacist."
+    assert a["note"] == "Same ingredients, strength and form. Not necessarily interchangeable. Confirm with a pharmacist."
     assert [x["id"] for x in a["same"]] == ["2"]
+    assert [x["id"] for x in a["different_form"]] == ["20"] and a["different_form"][0]["form_family"] == "oral liquid"
+    assert [x["id"] for x in a["form_not_stated"]] == ["21"] and a["form_family"] == "oral solid"
     assert [x["id"] for x in c.get("/api/medicine/1/alternatives?include_discontinued=true").json()["same"]] == ["4", "2"]
     inc = c.get("/api/medicine/8/alternatives").json()
     assert any("may contain more" in x for x in inc["caveats"])

@@ -49,6 +49,7 @@ def main() -> None:
             "moieties": rec["active_moieties"],
             "moieties_raw": rec["active_moieties_raw"],
             "manufacturer": rec["manufacturer"],
+            "dosage_forms": rec["dosage_forms"],
             "title": rec["title"],
             "effective_time": rec["effective_time"],
             # sections with text: the catalogue picks the default label for an ingredient by this
@@ -67,9 +68,12 @@ def main() -> None:
         c["no_moiety"] += not l["moieties"]
         c["no_generic"] += not l["generic"]
         c["no_manufacturer"] += not l["manufacturer"]
+        c["no_form"] += not l["dosage_forms"]
+        c["no_route"] += not any(p["routes"] for p in l["dosage_forms"])
     print(f"labels: {len(labels)}  duplicates skipped: {duplicates}  sample: {out['is_sample']}")
     print(f"without moiety: {c['no_moiety']}  without generic: {c['no_generic']}  "
-          f"without manufacturer: {c['no_manufacturer']}")
+          f"without manufacturer: {c['no_manufacturer']}  without dosage form: {c['no_form']}  "
+          f"without route: {c['no_route']}")
     print(f"time: {elapsed:.1f} s  file: {a.out.stat().st_size / 1e6:.2f} MB  ({a.out})")
 
 
