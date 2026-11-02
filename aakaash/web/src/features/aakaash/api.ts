@@ -45,6 +45,16 @@ export type MedicineRecordOut = S["MedicineRecordOut"];
 export type MedicineRecordIn = S["MedicineRecordIn"];
 export type MeResponse = S["MeResponse"];
 export type LoginResponse = S["LoginResponse"];
+export type MedicineDetailsResponse = S["MedicineDetailsResponse"];
+export type IngredientDetails = S["IngredientDetails"];
+export type DetailSection = S["DetailSection"];
+export type CourseIn = S["CourseIn"];
+export type AnalyzeResponse = S["AnalyzeResponse"];
+export type PairFinding = S["PairFinding"];
+export type AllergyFinding = S["AllergyFinding"];
+export type AnalyzedMedicine = S["AnalyzedMedicine"];
+export type RiskLevel = S["LevelledHit"]["level"];
+export type AddMedicinesResponse = S["AddMedicinesResponse"];
 export type Readiness = { status: "ready" | "not_ready"; reason?: string | null; fix?: string | null };
 
 const BASE: string = import.meta.env.VITE_API_BASE ?? "";
@@ -159,6 +169,10 @@ export const api = {
   addMedicineRecord: (b: MedicineRecordIn) => send<MedicineRecordOut>("POST", "/api/medicine-records", b),
   saveMedicineRecord: (id: number, b: MedicineRecordIn) => send<MedicineRecordOut>("PUT", `/api/medicine-records/${id}`, b),
   deleteMedicineRecord: (id: number) => del(`/api/medicine-records/${id}`),
+  medicineDetails: (id: string) => get<MedicineDetailsResponse>(`/api/medicine/${encodeURIComponent(id)}/details`),
+  analyze: (medicines: CourseIn[]) => send<AnalyzeResponse>("POST", "/api/analyze", { medicines }),
+  addMedicines: (items: CourseIn[], acknowledgedWarning: boolean) =>
+    send<AddMedicinesResponse>("POST", "/api/medicine-records/batch", { items, acknowledged_warning: acknowledgedWarning }),
   check: (catalogueIds: string[], names: string[] = []) =>
     request<CheckerResponse>("/api/checker", {
       method: "POST",

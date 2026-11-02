@@ -10,14 +10,15 @@ from sqlalchemy.orm import Session
 from . import auth
 from .config import Settings, get_settings
 from .db import User, get_db
-from .schemas import (AllergyIn, AllergyOut, AlternativesResponse, AppmsLookupResponse, AppmsPatientResponse,
+from .schemas import (AddMedicinesRequest, AddMedicinesResponse, AnalyzeRequest, AnalyzeResponse,
+                      MedicineDetailsResponse, AllergyIn, AllergyOut, AlternativesResponse, AppmsLookupResponse, AppmsPatientResponse,
                       AppmsPatientsResponse, AppmsSummaryResponse, BrandAlternativesResponse, BrandResponse,
                       CatalogueSummaryResponse, CheckerRequest, CheckerResponse, ConditionIn, ConditionOut,
                       ConditionStatus, LoginRequest, LoginResponse, MeResponse, MedicineRecordIn,
                       MedicineRecordOut, MedicineResponse, ProfileIn, ProfileOut,
                       SuggestResponse, DDIExamplesResponse, DDILabel, DDIStatsResponse, DailyMedStatsResponse,
                       Health, StatusResponse, TacStatsResponse, TraceResponse)
-from .services import accounts, appms, catalogue, datasets, medicines, status, trace
+from .services import accounts, appms, catalogue, datasets, intake, medicines, status, trace
 
 router = APIRouter(prefix="/api")
 
@@ -69,6 +70,14 @@ def medicine_suggest(q: str = Query("", max_length=100), limit: int = Query(8, g
 @router.get("/medicine/{catalogue_id}", response_model=BrandResponse)
 def medicine_brand(catalogue_id: str, settings: Settings = Depends(get_settings)) -> BrandResponse:
     return catalogue.brand(settings, catalogue_id)
+
+
+@router.get("/medicine/{catalogue_id}/details", response_model=MedicineDetailsResponse)
+def medicine_details(catalogue_id: str, user: User = Depends(auth.current_user),
+                     settings: Settings = Depends(get_settings)) -> MedicineDetailsResponse:
+    """Verbatim US label sections for each ingredient, chosen by the dosage-form rule. Dosage and
+    instruction text is left out when the label's form or ingredients differ from the medicine's."""
+    return intake.details(settings, catalogue_id)
 
 
 @router.get("/medicine/{catalogue_id}/alternatives", response_model=BrandAlternativesResponse)
@@ -222,6 +231,23 @@ def update_medicine_record(item_id: int, body: MedicineRecordIn, user: User = De
                            db: Session = Depends(get_db),
                            settings: Settings = Depends(get_settings)) -> MedicineRecordOut:
     return accounts.update_medicine(db, settings, user, item_id, body)
+
+
+@router.post("/medicine-records/batch", response_model=AddMedicinesResponse, status_code=201)
+def add_medicine_records(body: AddMedicinesRequest, user: User = Depends(auth.current_user),
+                         db: Session = Depends(get_db),
+                         settings: Settings = Depends(get_settings)) -> AddMedicinesResponse:
+    """Add the confirmed "To add" list. The risk analysis runs again here; a Critical result needs
+    acknowledged_warning=true (409 otherwise). Nothing else blocks adding."""
+    return intake.add(db, settings, user, body)
+
+
+@router.post("/analyze", response_model=AnalyzeResponse)
+def analyze(body: AnalyzeRequest, user: User = Depends(auth.current_user), db: Session = Depends(get_db),
+            settings: Settings = Depends(get_settings)) -> AnalyzeResponse:
+    """Risk analysis of new medicines against the user's current medicines and allergies, both read
+    here on the server. Stores nothing."""
+    return intake.analyze_request(db, settings, user, body)
 
 
 @router.delete("/medicine-records/{item_id}", status_code=204)

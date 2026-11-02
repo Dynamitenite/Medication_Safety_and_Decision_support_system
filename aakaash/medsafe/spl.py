@@ -30,6 +30,15 @@ SECTION_CODES = {
     "42228-7": "specific_populations",  # pregnancy
     "34081-0": "specific_populations",  # pediatric use
     "34082-8": "specific_populations",  # geriatric use
+    # Instruction sections for the medicine details card (task 3B). Codes checked on 1,500 real
+    # part6 labels before adding them; the share of labels with each is on /about/data.
+    "34068-7": "dosage_administration",
+    "34076-0": "patient_counseling",  # "17 PATIENT COUNSELING INFORMATION" / legacy "Information for Patients"
+    "88436-1": "patient_counseling",  # newer code for the same PLR section 17
+    "42231-1": "patient_information",  # Medication Guide
+    "42230-3": "patient_information",  # SPL patient package insert ("Patient Information")
+    "68498-5": "patient_information",  # Patient Medication Information
+    "59845-8": "instructions_for_use",
 }
 # Used only when the code is missing or unmapped, and only when the WHOLE title is the section
 # name (optional trailing colon). A numbered title ("2.6 Dosage Modifications Due to Drug
@@ -45,14 +54,24 @@ TITLE_FALLBACK = [
     (re.compile(r"precautions:?", re.I), "precautions"),
     (re.compile(r"indications?( (and|&) usage)?:?", re.I), "indications"),
     (re.compile(r"use in specific populations:?", re.I), "specific_populations"),
+    (re.compile(r"dosage (and|&) administration:?", re.I), "dosage_administration"),
+    (re.compile(r"(patient counseling information|information for patients):?", re.I), "patient_counseling"),
+    (re.compile(r"(medication guide|patient information):?", re.I), "patient_information"),
+    (re.compile(r"instructions for use:?", re.I), "instructions_for_use"),
 ]
 CANONICAL_SECTIONS = ("indications", "contraindications", "warnings_precautions",
                       "precautions", "boxed_warning", "adverse_reactions", "drug_interactions",
                       "specific_populations")
+# Not risk sections: kept out of CANONICAL_SECTIONS, the dataset report and the section count that
+# picks an ingredient's default label (scripts/build_names.py), so adding them moved no default label.
+INSTRUCTION_SECTIONS = ("dosage_administration", "patient_counseling", "patient_information",
+                        "instructions_for_use")
 # Sections whose subsections that are captured on their own are cut out of their text, and the
 # parser keeps looking inside them for those subsections. Every other matched section is taken
 # whole (subsections folded in) and not searched further.
-DESCEND_INTO = frozenset({"precautions"})
+# Legacy labels nest Pregnancy, Pediatric Use or Drug Interactions inside "Information for
+# Patients" (seen on 13 part6 labels), so that section is searched further too.
+DESCEND_INTO = frozenset({"precautions", "patient_counseling"})
 _NEWLINE_AFTER = {"paragraph", "item", "tr", "br", "list", "caption", "title"}
 MAX_ZIP_DEPTH = 3
 # ingredient/@classCode values that are active ingredients. On part6 the other classes are
@@ -138,7 +157,7 @@ def _classify(code: str | None, title: str) -> tuple[str | None, str | None]:
 
 
 def _collect_sections(el, out, methods, notes):
-    """DFS over <section>. See DESCEND_INTO for the one section that is searched further."""
+    """DFS over <section>. See DESCEND_INTO for the sections that are searched further."""
     for child in el:
         if not isinstance(child.tag, str):
             continue

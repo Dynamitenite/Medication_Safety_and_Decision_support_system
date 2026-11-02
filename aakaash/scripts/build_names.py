@@ -19,7 +19,7 @@ HERE = Path(__file__).resolve().parent
 AAKAASH = HERE.parent
 sys.path.insert(0, str(AAKAASH))
 
-from medsafe.spl import iter_parts  # noqa: E402
+from medsafe.spl import INSTRUCTION_SECTIONS, iter_parts  # noqa: E402
 
 
 def main() -> None:
@@ -52,9 +52,12 @@ def main() -> None:
             "dosage_forms": rec["dosage_forms"],
             "title": rec["title"],
             "effective_time": rec["effective_time"],
-            # sections with text: the catalogue picks the default label for an ingredient by this
+            # risk sections with text: the catalogue picks the default label for an ingredient by this
             "sections": sorted(k for k, v in rec["sections"].items()
-                               if any(s["text"].strip() for s in v)),
+                               if k not in INSTRUCTION_SECTIONS and any(s["text"].strip() for s in v)),
+            # instruction sections with text (medicine details card); not part of the count above
+            "instruction_sections": sorted(k for k, v in rec["sections"].items()
+                                           if k in INSTRUCTION_SECTIONS and any(s["text"].strip() for s in v)),
             "source": rec["source"],
             "member": rec["member"],
         })
@@ -70,10 +73,17 @@ def main() -> None:
         c["no_manufacturer"] += not l["manufacturer"]
         c["no_form"] += not l["dosage_forms"]
         c["no_route"] += not any(p["routes"] for p in l["dosage_forms"])
+        for k in ("indications", "boxed_warning"):
+            c[k] += k in l["sections"]
+        for k in l["instruction_sections"]:
+            c[k] += 1
     print(f"labels: {len(labels)}  duplicates skipped: {duplicates}  sample: {out['is_sample']}")
     print(f"without moiety: {c['no_moiety']}  without generic: {c['no_generic']}  "
           f"without manufacturer: {c['no_manufacturer']}  without dosage form: {c['no_form']}  "
           f"without route: {c['no_route']}")
+    n = max(len(labels), 1)
+    print("labels with section text: " + "  ".join(
+        f"{k} {c[k]} ({c[k] / n:.1%})" for k in ("indications", "boxed_warning", *INSTRUCTION_SECTIONS)))
     print(f"time: {elapsed:.1f} s  file: {a.out.stat().st_size / 1e6:.2f} MB  ({a.out})")
 
 

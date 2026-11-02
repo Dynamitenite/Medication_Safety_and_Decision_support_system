@@ -261,3 +261,21 @@ Endpoints other work can reuse (all under `/api`, all need the session cookie ex
 | `GET`, `POST /medicine-records`, `PUT`, `DELETE /medicine-records/{id}` | medicine history; `status` and `duration_days` computed; `catalogue_id` fills the name and ingredients from the catalogue; `source` is `typed` or `scanned` |
 
 Use `api.auth.current_user` as the dependency for any new personal endpoint and always filter by `user.id`.
+
+---
+
+## 8. Update 2026-11-02: add new medicine, scan, risk analysis, alternatives (task 3B)
+
+- New pages: `/add` (menu "Add new medicine"; tabs Type and Scan prescription, the "To add" list with a details card per medicine, the risk analysis and "Add to my medicines") and `/alternatives` rewritten (search, selected medicine with ingredients, strengths and price, then the existing alternative groups). `/search` stays reachable by URL. Each medicine in My medical history that came from the list has "See alternatives".
+- New endpoints (all need the session cookie; none accepts a file or image):
+
+| endpoint | use |
+|---|---|
+| `GET /api/medicine/{id}/details` | verbatim US label sections per ingredient, label chosen by the dosage-form rule; dosage and patient sections left out on a form, route or product mismatch |
+| `POST /api/analyze` `{medicines: [{catalogue_id, course fields}]}` | levels Medium/High/Critical against the user's current medicines and allergies, read on the server; stores nothing |
+| `POST /api/medicine-records/batch` `{items, acknowledged_warning}` | saves the list; re-runs the analysis and returns 409 for Critical without the acknowledgement |
+
+- New files: `api/services/intake.py`, `medsafe/risk.py`, `tests/test_intake.py`, `web/src/features/aakaash/ocr/` (reader interface, tesseract reader, line parser and its `node --test` tests), `components/{AlternativesView,MedicineDetailsCard,RiskAnalysis,ScanPrescription}.tsx`, `pages/AddMedicine.tsx`, `toAdd.ts`, `scripts/copy-ocr.mjs`, `scripts/add-flow.mjs`. Edited: `api/router.py`, `api/schemas.py`, `api/modules.py` (Full Patient Profile no longer listed as pending), `medsafe/spl.py`, `scripts/build_names.py`, `pages/MedicinePage.tsx` (alternatives moved to a component), `pages/History.tsx`, `pages/DataMethods.tsx`, `registry.ts`, `App.tsx`, `styles.css`.
+- New npm dependencies: `tesseract.js` 7.0.0 and `@tesseract.js-data/eng` 1.0.0 (exact versions). `npm run dev` and `npm run build` first run `scripts/copy-ocr.mjs`, which copies the worker, the LSTM core builds and the English model into `web/public/ocr/`. That folder is gitignored (the language data is a model file), so after a fresh clone run `npm install` and the copy happens on the next dev or build. `npm test` runs the parser tests.
+- `scripts/build_names.py` now writes `instruction_sections` per label and keeps the instruction sections out of the `sections` count; rebuild `names.json` and then `catalogue.json` after pulling.
+- `medicine_record.notes` holds the food timing as "Food: after food" when one was entered; there is no new column.

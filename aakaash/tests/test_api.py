@@ -86,7 +86,7 @@ def test_health(client):
 
 def test_all_routes_under_api_prefix():
     paths = list(app.openapi()["paths"])
-    assert len(paths) == 29 and all(p.startswith("/api/") for p in paths)
+    assert len(paths) == 32 and all(p.startswith("/api/") for p in paths)
 
 
 def test_status_empty_data_is_not_ready_with_reasons(client):
@@ -100,12 +100,12 @@ def test_status_empty_data_is_not_ready_with_reasons(client):
 
 def test_status_coming_soon_modules(client):
     mods = {m["id"]: m for m in client.get("/api/status").json()["modules"]}
-    assert len(mods) == 7
+    assert len(mods) == 6  # Full Patient Profile is built (My profile) and no longer listed
     assert all(m["status"] == "coming_soon" and m["owner"] == "to be confirmed"
                for m in mods.values())
     assert {k: m["stages"] for k, m in mods.items()} == {
         "allergy_check": [4], "contraindication_check": [4], "duplicate_therapy_check": [3],
-        "disease_precautions": [4], "full_patient_profile": [3],
+        "disease_precautions": [4],
         "deep_learning_encoder": [2, 5], "focal_loss_model": [4]}
     assert mods["deep_learning_encoder"]["stage_names"] == ["Information Extraction",
                                                             "Recommendation Engine"]

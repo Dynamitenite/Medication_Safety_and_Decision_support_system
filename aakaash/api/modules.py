@@ -31,7 +31,6 @@ COMING_SOON: tuple[ComingSoonModule, ...] = (
     ComingSoonModule("contraindication_check", "Contraindication Check", (4,)),
     ComingSoonModule("duplicate_therapy_check", "Duplicate Therapy Check", (3,)),
     ComingSoonModule("disease_precautions", "Disease Precautions", (4,)),
-    ComingSoonModule("full_patient_profile", "Full Patient Profile", (3,)),
     ComingSoonModule("deep_learning_encoder", "Deep-learning encoder", (2, 5)),
     ComingSoonModule("focal_loss_model", "Focal Loss interaction model", (4,)),
 )

@@ -698,3 +698,150 @@ class MedicineRecordOut(ApiModel):
     notes: str | None
     status: CourseStatus
     duration_days: int | None
+
+
+# ---- add new medicine: details, risk analysis, adding ---------------------------------------
+RiskLevel = Literal["Medium", "High", "Critical"]
+Mismatch = Literal["wrong_form", "combination_label", "single_for_combination", "form_unknown"]
+
+
+class DetailLabel(ApiModel):
+    set_id: str
+    name: str  # product name on the US label, else its title
+    manufacturer: str | None
+    form: str | None
+    route: str | None
+    form_family: str
+
+
+class DetailSection(ApiModel):
+    key: str
+    label: str
+    text: str  # verbatim label text, never summarised
+
+
+class IngredientDetails(Readiness):
+    name: str
+    strength: str | None
+    us_name: str | None
+    label: DetailLabel | None  # the label chosen by the dosage-form rule; None when no US label is linked
+    form_match: Literal["matched", "none", "brand_form_unknown", "no_label"]
+    combination_label: bool  # the label is for a combination product
+    mismatch: Mismatch | None
+    mismatch_note: str | None
+    indications: DetailSection | None
+    boxed_warning: DetailSection | None
+    instructions: list[DetailSection] = Field(default_factory=list)  # dosage, counselling, patient leaflets
+    missing: list[str] = Field(default_factory=list)  # section names the label does not have
+    withheld_note: str | None = None  # why dosage and instruction text is not shown
+
+
+class MedicineDetailsResponse(Readiness):
+    id: str
+    name: str | None = None
+    form_family: str | None = None
+    composition: str | None = None
+    composition_incomplete: bool = False
+    composition_unclear: bool = False
+    label_note: str | None = None
+    ingredients: list[IngredientDetails] = Field(default_factory=list)
+
+
+class CourseIn(ApiModel):
+    """A medicine to add, with the optional course the user entered."""
+    catalogue_id: str = Field(min_length=1, max_length=40)
+    reason: str | None = Field(None, max_length=300)
+    dose: str | None = Field(None, max_length=100)
+    frequency: str | None = Field(None, max_length=100)
+    food: str | None = Field(None, max_length=100)  # "after food", as read or typed
+    start_date: date | None = None
+    end_date: date | None = None
+    duration_days: int | None = Field(None, ge=1, le=3650)
+    source: RecordSource = "typed"
+
+    @field_validator("reason", "dose", "frequency", "food", mode="before")
+    @classmethod
+    def _blank(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+            return v or None
+        return v
+
+    @model_validator(mode="after")
+    def _course(self) -> "CourseIn":
+        if self.end_date and self.duration_days:
+            raise ValueError("Enter either a duration or an end date, not both.")
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("The end date cannot be before the start date.")
+        return self
+
+
+class AnalyzeRequest(ApiModel):
+    # Only the new medicines. The user's current medicines and allergies are read on the server;
+    # any other field in the body is ignored.
+    medicines: list[CourseIn] = Field(min_length=1, max_length=10)
+
+
+class LevelledHit(ApiModel):
+    a_ingredient: str
+    b_ingredient: str
+    level: RiskLevel
+    rule_tier: Literal["critical", "high", "moderate"]  # the rules' own tier name
+    explanation: str
+
+
+class AnalyzedMedicine(ApiModel):
+    medicine: CheckerMedicine
+    role: Literal["new", "current"]
+    record_id: int | None = None
+    dates_not_entered: bool = False
+    checked_by_name_only: bool = False
+
+
+class PairFinding(ApiModel):
+    a: CheckerMedicine
+    b: CheckerMedicine
+    a_role: Literal["new", "current"]
+    b_role: Literal["new", "current"]
+    level: RiskLevel | None  # from the interaction rules only
+    hits: list[LevelledHit]
+    text_match: TextMatchResult  # supporting label sentences; never changes the level
+    shared_ingredients: list[str]
+    notes: list[str]
+
+
+class AllergyFinding(ApiModel):
+    medicine: CheckerMedicine
+    allergy_id: int
+    allergen: str
+    reaction: str | None
+    severity: Severity
+    level: RiskLevel
+    ingredients: list[str]  # the medicine's ingredients that matched
+    note: str
+    notes: list[str]
+
+
+class AnalyzeResponse(Readiness):
+    overall: RiskLevel | None = None
+    overall_text: str | None = None
+    levels: list[RiskLevel] = Field(default_factory=list)  # the meter's labelled levels, lowest first
+    rules: AppmsResult = Field(default_factory=lambda: AppmsResult(status="not_ready"))
+    medicines: list[AnalyzedMedicine] = Field(default_factory=list)
+    allergies_checked: int = 0
+    allergy_note: str = ""
+    allergy_findings: list[AllergyFinding] = Field(default_factory=list)
+    pairs: list[PairFinding] = Field(default_factory=list)  # pairs with a rule hit, label text or a shared ingredient
+    pairs_checked: int = 0
+    disclaimer: str = ""
+    level_rule: str = ""
+
+
+class AddMedicinesRequest(ApiModel):
+    items: list[CourseIn] = Field(min_length=1, max_length=10)
+    acknowledged_warning: bool = False
+
+
+class AddMedicinesResponse(ApiModel):
+    overall: RiskLevel | None
+    added: list[MedicineRecordOut]

@@ -157,6 +157,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/medicine/{catalogue_id}/details": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Medicine Details
+         * @description Verbatim US label sections for each ingredient, chosen by the dosage-form rule. Dosage and
+         *     instruction text is left out when the label's form or ingredients differ from the medicine's.
+         */
+        get: operations["medicine_details_api_medicine__catalogue_id__details_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/medicine/{catalogue_id}/alternatives": {
         parameters: {
             query?: never;
@@ -510,10 +531,95 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/medicine-records/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add Medicine Records
+         * @description Add the confirmed "To add" list. The risk analysis runs again here; a Critical result needs
+         *     acknowledged_warning=true (409 otherwise). Nothing else blocks adding.
+         */
+        post: operations["add_medicine_records_api_medicine_records_batch_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Analyze
+         * @description Risk analysis of new medicines against the user's current medicines and allergies, both read
+         *     here on the server. Stores nothing.
+         */
+        post: operations["analyze_api_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AddMedicinesRequest */
+        AddMedicinesRequest: {
+            /** Items */
+            items: components["schemas"]["CourseIn"][];
+            /**
+             * Acknowledged Warning
+             * @default false
+             */
+            acknowledged_warning: boolean;
+        };
+        /** AddMedicinesResponse */
+        AddMedicinesResponse: {
+            /** Overall */
+            overall: ("Medium" | "High" | "Critical") | null;
+            /** Added */
+            added: components["schemas"]["MedicineRecordOut"][];
+        };
+        /** AllergyFinding */
+        AllergyFinding: {
+            medicine: components["schemas"]["CheckerMedicine"];
+            /** Allergy Id */
+            allergy_id: number;
+            /** Allergen */
+            allergen: string;
+            /** Reaction */
+            reaction: string | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "mild" | "moderate" | "severe" | "unknown";
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "Medium" | "High" | "Critical";
+            /** Ingredients */
+            ingredients: string[];
+            /** Note */
+            note: string;
+            /** Notes */
+            notes: string[];
+        };
         /** AllergyIn */
         AllergyIn: {
             /** Allergen */
@@ -623,6 +729,82 @@ export interface components {
             total_labels: number;
             /** Alternatives */
             alternatives: components["schemas"]["Alternative"][];
+        };
+        /** AnalyzeRequest */
+        AnalyzeRequest: {
+            /** Medicines */
+            medicines: components["schemas"]["CourseIn"][];
+        };
+        /** AnalyzeResponse */
+        AnalyzeResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /** Overall */
+            overall: ("Medium" | "High" | "Critical") | null;
+            /** Overall Text */
+            overall_text: string | null;
+            /** Levels */
+            levels: ("Medium" | "High" | "Critical")[];
+            rules: components["schemas"]["AppmsResult"];
+            /** Medicines */
+            medicines: components["schemas"]["AnalyzedMedicine"][];
+            /**
+             * Allergies Checked
+             * @default 0
+             */
+            allergies_checked: number;
+            /**
+             * Allergy Note
+             * @default
+             */
+            allergy_note: string;
+            /** Allergy Findings */
+            allergy_findings: components["schemas"]["AllergyFinding"][];
+            /** Pairs */
+            pairs: components["schemas"]["PairFinding"][];
+            /**
+             * Pairs Checked
+             * @default 0
+             */
+            pairs_checked: number;
+            /**
+             * Disclaimer
+             * @default
+             */
+            disclaimer: string;
+            /**
+             * Level Rule
+             * @default
+             */
+            level_rule: string;
+        };
+        /** AnalyzedMedicine */
+        AnalyzedMedicine: {
+            medicine: components["schemas"]["CheckerMedicine"];
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "new" | "current";
+            /** Record Id */
+            record_id: number | null;
+            /**
+             * Dates Not Entered
+             * @default false
+             */
+            dates_not_entered: boolean;
+            /**
+             * Checked By Name Only
+             * @default false
+             */
+            checked_by_name_only: boolean;
         };
         /** AppmsLabelRef */
         AppmsLabelRef: {
@@ -1342,6 +1524,34 @@ export interface components {
             /** Notes */
             notes: string | null;
         };
+        /**
+         * CourseIn
+         * @description A medicine to add, with the optional course the user entered.
+         */
+        CourseIn: {
+            /** Catalogue Id */
+            catalogue_id: string;
+            /** Reason */
+            reason?: string | null;
+            /** Dose */
+            dose?: string | null;
+            /** Frequency */
+            frequency?: string | null;
+            /** Food */
+            food?: string | null;
+            /** Start Date */
+            start_date?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /** Duration Days */
+            duration_days?: number | null;
+            /**
+             * Source
+             * @default typed
+             * @enum {string}
+             */
+            source: "typed" | "scanned";
+        };
         /** DDIExample */
         DDIExample: {
             /**
@@ -1519,6 +1729,30 @@ export interface components {
             /** Generated At */
             generated_at: string | null;
         };
+        /** DetailLabel */
+        DetailLabel: {
+            /** Set Id */
+            set_id: string;
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Form */
+            form: string | null;
+            /** Route */
+            route: string | null;
+            /** Form Family */
+            form_family: string;
+        };
+        /** DetailSection */
+        DetailSection: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Text */
+            text: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1557,6 +1791,44 @@ export interface components {
             /** Labels */
             labels: components["schemas"]["LabelRef"][];
         };
+        /** IngredientDetails */
+        IngredientDetails: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /** Name */
+            name: string;
+            /** Strength */
+            strength: string | null;
+            /** Us Name */
+            us_name: string | null;
+            label: components["schemas"]["DetailLabel"] | null;
+            /**
+             * Form Match
+             * @enum {string}
+             */
+            form_match: "matched" | "none" | "brand_form_unknown" | "no_label";
+            /** Combination Label */
+            combination_label: boolean;
+            /** Mismatch */
+            mismatch: ("wrong_form" | "combination_label" | "single_for_combination" | "form_unknown") | null;
+            /** Mismatch Note */
+            mismatch_note: string | null;
+            indications: components["schemas"]["DetailSection"] | null;
+            boxed_warning: components["schemas"]["DetailSection"] | null;
+            /** Instructions */
+            instructions: components["schemas"]["DetailSection"][];
+            /** Missing */
+            missing: string[];
+            /** Withheld Note */
+            withheld_note: string | null;
+        };
         /** LabelRef */
         LabelRef: {
             /** Set Id */
@@ -1593,6 +1865,25 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** LevelledHit */
+        LevelledHit: {
+            /** A Ingredient */
+            a_ingredient: string;
+            /** B Ingredient */
+            b_ingredient: string;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "Medium" | "High" | "Critical";
+            /**
+             * Rule Tier
+             * @enum {string}
+             */
+            rule_tier: "critical" | "high" | "moderate";
+            /** Explanation */
+            explanation: string;
+        };
         /** LoginRequest */
         LoginRequest: {
             /** Email */
@@ -1616,6 +1907,40 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** MedicineDetailsResponse */
+        MedicineDetailsResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string | null;
+            /** Form Family */
+            form_family: string | null;
+            /** Composition */
+            composition: string | null;
+            /**
+             * Composition Incomplete
+             * @default false
+             */
+            composition_incomplete: boolean;
+            /**
+             * Composition Unclear
+             * @default false
+             */
+            composition_unclear: boolean;
+            /** Label Note */
+            label_note: string | null;
+            /** Ingredients */
+            ingredients: components["schemas"]["IngredientDetails"][];
         };
         /** MedicineRecordIn */
         MedicineRecordIn: {
@@ -1740,6 +2065,30 @@ export interface components {
              * @default to be confirmed
              */
             owner: string;
+        };
+        /** PairFinding */
+        PairFinding: {
+            a: components["schemas"]["CheckerMedicine"];
+            b: components["schemas"]["CheckerMedicine"];
+            /**
+             * A Role
+             * @enum {string}
+             */
+            a_role: "new" | "current";
+            /**
+             * B Role
+             * @enum {string}
+             */
+            b_role: "new" | "current";
+            /** Level */
+            level: ("Medium" | "High" | "Critical") | null;
+            /** Hits */
+            hits: components["schemas"]["LevelledHit"][];
+            text_match: components["schemas"]["TextMatchResult"];
+            /** Shared Ingredients */
+            shared_ingredients: string[];
+            /** Notes */
+            notes: string[];
         };
         /** PairResult */
         PairResult: {
@@ -2269,6 +2618,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BrandResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    medicine_details_api_medicine__catalogue_id__details_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                catalogue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicineDetailsResponse"];
                 };
             };
             /** @description Validation Error */
@@ -3039,6 +3419,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_medicine_records_api_medicine_records_batch_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddMedicinesRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddMedicinesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_api_analyze_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AnalyzeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnalyzeResponse"];
+                };
             };
             /** @description Validation Error */
             422: {

@@ -1,5 +1,5 @@
 import { useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
 import {
   api,
@@ -370,6 +370,11 @@ function MedicineRow({ m, onEdit, onDelete }: { m: MedicineRecordOut; onEdit: ()
         {(m.dose || m.frequency) && <span className="small muted">{[m.dose, m.frequency].filter(Boolean).join(" · ")}</span>}
         <span className="small muted">{courseText(m)}</span>
         {m.notes && <span className="small">{m.notes}</span>}
+        {m.catalogue_id && (
+          <span className="small">
+            <Link to={`/alternatives?id=${encodeURIComponent(m.catalogue_id)}`}>See alternatives</Link>
+          </span>
+        )}
       </div>
       <RowActions label={m.display_name} onEdit={onEdit} onDelete={onDelete} />
     </li>

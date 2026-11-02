@@ -71,10 +71,11 @@ function DoesNot() {
       <h2 id="not-h">What the app does not do</h2>
       <ul>
         <li>It does not diagnose, prescribe or give dosing advice, and it is not a medical device.</li>
-        <li>It does not check allergies, contraindications, duplicate therapy, disease precautions, dose, kidney or liver function.</li>
+        <li>It checks allergies by name only (see “Adding medicines” below). It does not check contraindications, duplicate therapy, disease precautions, dose, kidney or liver function.</li>
+        <li>It does not read handwriting, and it never uploads or stores a prescription picture.</li>
         <li>It does not store anything for the interaction checker: the medicine list is sent with the request only. It does store what a signed-in person enters in their profile and medical history, in a local SQLite database with hashed passwords, and deleting the account removes it all.</li>
         <li>It does not merge its two checks into one score. The interaction rules and the label text are shown separately.</li>
-        <li>It does not use a trained model for any result you see. The search is name matching; the checker is rules plus sentences found in label text.</li>
+        <li>Apart from reading a scanned prescription (the tesseract.js text-recognition model, run in the browser), it does not use a trained model for any result you see. The search is name matching; the checker and the risk analysis are rules plus sentences found in label text.</li>
       </ul>
       <h2>Limitations</h2>
       <ul>
@@ -88,6 +89,95 @@ function DoesNot() {
         <li>The checker treats a medicine as its set of ingredients. The label-text check reads the Drug Interactions section of one US label per ingredient (the one with the most label sections), not every US label.</li>
         <li>Matching a sample patient's drug name to labels uses the active-ingredient name, ignoring a trailing salt or hydrate word, plus the exact name equivalences listed below (for example Salbutamol and albuterol). Nothing is matched by similar spelling.</li>
         <li>The interaction rules were not trained or scored against; the synthetic labels are a pure function of nine rules.</li>
+      </ul>
+    </section>
+  );
+}
+
+/** Label sections used by the medicine details card. Shares were printed by scripts/build_names.py
+ *  on 2026-11-02 over the 4,293 labels of dm_spl_release_human_rx_part6.zip (the only release file loaded). */
+const DETAIL_SECTIONS: [string, string, string][] = [
+  ["Indications and usage", "34067-9", "98.4%"],
+  ["Boxed warning", "34066-1", "36.7%"],
+  ["Dosage and administration", "34068-7", "98.4%"],
+  ["Patient counselling information", "34076-0, 88436-1", "84.9%"],
+  ["Patient information (Medication Guide, patient package insert, Patient Medication Information)", "42231-1, 42230-3, 68498-5", "50.3%"],
+  ["Instructions for use", "59845-8", "5.9%"],
+];
+
+function AddingMedicines() {
+  return (
+    <section className="card" aria-labelledby="add-h">
+      <h2 id="add-h">Adding medicines: scan, details and risk levels</h2>
+      <h3>Scanning a prescription</h3>
+      <ul>
+        <li>Printed or typed prescriptions only. Handwriting is not supported.</li>
+        <li>
+          Text is read in the browser with tesseract.js 7.0.0 (English, LSTM engine). Its worker, engine and English model are served by
+          this app from <code>/ocr/</code> (copied from the npm packages by <code>scripts/copy-ocr.mjs</code>), so reading makes no request
+          to any other site. <strong>The picture never leaves the device and is not stored</strong>; no endpoint accepts an image.
+        </li>
+        <li>
+          Each line is parsed on the device by fixed patterns (own rules, not from the papers): leading numbering and Tab./Cap./Syr./Inj.
+          are removed; a strength needs a unit (mg, mcg, g, IU, %); frequency is read from OD, BD, BID, TDS, TID, QID, HS, SOS and 1-0-1
+          style patterns; duration from “x 5 days”, “for 7 days” or “1 week” (a month is not turned into days); food timing from
+          before or after food or meals, AC and PC. Anything else is left empty.
+        </li>
+        <li>
+          Only the medicine name read from a line is sent to the medicine search, the same request as typing it. Up to three matches are
+          shown, never a similar spelling, and none is pre-selected. Nothing is added until the person confirms each line.
+        </li>
+      </ul>
+      <h3>Medicine details</h3>
+      <p>
+        The text is US label text for the same ingredient, quoted as published: the first few sentences, with the full text one click
+        away. Nothing is summarised. The label is the one chosen by the dosage-form rule (same form first). Dosage and administration and
+        the patient sections are <strong>not shown</strong> when the label is for another dosage form or route, for a combination
+        product with different ingredients, for one ingredient alone when the medicine is a combination, or when the medicine&apos;s own
+        form is unknown. The app then says no label in the same form is loaded and to ask a pharmacist. Indications and a boxed warning
+        may still be shown, titled with the label&apos;s form and route.
+      </p>
+      <div className="table-wrap">
+        <table>
+          <caption>Label sections used, their LOINC codes, and the share of loaded labels that have each one</caption>
+          <thead><tr><th scope="col">Section</th><th scope="col">LOINC code</th><th scope="col" className="num">Labels with it</th></tr></thead>
+          <tbody>
+            {DETAIL_SECTIONS.map(([name, code, share]) => (
+              <tr key={code}><th scope="row">{name}</th><td>{code}</td><td className="num">{share}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <h3>Risk levels (app rule, not from the papers)</h3>
+      <p>
+        The new medicines are compared with every current medicine (taken now, or with no dates entered) and with each other, by
+        ingredient, with the same interaction rules and label-text search as the checker. Levels shown are Medium, High and Critical. The
+        names Critical and High follow the tier labels of P10 (Shakarbaev); how a level is assigned is our own rule:
+      </p>
+      <div className="table-wrap">
+        <table>
+          <caption>How each finding gets its level</caption>
+          <thead><tr><th scope="col">Finding</th><th scope="col">Level shown</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Interaction rule tier Moderate</th><td>Medium</td></tr>
+            <tr><th scope="row">Interaction rule tier High</th><td>High</td></tr>
+            <tr><th scope="row">Interaction rule tier Critical</th><td>Critical</td></tr>
+            <tr><th scope="row">Allergy match, severity recorded as mild</th><td>Medium</td></tr>
+            <tr><th scope="row">Allergy match, severity moderate</th><td>High</td></tr>
+            <tr><th scope="row">Allergy match, severity severe</th><td>Critical</td></tr>
+            <tr><th scope="row">Allergy match, severity not known</th><td>High</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li>The overall level is the highest level found. There is no score. With no finding the app says: “No known interaction found in our rules. This does not mean the combination is safe.” It never says Safe or Low.</li>
+        <li>Label-text sentences are shown as supporting evidence and never change the level. A shared ingredient is shown as a note without a level.</li>
+        <li>
+          Allergy matching is by name only: the allergen must equal an ingredient after normalisation and the approved synonyms (for
+          example amoxycillin and amoxicillin), or appear as whole words in the ingredient name (penicillin matches penicillin G). Related
+          medicines in the same class are not checked, so a penicillin allergy does not match amoxicillin.
+        </li>
+        <li>A Critical result needs “I have read this warning” before adding; the server checks this again. Nothing else blocks adding.</li>
       </ul>
     </section>
   );
@@ -209,6 +299,7 @@ export function DataMethods() {
       <Sources />
       <CatalogueSection />
       <DoesNot />
+      <AddingMedicines />
       <DailyMedPanel />
       <Rules />
       <Classifier />

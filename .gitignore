@@ -20,3 +20,4 @@ aakaash/artifacts/app.db
 *.db-shm
 .env
 **/.env
+aakaash/web/public/ocr/

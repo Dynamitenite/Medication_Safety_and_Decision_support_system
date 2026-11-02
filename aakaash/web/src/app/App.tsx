@@ -3,6 +3,7 @@ import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, usePa
 import { List, SignIn, SignOut, X } from "@phosphor-icons/react";
 import { ComingSoon } from "../features/aakaash/pages/ComingSoon";
 import { Account } from "../features/aakaash/pages/Account";
+import { AddMedicine } from "../features/aakaash/pages/AddMedicine";
 import { Alternatives } from "../features/aakaash/pages/Alternatives";
 import { DataMethods } from "../features/aakaash/pages/DataMethods";
 import { History } from "../features/aakaash/pages/History";
@@ -129,6 +130,7 @@ function Shell() {
               <Route path="/" element={guard(<Menu />)} />
               <Route path="/profile" element={guard(<Profile />)} />
               <Route path="/history" element={guard(<History />)} />
+              <Route path="/add" element={guard(<AddMedicine />)} />
               <Route path="/alternatives" element={guard(<Alternatives />)} />
               <Route path="/account" element={guard(<Account />)} />
               {SCREENS.map((s) => (

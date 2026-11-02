@@ -512,3 +512,61 @@ mark.find-hit.current { background: rgb(var(--c-accent) / 0.55); }
   .form-actions .btn { flex: 1 1 8rem; }
   .login-card { padding: 20px; }
 }
+
+/* Add new medicine: risk levels. Colour by meaning: Critical rose (danger), High amber (warning),
+   Medium the accent (needs attention, less than a warning). The level is always written as text too. */
+.lv-medium { --lv: var(--c-accent); }
+.lv-high { --lv: var(--c-amber); }
+.lv-critical { --lv: var(--c-rose); }
+.risk-meter-wrap { margin: 12px 0 4px; }
+.risk-meter { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; max-width: 30rem; }
+.risk-seg {
+  padding: 8px 6px; border-radius: 6px; text-align: center; font-family: var(--font-mono); font-size: 0.6875rem;
+  letter-spacing: 0.04em; text-transform: uppercase; color: rgb(var(--c-subtle));
+  background: rgb(var(--lv) / 0.06); box-shadow: inset 0 0 0 1px rgb(var(--lv) / 0.18);
+}
+.risk-seg.on { color: rgb(var(--lv)); font-weight: 700; background: rgb(var(--lv) / 0.16); box-shadow: inset 0 0 0 2px rgb(var(--lv)); }
+.risk-meter-text { margin: 6px 0 0; }
+.lv-text { color: rgb(var(--lv)); }
+.lv-badge { background: rgb(var(--lv) / 0.1); color: rgb(var(--lv)); box-shadow: 0 0 0 1px rgb(var(--lv) / 0.35); }
+.risk-panel {
+  display: flex; gap: 12px; align-items: flex-start; margin: 4px 0 12px; padding: 14px 16px; border-radius: 6px;
+  background: rgb(var(--lv) / 0.1); border: 1px solid rgb(var(--lv) / 0.5); color: rgb(var(--c-text)); font-weight: 600;
+}
+.risk-panel svg { color: rgb(var(--lv)); flex: none; margin-top: 2px; }
+.risk-panel p { margin: 0; }
+.risk-note.lv-high { border-color: rgb(var(--lv) / 0.5); }
+.checked summary { font-size: 0.875rem; }
+.finding-list { list-style: none; margin: 12px 0; padding: 0; display: grid; gap: 10px; }
+.finding { border: 1px solid rgb(var(--c-line)); border-left: 3px solid rgb(var(--lv, var(--c-line))); border-radius: 6px; padding: 10px 14px; background: rgb(var(--c-card)); overflow-wrap: anywhere; }
+.finding-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; }
+.finding-names { font-weight: 600; }
+.finding h4 { margin: 10px 0 4px; font-size: 0.875rem; }
+.finding .evidence p { margin: 4px 0; }
+
+/* Add new medicine: the "To add" list and the details card */
+.to-add-list { list-style: none; margin: 0; padding: 0; }
+.to-add h3 { margin: 0; overflow-wrap: anywhere; }
+.details h4 { margin: 18px 0 6px; font-size: 0.9375rem; }
+.details h5 { margin: 10px 0 4px; font-size: 0.8125rem; color: rgb(var(--c-muted)); font-weight: 600; }
+.detail-block { margin: 6px 0 12px; }
+.detail-block > p.small.muted:first-child { margin-bottom: 4px; }
+.label-text { margin: 0; padding: 6px 12px; border-left: 2px solid rgb(var(--c-line)); white-space: pre-line; overflow-wrap: anywhere; font-size: 0.9375rem; }
+.excerpt .btn { margin-top: 4px; }
+.add-bar .ack { font-size: 0.9375rem; font-weight: 600; }
+
+/* Add new medicine: scanning */
+.scan-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.scan-preview { display: block; max-width: 100%; max-height: 16rem; margin: 12px 0; border: 1px solid rgb(var(--c-line)); border-radius: 6px; }
+.camera video { display: block; width: 100%; max-height: 22rem; background: #000; border-radius: 6px; margin-top: 12px; }
+.scan progress { display: block; width: 100%; margin-top: 8px; accent-color: rgb(var(--c-accent)); }
+.review-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 10px; }
+.review-line { border: 1px solid rgb(var(--c-line)); border-radius: 6px; padding: 10px 14px; background: rgb(var(--c-bg)); }
+.review-line.done { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px; padding: 6px 14px; overflow-wrap: anywhere; }
+.raw-line { margin: 0 0 4px; overflow-wrap: anywhere; }
+.raw-line code { font-family: var(--font-mono); font-size: 0.875rem; }
+.candidates { border: 0; padding: 0; margin: 8px 0; display: grid; gap: 6px; min-width: 0; }
+.candidates legend { padding: 0; margin-bottom: 4px; color: rgb(var(--c-muted)); }
+.candidate { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 6px; box-shadow: 0 0 0 1px rgb(var(--c-line)); background: rgb(var(--c-card)); cursor: pointer; overflow-wrap: anywhere; }
+.candidate input { margin-top: 3px; width: 18px; height: 18px; accent-color: rgb(var(--c-accent)); flex: none; }
+.candidate:has(input:checked) { box-shadow: 0 0 0 2px rgb(var(--c-accent)); }

@@ -11,14 +11,13 @@ export const SCREENS: Screen[] = [
   { id: "checker", path: "/checker", label: "Interaction Checker", Component: Checker },
 ];
 
-/** The four options of the signed-in menu, in order. "Add new medicine" and "Alternative medicines"
- *  open the existing search and alternatives pages until the scan and similar-use pages replace them. */
+/** The four options of the signed-in menu, in order. */
 export type MenuItem = { id: "profile" | "history" | "add" | "alternatives"; path: string; label: string; blurb: string };
 
 export const MENU: MenuItem[] = [
   { id: "profile", path: "/profile", label: "My profile", blurb: "Your details, current conditions and allergies." },
   { id: "history", path: "/history", label: "Past and current medical history", blurb: "Conditions and medicines, with dates and outcomes." },
-  { id: "add", path: "/search", label: "Add new medicine", blurb: "Look up a medicine and check it against the others you take." },
+  { id: "add", path: "/add", label: "Add new medicine", blurb: "Type or scan a prescription, then check it against the medicines you take and your allergies." },
   { id: "alternatives", path: "/alternatives", label: "Alternative medicines", blurb: "Find other brands with the same ingredients." },
 ];
 
