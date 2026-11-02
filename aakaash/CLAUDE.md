@@ -86,7 +86,7 @@ Inspect the repo, the data and the hardware. Propose the file layout and ask me 
 - **Personalized alert**: a deterministic template (no LLM) that combines the predicted interaction type, the highlighted evidence tokens, the retrieved Interactions and Warnings text for both drugs from Subarea A, and the patient profile fields (age, allergies, current medications, pregnancy). Severity tiers Critical/High/Advisory come from P10 (labels only). The rules for assigning a tier are NOT IN PAPERS.
 
 ### Phase 4: API skeleton (only if time remains)
-FastAPI with `POST /retrieve`, `POST /alternatives` and `POST /risk`, each returning JSON that includes the evidence. No database: the patient profile is sent in the request body. Enable CORS for the React dev server.
+FastAPI with `POST /retrieve`, `POST /alternatives` and `POST /risk`, each returning JSON that includes the evidence. The checker stores nothing: its medicine list is sent in the request body. Accounts, profile and medical history live in the local SQLite file `artifacts/app.db` (see WEBAPP_PLAN.md section 7). Enable CORS for the React dev server.
 
 ## Paper facts (the only things you may cite as FROM PAPERS)
 

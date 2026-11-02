@@ -4,15 +4,20 @@ from __future__ import annotations
 
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request, Response
+from sqlalchemy.orm import Session
 
+from . import auth
 from .config import Settings, get_settings
-from .schemas import (AlternativesResponse, AppmsLookupResponse, AppmsPatientResponse,
+from .db import User, get_db
+from .schemas import (AllergyIn, AllergyOut, AlternativesResponse, AppmsLookupResponse, AppmsPatientResponse,
                       AppmsPatientsResponse, AppmsSummaryResponse, BrandAlternativesResponse, BrandResponse,
-                      CatalogueSummaryResponse, CheckerRequest, CheckerResponse, MedicineResponse,
+                      CatalogueSummaryResponse, CheckerRequest, CheckerResponse, ConditionIn, ConditionOut,
+                      ConditionStatus, LoginRequest, LoginResponse, MeResponse, MedicineRecordIn,
+                      MedicineRecordOut, MedicineResponse, ProfileIn, ProfileOut,
                       SuggestResponse, DDIExamplesResponse, DDILabel, DDIStatsResponse, DailyMedStatsResponse,
                       Health, StatusResponse, TacStatsResponse, TraceResponse)
-from .services import appms, catalogue, datasets, medicines, status, trace
+from .services import accounts, appms, catalogue, datasets, medicines, status, trace
 
 router = APIRouter(prefix="/api")
 
@@ -115,3 +120,111 @@ def appms_lookup(drug_a: str = Query(..., min_length=1, max_length=100),
                  drug_b: str = Query(..., min_length=1, max_length=100),
                  settings: Settings = Depends(get_settings)) -> AppmsLookupResponse:
     return appms.lookup(settings, drug_a, drug_b)
+
+
+# ---- accounts, profile and medical history ---------------------------------------------------
+# Everything below needs a signed-in user and only ever reads or writes that user's own rows.
+@router.post("/auth/login", response_model=LoginResponse)
+def auth_login(body: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db),
+               settings: Settings = Depends(get_settings)) -> LoginResponse:
+    """Sign in. An email that has no account yet gets one (status 201) with starting details filled in."""
+    return accounts.login(db, settings, body, request, response)
+
+
+@router.post("/auth/logout", status_code=204)
+def auth_logout(request: Request, response: Response, db: Session = Depends(get_db)) -> None:
+    auth.end_session(db, request, response)
+
+
+@router.get("/auth/me", response_model=MeResponse)
+def auth_me(user: User = Depends(auth.current_user)) -> MeResponse:
+    return MeResponse(email=user.email, created_at=user.created_at)
+
+
+@router.delete("/account", status_code=204)
+def delete_account(response: Response, user: User = Depends(auth.current_user),
+                   db: Session = Depends(get_db)) -> None:
+    """Delete the account and every row that belongs to it."""
+    accounts.delete_account(db, user, response)
+
+
+@router.get("/profile", response_model=ProfileOut)
+def get_profile(user: User = Depends(auth.current_user), db: Session = Depends(get_db)) -> ProfileOut:
+    return accounts.get_profile(db, user)
+
+
+@router.put("/profile", response_model=ProfileOut)
+def put_profile(body: ProfileIn, user: User = Depends(auth.current_user),
+                db: Session = Depends(get_db)) -> ProfileOut:
+    return accounts.put_profile(db, user, body)
+
+
+@router.get("/allergies", response_model=list[AllergyOut])
+def list_allergies(user: User = Depends(auth.current_user), db: Session = Depends(get_db)) -> list[AllergyOut]:
+    return accounts.list_allergies(db, user)
+
+
+@router.post("/allergies", response_model=AllergyOut, status_code=201)
+def create_allergy(body: AllergyIn, user: User = Depends(auth.current_user),
+                   db: Session = Depends(get_db)) -> AllergyOut:
+    return accounts.create_allergy(db, user, body)
+
+
+@router.put("/allergies/{item_id}", response_model=AllergyOut)
+def update_allergy(item_id: int, body: AllergyIn, user: User = Depends(auth.current_user),
+                   db: Session = Depends(get_db)) -> AllergyOut:
+    return accounts.update_allergy(db, user, item_id, body)
+
+
+@router.delete("/allergies/{item_id}", status_code=204)
+def delete_allergy(item_id: int, user: User = Depends(auth.current_user), db: Session = Depends(get_db)) -> None:
+    accounts.delete_allergy(db, user, item_id)
+
+
+@router.get("/conditions", response_model=list[ConditionOut])
+def list_conditions(status: ConditionStatus | None = None, user: User = Depends(auth.current_user),
+                    db: Session = Depends(get_db)) -> list[ConditionOut]:
+    return accounts.list_conditions(db, user, status)
+
+
+@router.post("/conditions", response_model=ConditionOut, status_code=201)
+def create_condition(body: ConditionIn, user: User = Depends(auth.current_user),
+                     db: Session = Depends(get_db)) -> ConditionOut:
+    return accounts.create_condition(db, user, body)
+
+
+@router.put("/conditions/{item_id}", response_model=ConditionOut)
+def update_condition(item_id: int, body: ConditionIn, user: User = Depends(auth.current_user),
+                     db: Session = Depends(get_db)) -> ConditionOut:
+    return accounts.update_condition(db, user, item_id, body)
+
+
+@router.delete("/conditions/{item_id}", status_code=204)
+def delete_condition(item_id: int, user: User = Depends(auth.current_user), db: Session = Depends(get_db)) -> None:
+    accounts.delete_condition(db, user, item_id)
+
+
+@router.get("/medicine-records", response_model=list[MedicineRecordOut])
+def list_medicine_records(user: User = Depends(auth.current_user),
+                          db: Session = Depends(get_db)) -> list[MedicineRecordOut]:
+    return accounts.list_medicines(db, user)
+
+
+@router.post("/medicine-records", response_model=MedicineRecordOut, status_code=201)
+def create_medicine_record(body: MedicineRecordIn, user: User = Depends(auth.current_user),
+                           db: Session = Depends(get_db),
+                           settings: Settings = Depends(get_settings)) -> MedicineRecordOut:
+    return accounts.create_medicine(db, settings, user, body)
+
+
+@router.put("/medicine-records/{item_id}", response_model=MedicineRecordOut)
+def update_medicine_record(item_id: int, body: MedicineRecordIn, user: User = Depends(auth.current_user),
+                           db: Session = Depends(get_db),
+                           settings: Settings = Depends(get_settings)) -> MedicineRecordOut:
+    return accounts.update_medicine(db, settings, user, item_id, body)
+
+
+@router.delete("/medicine-records/{item_id}", status_code=204)
+def delete_medicine_record(item_id: int, user: User = Depends(auth.current_user),
+                           db: Session = Depends(get_db)) -> None:
+    accounts.delete_medicine(db, user, item_id)

@@ -35,10 +35,10 @@ Every fact in section 1 comes from a command run on 2026-10-16. Section 5 lists 
 | pandas / pyarrow / lxml | 3.0.6 / 26.0.0 / 6.1.3 | imports |
 | fastapi / uvicorn | 0.143.2 / 0.54.0 | imports |
 | httpx / pydantic | 0.28.1 / 2.14.1 | listed |
-| **pytest** | **not installed** | |
+| pytest | 9.1.1 | in `.venv` |
 
 Contrary to the earlier timeouts, `.install_log.txt` ends with `ALLDONE`, and all the heavy packages import. They are slow to import cold, so the API must **lazy-load** torch and transformers and must never import them at startup.
-Existing tests use `unittest`. All 6 pass (`python -m unittest discover -s tests -v`, "Ran 6 tests ... OK").
+Tests use pytest (`.venv/Scripts/python.exe -m pytest` from `aakaash/`).
 Hardware at the time of checking: no GPU, 15.7 GB RAM total with **2.4 GB free**, and 42 GB free on C:.
 
 ### 1.3 Data on disk
@@ -101,7 +101,7 @@ The paper has no architecture. Fig. 1 shows the benefits of a CDSS and Fig. 2 it
 | 5 Recommendation engine | grounded medicine info, same-ingredient alternatives | uses `Index` and label metadata | |
 | 6 Explanation generator | evidence cards, top-token explanation, deterministic alert template | | |
 
-- The patient profile travels in the request body. No database, and the server stores no patient data.
+- The checker receives its medicine list in the request body and stores nothing. Since the accounts update (section 7) a signed-in person's profile and medical history are stored in a local SQLite database.
 - The active encoder and classifier are chosen in `aakaash/api/config.py` (overridable by environment variable) and reported by `/api/status`. A future Focal Loss or BioBERT model only needs to implement `DDIClassifier`.
 
 ### File layout (proposed)
@@ -172,7 +172,7 @@ Sidebar driven by `registry.ts`. Every panel has loading, error and `not_ready` 
 | Interaction Risk | sentence box, mark e1/e2 by selection, probabilities bar, predicted class, highlighted tokens, model card with per-class table, "classical baseline, not Focal Loss, not deep learning" | Phase 4 |
 | Personalized Alert | profile form (approved fields only), alert, evidence panel | Phase 5 (needs DailyMed + Q1) |
 | Trace | `PAPER_TRACE.md` table, grouped FROM PAPERS / FROM BASELINE REVIEW (ICMLAS 2025) / NOT IN PAPERS, with status column | Phase 2 |
-| About | scope, the 5 baseline requirements with section citations, limitation: no patient data stored, future work (FHIR, accounts/login, database, deployment, deep models) | Phase 2 |
+| About | scope, the 5 baseline requirements with section citations, limitation: what is stored (accounts, profile and history in a local SQLite file), future work (FHIR, deployment, deep models) | Phase 2 |
 | Coming soon (×N) | name, stage, "Coming soon", "Owner: to be confirmed", nothing else | Phase 2 |
 
 Build order and stop points:
@@ -237,3 +237,27 @@ Proposed defaults for the DDI baseline (all NOT IN PAPERS; no answer needed unle
 - Web routes: `/medicine/:id` is a brand page; `/label/:setId` is a US label page; old `/medicine/<uuid>` links redirect to `/label/<uuid>`.
 - Not built: a patient store. There is no `patient_medicine` table in this repo; the patient workflow will be built later on the catalogue, storing catalogue ids.
 - Real numbers (part6 of DailyMed only) are in `PAPER_TRACE.md` and on `/about/data`.
+
+---
+
+## 7. Update 2026-11-02: accounts, profile and medical history (task 3A)
+
+**This adds a database, which affects how teammates merge.**
+
+- New dependencies in the venv: `sqlalchemy` and `argon2-cffi` (there is no requirements file; run `.venv/Scripts/python.exe -m pip install sqlalchemy argon2-cffi`).
+- New SQLite file `aakaash/artifacts/app.db`, created on startup (tables via `create_all`; there is no migration tool). It is gitignored with `.env` and `*.db-journal`. Never commit it. Copy `aakaash/.env.example` to `.env` and set `SESSION_SECRET` to keep sessions across restarts; without it a random key is made at startup and sessions reset.
+- `api/app.py` now runs `db.session_maker(...)` in its lifespan and CORS allows credentials plus PUT and DELETE. If you mount `router` in your own app, call `db.session_maker(settings)` once at startup (it is also created lazily on first use) and keep the cookie-friendly CORS settings.
+- `api/schemas.py`, `api/router.py` and `medsafe/appms.py` (a `start_date` field on `Medication`) were edited, so expect conflicts there. New files: `api/auth.py`, `api/db.py`, `api/services/accounts.py`, `api/services/prefill.py`, `medsafe/health.py`, `tests/test_accounts.py`, `tests/test_health.py`.
+- Web: the signed-out app is only `/login`; search moved from `/` to `/search` (old `/?q=` links redirect). The side menu has the four task options; the old pages stay reachable by URL.
+
+Endpoints other work can reuse (all under `/api`, all need the session cookie except `auth/login`):
+
+| endpoint | use |
+|---|---|
+| `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, `DELETE /account` | sign in or create, sign out, who am I, delete everything |
+| `GET`, `PUT /profile` | name, date of birth (age computed), sex, height, weight (BMI computed), blood group, notes |
+| `GET`, `POST /allergies`, `PUT`, `DELETE /allergies/{id}` | allergen, reaction, severity |
+| `GET`, `POST /conditions`, `PUT`, `DELETE /conditions/{id}` | conditions with status (current or past) and outcome |
+| `GET`, `POST /medicine-records`, `PUT`, `DELETE /medicine-records/{id}` | medicine history; `status` and `duration_days` computed; `catalogue_id` fills the name and ingredients from the catalogue; `source` is `typed` or `scanned` |
+
+Use `api.auth.current_user` as the dependency for any new personal endpoint and always filter by `user.id`.

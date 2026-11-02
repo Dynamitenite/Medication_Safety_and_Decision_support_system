@@ -14,3 +14,9 @@ aakaash/web/node_modules/
 aakaash/web/dist/
 aakaash/web/openapi.json
 aakaash/web/screenshots/
+aakaash/artifacts/app.db
+*.db-journal
+*.db-wal
+*.db-shm
+.env
+**/.env

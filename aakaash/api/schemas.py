@@ -3,9 +3,11 @@
 status="not_ready" with a reason and a fix, never placeholder numbers."""
 from __future__ import annotations
 
+import re
+from datetime import date, datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 DDILabel = Literal["effect", "mechanism", "advise", "int", "false"]
 
@@ -530,3 +532,169 @@ class AppmsLookupResponse(Readiness):
     matched: bool = False
     rule: AppmsRuleMatch | None = None
     message: str = ""
+
+
+# ---- accounts, profile and medical history ---------------------------------------------------
+# Inputs trim text and turn blank text into null. Output models carry computed values (age, bmi,
+# status, duration_days) that are null when the inputs they need are missing.
+_EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+Sex = Literal["female", "male", "other"]
+BloodGroup = Literal["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"]
+Severity = Literal["mild", "moderate", "severe", "unknown"]
+ConditionKind = Literal["illness", "surgery", "injury", "other"]
+ConditionStatus = Literal["current", "past"]
+ConditionOutcome = Literal["cured", "ongoing", "not_cured", "unknown"]
+MedicineOutcome = Literal["cured", "improved", "not_cured", "stopped", "unknown"]
+CourseStatus = Literal["current", "past", "upcoming", "not_stated"]
+RecordSource = Literal["typed", "scanned"]
+FIRST_DOB = date(1900, 1, 1)
+
+
+class EntryIn(ApiModel):
+    """Base for request bodies: trims text, blank text becomes null, unknown fields are rejected."""
+    model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
+
+    @field_validator("*", mode="before")
+    @classmethod
+    def _tidy(cls, v):
+        if isinstance(v, str):
+            v = v.strip()
+            return v or None
+        return v
+
+
+class LoginRequest(ApiModel):
+    email: str = Field(max_length=254)
+    password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("email")
+    @classmethod
+    def _email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not _EMAIL.match(v):
+            raise ValueError("Enter a valid email address.")
+        return v
+
+
+class LoginResponse(ApiModel):
+    email: str
+    created: bool
+
+
+class MeResponse(ApiModel):
+    email: str
+    created_at: datetime
+
+
+class ProfileIn(EntryIn):
+    name: str | None = Field(None, max_length=100)
+    date_of_birth: date | None = None
+    sex: Sex | None = None
+    height_cm: float | None = Field(None, ge=40, le=250)
+    weight_kg: float | None = Field(None, ge=2, le=400)
+    blood_group: BloodGroup | None = None
+    notes: str | None = Field(None, max_length=2000)
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def _dob(cls, v: date | None) -> date | None:
+        if v is not None and not (FIRST_DOB <= v <= date.today()):
+            raise ValueError("Date of birth must be between 1900 and today.")
+        return v
+
+
+class ProfileOut(ApiModel):
+    name: str | None
+    date_of_birth: date | None
+    age: int | None
+    sex: Sex | None
+    height_cm: float | None
+    weight_kg: float | None
+    bmi: float | None
+    blood_group: BloodGroup | None
+    notes: str | None
+    updated_at: datetime
+
+
+class AllergyIn(EntryIn):
+    allergen: str = Field(min_length=1, max_length=200)
+    reaction: str | None = Field(None, max_length=500)
+    severity: Severity = "unknown"
+    notes: str | None = Field(None, max_length=2000)
+
+
+class AllergyOut(ApiModel):
+    id: int
+    allergen: str
+    reaction: str | None
+    severity: Severity
+    notes: str | None
+
+
+class ConditionIn(EntryIn):
+    name: str = Field(min_length=1, max_length=200)
+    kind: ConditionKind = "illness"
+    status: ConditionStatus
+    onset_date: date | None = None
+    resolved_date: date | None = None
+    outcome: ConditionOutcome = "unknown"
+    notes: str | None = Field(None, max_length=2000)
+
+    @model_validator(mode="after")
+    def _consistent(self) -> "ConditionIn":
+        if self.resolved_date and self.status != "past":
+            raise ValueError("A current condition has no resolved date.")
+        if self.onset_date and self.resolved_date and self.resolved_date < self.onset_date:
+            raise ValueError("The resolved date cannot be before the start date.")
+        if self.status == "current" and self.outcome == "cured":
+            raise ValueError("A current condition cannot be marked as cured.")
+        return self
+
+
+class ConditionOut(ApiModel):
+    id: int
+    name: str
+    kind: ConditionKind
+    status: ConditionStatus
+    onset_date: date | None
+    resolved_date: date | None
+    outcome: ConditionOutcome
+    notes: str | None
+
+
+class MedicineRecordIn(EntryIn):
+    catalogue_id: str | None = Field(None, max_length=40)
+    display_name: str = Field(min_length=1, max_length=200)
+    reason: str | None = Field(None, max_length=300)
+    dose: str | None = Field(None, max_length=100)
+    frequency: str | None = Field(None, max_length=100)
+    start_date: date | None = None
+    end_date: date | None = None
+    outcome: MedicineOutcome | None = None
+    source: RecordSource = "typed"
+    notes: str | None = Field(None, max_length=2000)
+
+    @model_validator(mode="after")
+    def _course(self) -> "MedicineRecordIn":
+        if self.end_date and not self.start_date:
+            raise ValueError("Enter a start date to go with the end date.")
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValueError("The end date cannot be before the start date.")
+        return self
+
+
+class MedicineRecordOut(ApiModel):
+    id: int
+    catalogue_id: str | None
+    display_name: str
+    ingredients: list[str]
+    reason: str | None
+    dose: str | None
+    frequency: str | None
+    start_date: date | None
+    end_date: date | None
+    outcome: MedicineOutcome | None
+    source: RecordSource
+    notes: str | None
+    status: CourseStatus
+    duration_days: int | None

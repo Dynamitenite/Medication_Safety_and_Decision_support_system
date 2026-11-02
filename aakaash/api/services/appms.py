@@ -138,7 +138,7 @@ def patient(settings: Settings, patient_id: str) -> AppmsPatientResponse:
             h = hits[0]
             ref = AppmsLabelRef(set_id=h["set_id"], name=h["products"][0] if h["products"] else x.drug_name,
                                 manufacturer=h["manufacturer"])
-        meds.append(AppmsMedication(**x.model_dump(exclude={"patient_id"}), label_count=len(hits), label=ref))
+        meds.append(AppmsMedication(**x.model_dump(exclude={"patient_id", "start_date"}), label_count=len(hits), label=ref))
     return AppmsPatientResponse(status="ready", patient=_patient(p), medications=meds)
 
 

@@ -72,7 +72,7 @@ function DoesNot() {
       <ul>
         <li>It does not diagnose, prescribe or give dosing advice, and it is not a medical device.</li>
         <li>It does not check allergies, contraindications, duplicate therapy, disease precautions, dose, kidney or liver function.</li>
-        <li>It does not store patient data: a medicine list is sent with the request only, and there is no database or login.</li>
+        <li>It does not store anything for the interaction checker: the medicine list is sent with the request only. It does store what a signed-in person enters in their profile and medical history, in a local SQLite database with hashed passwords, and deleting the account removes it all.</li>
         <li>It does not merge its two checks into one score. The interaction rules and the label text are shown separately.</li>
         <li>It does not use a trained model for any result you see. The search is name matching; the checker is rules plus sentences found in label text.</li>
       </ul>
@@ -171,6 +171,30 @@ function SystemStatus() {
   );
 }
 
+function PendingModules() {
+  const q = useStatus();
+  const modules = q.data?.modules ?? [];
+  if (modules.length === 0) return null;
+  return (
+    <section className="card" aria-labelledby="mods-h">
+      <h2 id="mods-h">Modules not built yet</h2>
+      <p className="panel-hint">
+        Planned modules by their project names and design stages. They are not in the app menu; each opens by its address and says it is not built.
+      </p>
+      <ul>
+        {modules.map((m) => (
+          <li key={m.id}>
+            <Link to={`/modules/${m.id}`}>{m.label}</Link>{" "}
+            <span className="muted small">
+              stage {m.stages.join(", ")} · id {m.id}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function DataMethods() {
   const ddi = useApi(api.ddiStats);
   return (
@@ -192,6 +216,7 @@ export function DataMethods() {
       {ddi.data?.status === "ready" && <DdiExamplesPanel labels={ddi.data.labels} />}
       <TacPanel />
       <SystemStatus />
+      <PendingModules />
 
       <section className="card" aria-labelledby="pp-h">
         <h2 id="pp-h">Sample patients</h2>

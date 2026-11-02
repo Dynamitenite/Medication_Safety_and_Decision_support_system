@@ -214,7 +214,7 @@ export function Checker() {
       <h1>Interaction checker</h1>
       <p className="lead">
         Add {MIN} to {MAX} medicines. Each medicine is checked by its ingredients: every pair is looked up in our interaction rules and
-        in the US label text for each ingredient. The results are shown separately. Nothing is stored.
+        in the US label text for each ingredient. The results are shown separately. The checker does not save the medicines you enter.
       </p>
       <section className="card" aria-labelledby="pick-h">
         <h2 id="pick-h">Medicines</h2>

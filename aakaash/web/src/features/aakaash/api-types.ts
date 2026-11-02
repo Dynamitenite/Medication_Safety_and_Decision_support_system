@@ -310,10 +310,241 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Auth Login
+         * @description Sign in. An email that has no account yet gets one (status 201) with starting details filled in.
+         */
+        post: operations["auth_login_api_auth_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Auth Logout */
+        post: operations["auth_logout_api_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/auth/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Me */
+        get: operations["auth_me_api_auth_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Delete Account
+         * @description Delete the account and every row that belongs to it.
+         */
+        delete: operations["delete_account_api_account_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Profile */
+        get: operations["get_profile_api_profile_get"];
+        /** Put Profile */
+        put: operations["put_profile_api_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/allergies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Allergies */
+        get: operations["list_allergies_api_allergies_get"];
+        put?: never;
+        /** Create Allergy */
+        post: operations["create_allergy_api_allergies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/allergies/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Allergy */
+        put: operations["update_allergy_api_allergies__item_id__put"];
+        post?: never;
+        /** Delete Allergy */
+        delete: operations["delete_allergy_api_allergies__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/conditions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Conditions */
+        get: operations["list_conditions_api_conditions_get"];
+        put?: never;
+        /** Create Condition */
+        post: operations["create_condition_api_conditions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/conditions/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Condition */
+        put: operations["update_condition_api_conditions__item_id__put"];
+        post?: never;
+        /** Delete Condition */
+        delete: operations["delete_condition_api_conditions__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/medicine-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Medicine Records */
+        get: operations["list_medicine_records_api_medicine_records_get"];
+        put?: never;
+        /** Create Medicine Record */
+        post: operations["create_medicine_record_api_medicine_records_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/medicine-records/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Medicine Record */
+        put: operations["update_medicine_record_api_medicine_records__item_id__put"];
+        post?: never;
+        /** Delete Medicine Record */
+        delete: operations["delete_medicine_record_api_medicine_records__item_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AllergyIn */
+        AllergyIn: {
+            /** Allergen */
+            allergen: string;
+            /** Reaction */
+            reaction?: string | null;
+            /**
+             * Severity
+             * @default unknown
+             * @enum {string}
+             */
+            severity: "mild" | "moderate" | "severe" | "unknown";
+            /** Notes */
+            notes?: string | null;
+        };
+        /** AllergyOut */
+        AllergyOut: {
+            /** Id */
+            id: number;
+            /** Allergen */
+            allergen: string;
+            /** Reaction */
+            reaction: string | null;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "mild" | "moderate" | "severe" | "unknown";
+            /** Notes */
+            notes: string | null;
+        };
         /** Alternative */
         Alternative: {
             /** Product */
@@ -1055,6 +1286,62 @@ export interface components {
                 [key: string]: string | number;
             };
         };
+        /** ConditionIn */
+        ConditionIn: {
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default illness
+             * @enum {string}
+             */
+            kind: "illness" | "surgery" | "injury" | "other";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "past";
+            /** Onset Date */
+            onset_date?: string | null;
+            /** Resolved Date */
+            resolved_date?: string | null;
+            /**
+             * Outcome
+             * @default unknown
+             * @enum {string}
+             */
+            outcome: "cured" | "ongoing" | "not_cured" | "unknown";
+            /** Notes */
+            notes?: string | null;
+        };
+        /** ConditionOut */
+        ConditionOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "illness" | "surgery" | "injury" | "other";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "past";
+            /** Onset Date */
+            onset_date: string | null;
+            /** Resolved Date */
+            resolved_date: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "cured" | "ongoing" | "not_cured" | "unknown";
+            /** Notes */
+            notes: string | null;
+        };
         /** DDIExample */
         DDIExample: {
             /**
@@ -1306,6 +1593,94 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** LoginRequest */
+        LoginRequest: {
+            /** Email */
+            email: string;
+            /** Password */
+            password: string;
+        };
+        /** LoginResponse */
+        LoginResponse: {
+            /** Email */
+            email: string;
+            /** Created */
+            created: boolean;
+        };
+        /** MeResponse */
+        MeResponse: {
+            /** Email */
+            email: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** MedicineRecordIn */
+        MedicineRecordIn: {
+            /** Catalogue Id */
+            catalogue_id?: string | null;
+            /** Display Name */
+            display_name: string;
+            /** Reason */
+            reason?: string | null;
+            /** Dose */
+            dose?: string | null;
+            /** Frequency */
+            frequency?: string | null;
+            /** Start Date */
+            start_date?: string | null;
+            /** End Date */
+            end_date?: string | null;
+            /** Outcome */
+            outcome?: ("cured" | "improved" | "not_cured" | "stopped" | "unknown") | null;
+            /**
+             * Source
+             * @default typed
+             * @enum {string}
+             */
+            source: "typed" | "scanned";
+            /** Notes */
+            notes?: string | null;
+        };
+        /** MedicineRecordOut */
+        MedicineRecordOut: {
+            /** Id */
+            id: number;
+            /** Catalogue Id */
+            catalogue_id: string | null;
+            /** Display Name */
+            display_name: string;
+            /** Ingredients */
+            ingredients: string[];
+            /** Reason */
+            reason: string | null;
+            /** Dose */
+            dose: string | null;
+            /** Frequency */
+            frequency: string | null;
+            /** Start Date */
+            start_date: string | null;
+            /** End Date */
+            end_date: string | null;
+            /** Outcome */
+            outcome: ("cured" | "improved" | "not_cured" | "stopped" | "unknown") | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "typed" | "scanned";
+            /** Notes */
+            notes: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "current" | "past" | "upcoming" | "not_stated";
+            /** Duration Days */
+            duration_days: number | null;
+        };
         /** MedicineResponse */
         MedicineResponse: {
             /**
@@ -1377,6 +1752,49 @@ export interface components {
             secondary: components["schemas"]["SecondaryResult"];
             /** Notes */
             notes: string[];
+        };
+        /** ProfileIn */
+        ProfileIn: {
+            /** Name */
+            name?: string | null;
+            /** Date Of Birth */
+            date_of_birth?: string | null;
+            /** Sex */
+            sex?: ("female" | "male" | "other") | null;
+            /** Height Cm */
+            height_cm?: number | null;
+            /** Weight Kg */
+            weight_kg?: number | null;
+            /** Blood Group */
+            blood_group?: ("A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-") | null;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** ProfileOut */
+        ProfileOut: {
+            /** Name */
+            name: string | null;
+            /** Date Of Birth */
+            date_of_birth: string | null;
+            /** Age */
+            age: number | null;
+            /** Sex */
+            sex: ("female" | "male" | "other") | null;
+            /** Height Cm */
+            height_cm: number | null;
+            /** Weight Kg */
+            weight_kg: number | null;
+            /** Bmi */
+            bmi: number | null;
+            /** Blood Group */
+            blood_group: ("A+" | "A-" | "B+" | "B-" | "AB+" | "AB-" | "O+" | "O-") | null;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** RuleHit */
         RuleHit: {
@@ -2117,6 +2535,510 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AppmsLookupResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_login_api_auth_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_logout_api_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_me_api_auth_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+        };
+    };
+    delete_account_api_account_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    get_profile_api_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+        };
+    };
+    put_profile_api_profile_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_allergies_api_allergies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllergyOut"][];
+                };
+            };
+        };
+    };
+    create_allergy_api_allergies_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllergyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllergyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_allergy_api_allergies__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AllergyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AllergyOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_allergy_api_allergies__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_conditions_api_conditions_get: {
+        parameters: {
+            query?: {
+                status?: ("current" | "past") | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConditionOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_condition_api_conditions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConditionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConditionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_condition_api_conditions__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConditionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConditionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_condition_api_conditions__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_medicine_records_api_medicine_records_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicineRecordOut"][];
+                };
+            };
+        };
+    };
+    create_medicine_record_api_medicine_records_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MedicineRecordIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicineRecordOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_medicine_record_api_medicine_records__item_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MedicineRecordIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MedicineRecordOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_medicine_record_api_medicine_records__item_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                item_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

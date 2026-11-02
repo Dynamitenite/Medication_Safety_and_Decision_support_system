@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Literal
 
@@ -48,6 +49,7 @@ class Medication(BaseModel):
     indication: str
     frequency: str
     duration_days: int
+    start_date: date | None = None  # column start_date_synthetic; not served by the /api/appms routes
 
 
 class Scenario(BaseModel):
@@ -101,6 +103,13 @@ def _none(v: str) -> str | None:
     return None if v in ("", "None") else v
 
 
+def _date(v: str | None) -> date | None:
+    try:
+        return date.fromisoformat((v or "").strip())
+    except ValueError:
+        return None
+
+
 def missing_files(folder: Path) -> list[str]:
     return [n for n in FILES.values() if not (folder / n).is_file()]
 
@@ -119,7 +128,7 @@ def load(folder: Path) -> AppmsData:
     meds = [Medication(medication_record_id=r["medication_record_id"], patient_id=r["patient_id"],
                        drug_name=r["drug_name"], strength=r["strength"], route=r["route"],
                        indication=r["indication"], frequency=r["frequency"],
-                       duration_days=int(r["duration_days"]))
+                       duration_days=int(r["duration_days"]), start_date=_date(r.get("start_date_synthetic", "")))
             for r in _rows(folder / FILES["medications"])]
     scen = []
     for r in _rows(folder / FILES["scenarios"]):

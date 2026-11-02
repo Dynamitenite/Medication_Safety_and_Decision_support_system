@@ -1,22 +1,22 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, NavLink, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
-import { List, MagnifyingGlass, Moon, Pill, Sun, X } from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
+import { List, SignIn, SignOut, X } from "@phosphor-icons/react";
 import { ComingSoon } from "../features/aakaash/pages/ComingSoon";
+import { Account } from "../features/aakaash/pages/Account";
+import { Alternatives } from "../features/aakaash/pages/Alternatives";
 import { DataMethods } from "../features/aakaash/pages/DataMethods";
+import { History } from "../features/aakaash/pages/History";
 import { LabelPage } from "../features/aakaash/pages/LabelPage";
+import { Login } from "../features/aakaash/pages/Login";
 import { MedicinePage } from "../features/aakaash/pages/MedicinePage";
+import { Menu, MENU_ICONS } from "../features/aakaash/pages/Menu";
+import { Profile } from "../features/aakaash/pages/Profile";
 import { Trace } from "../features/aakaash/pages/Trace";
+import { AuthProvider, RequireAuth, useAuth } from "../features/aakaash/auth/AuthContext";
 import { Disclaimer } from "../features/aakaash/components/Disclaimer";
-import { MODULE_COMPONENTS, modulePath, SCREENS } from "../features/aakaash/registry";
-import { StatusProvider, useStatus } from "../features/aakaash/StatusContext";
-import { Sticker } from "../features/aakaash/components/Sticker";
-import { applyTheme, readTheme, type Theme } from "./theme";
-
-const ICONS: Record<string, Icon> = {
-  home: MagnifyingGlass,
-  checker: Pill,
-};
+import { MENU, MODULE_COMPONENTS, SCREENS } from "../features/aakaash/registry";
+import { StatusProvider } from "../features/aakaash/StatusContext";
+import { ThemeToggle } from "./ThemeToggle";
 
 /** Screens whose tables and charts use the full width; the others are text pages. */
 const WIDE_PATHS = new Set(["/about/data", "/about/trace"]);
@@ -27,81 +27,79 @@ function ModuleRoute() {
   return Custom ? <Custom /> : <ComingSoon id={id} />;
 }
 
-function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>(readTheme);
-  const next: Theme = theme === "dark" ? "light" : "dark";
-  const Glyph = next === "dark" ? Moon : Sun;
-  return (
-    <button
-      type="button"
-      className="btn btn-secondary theme-toggle"
-      onClick={() => {
-        applyTheme(next);
-        setTheme(next);
-      }}
-    >
-      <Glyph size={16} />
-      {next === "dark" ? "Dark theme" : "Light theme"}
-    </button>
-  );
-}
-
 function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const q = useStatus();
+  const auth = useAuth();
+  const navigate = useNavigate();
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (open) closeRef.current?.focus();
   }, [open]);
   const link = ({ isActive }: { isActive: boolean }) => (isActive ? "nav-link nav-active active font-nav" : "nav-link font-nav");
-  const soonLink = ({ isActive }: { isActive: boolean }) => (isActive ? "nav-link nav-soon nav-active active" : "nav-link nav-soon");
+  const plainLink = ({ isActive }: { isActive: boolean }) => (isActive ? "nav-link nav-active active" : "nav-link");
+  async function logOut() {
+    await auth.signOut();
+    navigate("/login", { replace: true });
+  }
   return (
     <aside className={open ? "sidebar open" : "sidebar"} id="navigation" aria-label="Navigation">
       <div className="sidebar-head">
         <div>
-          <div className="sidebar-title">Medication Safety Support</div>
+          <Link to="/" className="sidebar-title">Medication Safety Support</Link>
         </div>
         <button ref={closeRef} type="button" className="btn btn-plain btn-icon btn-sm mobile-only" aria-label="Close menu" onClick={onClose}>
           <X size={18} />
         </button>
       </div>
       <nav className="sidebar-nav" aria-label="Main">
-        <ul>
-          {SCREENS.map((s) => {
-            const Glyph = ICONS[s.id];
-            return (
-              <li key={s.id}>
-                <NavLink to={s.path} end={s.path === "/"} className={link}>
-                  {Glyph && <Glyph size={18} aria-hidden="true" />}
-                  {s.label}
-                </NavLink>
-              </li>
-            );
-          })}
-        </ul>
-        {q.data && q.data.modules.length > 0 && (
-          <>
-            <h2 className="nav-heading font-nav">Coming soon</h2>
-            <ul>
-              {q.data.modules.map((m) => (
+        {auth.user ? (
+          <ul>
+            {MENU.map((m) => {
+              const Glyph = MENU_ICONS[m.id];
+              return (
                 <li key={m.id}>
-                  <NavLink to={modulePath(m.id)} className={soonLink}>
-                    <span>{m.label}</span>
-                    <Sticker>Soon</Sticker>
+                  <NavLink to={m.path} className={link}>
+                    <Glyph size={18} aria-hidden="true" />
+                    {m.label}
                   </NavLink>
                 </li>
-              ))}
-            </ul>
-          </>
+              );
+            })}
+          </ul>
+        ) : (
+          <ul>
+            <li>
+              <NavLink to="/login" className={link}>
+                <SignIn size={18} aria-hidden="true" />
+                Sign in
+              </NavLink>
+            </li>
+          </ul>
         )}
       </nav>
       <div className="sidebar-foot">
+        {auth.user && (
+          <div className="account-menu">
+            <div className="account-email small muted" title={auth.user.email}>
+              {auth.user.email}
+            </div>
+            <NavLink to="/account" className={plainLink}>
+              Account settings
+            </NavLink>
+            <button type="button" className="nav-link nav-button" onClick={logOut}>
+              <SignOut size={18} aria-hidden="true" />
+              Log out
+            </button>
+          </div>
+        )}
         <ThemeToggle />
       </div>
     </aside>
   );
 }
 
-export function App() {
+const guard = (page: ReactNode) => <RequireAuth>{page}</RequireAuth>;
+
+function Shell() {
   const [drawer, setDrawer] = useState(false);
   const { pathname } = useLocation();
   useEffect(() => setDrawer(false), [pathname]);
@@ -128,17 +126,22 @@ export function App() {
           </header>
           <main className={WIDE_PATHS.has(pathname) ? "content wide" : "content"} id="main" tabIndex={-1}>
             <Routes>
+              <Route path="/" element={guard(<Menu />)} />
+              <Route path="/profile" element={guard(<Profile />)} />
+              <Route path="/history" element={guard(<History />)} />
+              <Route path="/alternatives" element={guard(<Alternatives />)} />
+              <Route path="/account" element={guard(<Account />)} />
               {SCREENS.map((s) => (
-                <Route key={s.id} path={s.path} element={<s.Component />} />
+                <Route key={s.id} path={s.path} element={guard(<s.Component />)} />
               ))}
               <Route path="/about/data" element={<DataMethods />} />
               <Route path="/about/trace" element={<Trace />} />
               <Route path="/about" element={<Navigate to="/about/data" replace />} />
               <Route path="/dashboard" element={<Navigate to="/about/data" replace />} />
               <Route path="/trace" element={<Navigate to="/about/trace" replace />} />
-              <Route path="/medicine/:id" element={<MedicinePage />} />
-              <Route path="/label/:setId" element={<LabelPage />} />
-              <Route path="/modules/:id" element={<ModuleRoute />} />
+              <Route path="/medicine/:id" element={guard(<MedicinePage />)} />
+              <Route path="/label/:setId" element={guard(<LabelPage />)} />
+              <Route path="/modules/:id" element={guard(<ModuleRoute />)} />
               <Route path="*" element={<><h1>Page not found</h1><p>Use the menu to go to a screen.</p></>} />
             </Routes>
           </main>
@@ -149,5 +152,16 @@ export function App() {
         </div>
       </div>
     </StatusProvider>
+  );
+}
+
+export function App() {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="*" element={<Shell />} />
+      </Routes>
+    </AuthProvider>
   );
 }

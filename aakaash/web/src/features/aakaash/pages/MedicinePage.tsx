@@ -308,7 +308,7 @@ function BrandPage({ id }: { id: string }) {
   return (
     <>
       <p className="small">
-        <Link to="/">← Back to search</Link>
+        <Link to="/search">← Back to search</Link>
       </p>
       <div className="brand-head">
         <h1>{b.name}</h1>

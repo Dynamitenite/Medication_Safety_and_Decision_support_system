@@ -92,7 +92,7 @@ export function LabelPage() {
   return (
     <>
       <p className="small">
-        <Link to="/">← Back to search</Link>
+        <Link to="/search">← Back to search</Link>
       </p>
       {head}
       <section className="card" aria-labelledby="label-h">

@@ -21,7 +21,7 @@ const REQUIREMENTS: { id: string; text: string; where: string; use: string }[] =
     id: "R3",
     text: "Privacy and security matter.",
     where: "§V-A",
-    use: "This app stores no patient data on the server: the medicine list travels in the request body and there is no database.",
+    use: "Accounts are kept in a local SQLite database file on the server (aakaash/artifacts/app.db, never committed). Passwords are stored only as argon2id hashes. A sign-in is a random token in an httpOnly, SameSite=Lax cookie, signed with SESSION_SECRET; the server keeps only a hash of the token. Sign-in attempts are rate-limited inside the server process (5 failures in 15 minutes per email and address; this resets on restart). Every personal endpoint reads and writes only the signed-in person's rows, and Delete my data removes the account and all of its rows. The checker does not save the medicines sent to it. This is a prototype-grade store: no encryption at rest, no email verification and no password reset.",
   },
   {
     id: "R4",
@@ -57,7 +57,7 @@ export function Background() {
 
       <section className="card">
         <h2>Architecture</h2>
-        <p>The team's six-stage design. This app covers the stages marked below; the patient profile travels in the request body.</p>
+        <p>The team's six-stage design. This app covers the stages marked below; signed-in people keep a profile and medical history in the local database (see requirement R3 above); the checker itself receives its medicine list in the request body.</p>
         {q.state === "loading" && !q.data && <LoadingBox what="stages" />}
         {q.state === "error" && <ErrorBox message={q.message} onRetry={q.reload} />}
         {q.data && (
@@ -105,7 +105,7 @@ export function Background() {
         <h2>Future work</h2>
         <ul>
           <li>HL7 FHIR interoperability (baseline review §VII-B).</li>
-          <li>User accounts and login, a database, and deployment.</li>
+          <li>Deployment, a production database, encryption at rest, email verification and password reset for the accounts.</li>
           <li>A transformer encoder for retrieval, and a BioBERT-based interaction model trained with Focal Loss, with Integrated Gradients for explanation.</li>
         </ul>
       </section>
