@@ -2,27 +2,21 @@ import { api } from "../api";
 import { DdiExamplesPanel, DdiStatsPanel } from "../components/DdiPanels";
 import { DailyMedPanel, TacPanel } from "../components/LabelStatsPanels";
 import { ErrorBox, LoadingBox } from "../components/Panel";
-import { StatusCard } from "../components/StatusCard";
+import { StatusTable } from "../components/StatusTable";
 import { useStatus } from "../StatusContext";
 import { useApi } from "../useApi";
 
 function SystemStatus() {
   const q = useStatus();
   return (
-    <section className="panel" aria-labelledby="system-status-h">
+    <section className="card" aria-labelledby="system-status-h">
       <h2 id="system-status-h">System status</h2>
-      <p className="muted panel-hint">
-        Straight from <code>/api/status</code>: a component is ready only when its files exist on disk.
-      </p>
+      <p className="panel-hint">A component is ready only when its files exist on disk.</p>
       {q.state === "loading" && !q.data && <LoadingBox what="system status" />}
       {q.state === "error" && <ErrorBox message={q.message} onRetry={q.reload} />}
       {q.data && (
         <>
-          <div className="grid cards">
-            {q.data.components.map((c) => (
-              <StatusCard key={c.id} c={c} />
-            ))}
-          </div>
+          <StatusTable components={q.data.components} />
           <p className="small muted">
             Configured encoder: <strong>{q.data.active_encoder}</strong> · configured interaction classifier:{" "}
             <strong>{q.data.active_classifier}</strong> · data folder: <code>{q.data.data_dir}</code>

@@ -3,6 +3,7 @@ import { api, type DDIStatsResponse } from "../api";
 import { useApi, type Query } from "../useApi";
 import { ClassDistributionChart } from "./ClassDistributionChart";
 import { fmt, Panel } from "./Panel";
+import { Sticker } from "./Sticker";
 
 const ratio = (v: number | null | undefined) => (v == null ? "n/a" : v.toFixed(2));
 
@@ -17,11 +18,11 @@ function CountsTable({ stats }: { stats: DDIStatsResponse }) {
         </caption>
         <thead>
           <tr>
-            <th scope="col">class</th>
-            <th scope="col" className="num">train</th>
-            <th scope="col" className="num">dev</th>
-            <th scope="col" className="num">test</th>
-            <th scope="col" className="num">false : class (train)</th>
+            <th scope="col">Class</th>
+            <th scope="col" className="num">Train</th>
+            <th scope="col" className="num">Dev</th>
+            <th scope="col" className="num">Test</th>
+            <th scope="col" className="num">False : class (train)</th>
             <th scope="col" className="num">(dev)</th>
             <th scope="col" className="num">(test)</th>
           </tr>
@@ -39,7 +40,7 @@ function CountsTable({ stats }: { stats: DDIStatsResponse }) {
             </tr>
           ))}
           <tr className="total">
-            <th scope="row">total</th>
+            <th scope="row">Total</th>
             {(["train", "dev", "test"] as const).map((s) => (
               <td className="num" key={s}>{fmt(by[s]?.instances)}</td>
             ))}
@@ -60,7 +61,7 @@ function ParserTable({ stats }: { stats: DDIStatsResponse }) {
         <table>
           <thead>
             <tr>
-              <th scope="col">count</th>
+              <th scope="col">Count</th>
               {stats.parser.map((p) => (
                 <th key={p.split} scope="col" className="num">{p.split === "train_all" ? "train (incl. dev)" : p.split}</th>
               ))}
@@ -69,7 +70,7 @@ function ParserTable({ stats }: { stats: DDIStatsResponse }) {
           <tbody>
             {keys.map((k) => (
               <tr key={k}>
-                <th scope="row">{k.replace(/_/g, " ")}</th>
+                <th scope="row">{k.replace(/_/g, " ").replace(/^./, (ch) => ch.toUpperCase())}</th>
                 {stats.parser.map((p) => (
                   <td key={p.split} className="num">{fmt(p.counts[k] ?? 0)}</td>
                 ))}
@@ -160,7 +161,7 @@ export function DdiExamplesPanel({ labels }: { labels: string[] }) {
             {d.examples.map((e) => (
               <li key={e.pair_id}>
                 <div className="example-meta">
-                  <span className="badge badge-label">{e.label}</span>
+                  <Sticker>{e.label}</Sticker>
                   <span className="muted small">{e.source} · {e.pair_id}</span>
                 </div>
                 <MarkedText text={e.marked_text} />

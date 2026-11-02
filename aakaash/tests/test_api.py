@@ -2,6 +2,7 @@
 # hand-written to exercise code paths. None of it is real DDI 2013 / TAC 2017 / DailyMed data,
 # and none of it may appear in the UI. These tests prove the API plumbing, not data quality.
 import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -254,3 +255,49 @@ def test_trace_missing_file(dirs, tmp_path):
     finally:
         app.dependency_overrides.clear()
     assert r["status"] == "not_ready" and r["rows"] == []
+
+
+# ---- absolute paths never leave the server ----------------------------------------------
+ABS_PATH = re.compile(r"[A-Za-z]:[\\/]|^/(tmp|home|Users|var)/", re.M)
+
+
+def _strings(node):
+    if isinstance(node, str):
+        yield node
+    elif isinstance(node, dict):
+        for v in node.values():
+            yield from _strings(v)
+    elif isinstance(node, list):
+        for v in node:
+            yield from _strings(v)
+
+
+def test_no_absolute_paths_in_api_messages(client, dirs):
+    data, art = dirs
+    (data / "dailymed_rx").mkdir()
+    with zipfile.ZipFile(data / "dailymed_rx" / "fixture_part.zip", "w") as zf:
+        zf.writestr("a.txt", "fixture")
+    bodies = [client.get(p).json() for p in (
+        "/api/status", "/api/datasets/ddi2013/stats", "/api/datasets/ddi2013/examples",
+        "/api/datasets/dailymed/stats", "/api/datasets/tac2017/stats", "/api/trace")]
+    (art / "dailymed_stats.json").write_text("{not json")
+    bodies.append(client.get("/api/datasets/dailymed/stats").json())
+    for body in bodies:
+        for s in _strings(body):
+            assert str(data) not in s and str(art) not in s and not ABS_PATH.search(s), s
+    status = bodies[0]
+    assert status["data_dir"] == "data"
+    index = {c["id"]: c for c in status["components"]}["index"]
+    assert "aakaash/artifacts/index/manifest.json" in index["reason"]
+    assert "Phase" not in json.dumps(status)
+
+
+def test_settings_display_and_scrub(dirs, tmp_path):
+    data, art = dirs
+    s = Settings(data_dir=data, artifacts_dir=art, trace_path=tmp_path / "PAPER_TRACE.md",
+                 encoder_name="tfidf", classifier_name="linear_baseline")
+    assert s.display(data / "tac2017") == "data/tac2017"
+    assert s.display(art / "index" / "manifest.json") == "aakaash/artifacts/index/manifest.json"
+    assert s.display(Path("C:/elsewhere/secret/file.txt")) == "file.txt"
+    assert str(tmp_path) not in s.scrub(f"[Errno 2] No such file: '{art / 'x.json'}' in {data}")
+    assert "C:" not in s.scrub(r"failed at C:\Users\someone\thing.json now")

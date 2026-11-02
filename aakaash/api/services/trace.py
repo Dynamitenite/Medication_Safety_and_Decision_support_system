@@ -70,7 +70,7 @@ def parse_trace(text: str) -> tuple[list[TraceRow], list[str], list[str]]:
 def get_trace(settings: Settings) -> TraceResponse:
     path = settings.trace_path
     if not path.is_file():
-        return TraceResponse(status="not_ready", reason=f"{path} does not exist.",
+        return TraceResponse(status="not_ready", reason=f"{settings.display(path)} does not exist.",
                              fix="Restore aakaash/PAPER_TRACE.md.")
     rows, malformed, preamble = parse_trace(path.read_text(encoding="utf-8"))
     return TraceResponse(

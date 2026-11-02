@@ -1,5 +1,6 @@
 import { useParams } from "react-router-dom";
-import { ErrorBox, LoadingBox, StatusBadge } from "../components/Panel";
+import { ErrorBox, LoadingBox } from "../components/Panel";
+import { Sticker } from "../components/Sticker";
 import { useStatus } from "../StatusContext";
 
 /** Name, stage, "Coming soon", owner. Nothing else: no sample data, no mock output. */
@@ -20,27 +21,28 @@ export function ComingSoon({ id: idProp }: { id?: string }) {
   return (
     <>
       <h1>{m.label}</h1>
-      <section className="panel coming-soon">
-        <p>
-          <StatusBadge status="coming_soon" />
-        </p>
-        <dl className="kv">
-          <div>
-            <dt>{m.stages.length > 1 ? "Architecture stages" : "Architecture stage"}</dt>
-            <dd>
-              {m.stages.map((n, i) => (
-                <span key={n}>
-                  {i > 0 && " · "}Stage {n}: {m.stage_names[i]}
-                </span>
-              ))}
-            </dd>
-          </div>
-          <div>
-            <dt>Owner</dt>
-            <dd>{m.owner}</dd>
-          </div>
-        </dl>
-      </section>
+      <p>
+        <Sticker>Coming soon</Sticker>
+      </p>
+      <p>This module is not built yet. Owner: {m.owner}.</p>
+      <div className="table-wrap coming-table">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Stage</th>
+              <th scope="col">Owner</th>
+            </tr>
+          </thead>
+          <tbody>
+            {m.stages.map((n, i) => (
+              <tr key={n}>
+                <td>Stage {n}: {m.stage_names[i]}</td>
+                <td>{m.owner}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }

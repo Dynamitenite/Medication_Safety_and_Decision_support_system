@@ -1,4 +1,5 @@
 import { ErrorBox, LoadingBox } from "../components/Panel";
+import { Sticker } from "../components/Sticker";
 import { useStatus } from "../StatusContext";
 
 const FROM_REVIEW = "FROM BASELINE REVIEW (ICMLAS 2025)";
@@ -41,12 +42,12 @@ export function About() {
   return (
     <>
       <h1>About</h1>
-      <p className="notice notice-warn" role="note">
+      <p className="notice" role="note">
         <strong>Research prototype. Decision support only. Not medical advice.</strong> Nothing here replaces the judgement of a
         pharmacist or doctor.
       </p>
 
-      <section className="panel">
+      <section className="card">
         <h2>What this is</h2>
         <p>
           A prototype for two subareas of the project “AI-Powered Personalized Medication Safety &amp; Decision Support System”
@@ -59,7 +60,7 @@ export function About() {
         <p>The data are DailyMed prescription labels, the DDI Extraction 2013 corpus and TAC 2017 labels. The Dashboard shows what is actually loaded.</p>
       </section>
 
-      <section className="panel">
+      <section className="card">
         <h2>Architecture</h2>
         <p>The team's six-stage design. This app covers the stages marked below; the patient profile travels in the request body.</p>
         {q.state === "loading" && !q.data && <LoadingBox what="stages" />}
@@ -68,26 +69,26 @@ export function About() {
           <ol className="stages">
             {q.data.stages.map((s) => (
               <li key={s.number} className={s.in_scope ? "in-scope" : ""}>
-                <span className="stage-no">Stage {s.number}</span> {s.name}
-                <span className={`badge ${s.in_scope ? "badge-ok" : "badge-label"}`}>{s.in_scope ? "covered here" : "not covered here"}</span>
+                <span className="stage-no">Stage {s.number}</span> <span className="stage-name">{s.name}</span>
+                {s.in_scope ? <Sticker>Covered here</Sticker> : <span className="muted small">Not covered here</span>}
               </li>
             ))}
           </ol>
         )}
       </section>
 
-      <section className="panel">
+      <section className="card">
         <h2>Baseline paper and the requirements taken from it</h2>
         <p>
           Yesankar, Puri and Gote, “AI-Powered Clinical Decision Support Systems (CDSS): Challenges, Benefits, Applications, and Future
           Directions,” ICMLAS 2025, DOI 10.1109/ICMLAS64557.2025.10969014. It is a <strong>review paper and contains no software
           architecture</strong>, so this app does not claim to follow one from it. Only five generic requirements are taken, labelled{" "}
-          <span className="badge cat-baseline">{FROM_REVIEW}</span>:
+          <Sticker>{FROM_REVIEW}</Sticker>:
         </p>
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th scope="col">#</th><th scope="col">Requirement</th><th scope="col">Where in the paper</th><th scope="col">How this prototype uses it</th></tr>
+              <tr><th scope="col">No.</th><th scope="col">Requirement</th><th scope="col">Where in the paper</th><th scope="col">How this prototype uses it</th></tr>
             </thead>
             <tbody>
               {REQUIREMENTS.map((r) => (
@@ -104,7 +105,7 @@ export function About() {
         <p className="small muted">No reference from that paper's own reference list is cited.</p>
       </section>
 
-      <section className="panel">
+      <section className="card">
         <h2>Limitations</h2>
         <ul>
           <li><strong>No patient data is stored on the server.</strong> There is no database and no login; a profile exists only in the request that carries it (requirement R3).</li>
@@ -116,7 +117,7 @@ export function About() {
         </ul>
       </section>
 
-      <section className="panel">
+      <section className="card">
         <h2>Future work</h2>
         <ul>
           <li>HL7 FHIR interoperability (baseline review §VII-B).</li>

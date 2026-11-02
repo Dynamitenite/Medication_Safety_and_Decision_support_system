@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,6 +19,31 @@ class Settings:
     trace_path: Path
     encoder_name: str
     classifier_name: str
+
+    def _roots(self) -> list[tuple[Path, str]]:
+        """Known absolute locations and the repo-relative name shown instead, longest first."""
+        roots = [(self.trace_path, "aakaash/PAPER_TRACE.md"),
+                 (self.artifacts_dir, "aakaash/artifacts"),
+                 (self.data_dir, "data"),
+                 (REPO_ROOT, "")]
+        return sorted(roots, key=lambda r: len(str(r[0])), reverse=True)
+
+    def display(self, path: Path) -> str:
+        """Repo-relative form of a path (data/tac2017). Absolute paths never leave the server."""
+        for root, shown in self._roots():
+            try:
+                rel = Path(path).relative_to(root).as_posix()
+            except ValueError:
+                continue
+            return "/".join(p for p in (shown, "" if rel == "." else rel) if p)
+        return Path(path).name
+
+    def scrub(self, text: str) -> str:
+        """Replace absolute paths inside free text (for example exception messages)."""
+        for root, shown in self._roots():
+            for form in {str(root), root.as_posix(), str(root).replace("\\", "\\\\")}:
+                text = text.replace(form, shown or ".")
+        return re.sub(r"[A-Za-z]:[\\/][^\s'\"]*", "<path>", text)
 
 
 def get_settings() -> Settings:

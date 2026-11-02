@@ -1,3 +1,4 @@
+import { BaselineLabel } from "../components/BaselineLabel";
 import { NeedsPage } from "../components/NeedsPage";
 import { useStatus } from "../StatusContext";
 
@@ -6,7 +7,6 @@ export function MedicineInfo() {
   return (
     <NeedsPage
       title="Medicine Info"
-      plannedIn="Phase 3"
       needs={["dailymed_data", "encoder", "index"]}
       intro={
         <>
@@ -24,6 +24,7 @@ export function MedicineInfo() {
               not “same drug”. Alternatives are informational; a professional confirms any substitution.
             </li>
           </ul>
+          {enc === "tfidf" && <BaselineLabel text="Baseline encoder: TF-IDF (cosine similarity, not deep learning)" />}
         </>
       }
     />
@@ -35,7 +36,6 @@ export function InteractionRisk() {
   return (
     <NeedsPage
       title="Interaction Risk"
-      plannedIn="Phase 4"
       needs={["ddi_data", "ddi_model"]}
       intro={
         <>
@@ -57,7 +57,6 @@ export function PersonalizedAlert() {
   return (
     <NeedsPage
       title="Personalized Alert"
-      plannedIn="Phase 5"
       needs={["dailymed_data", "index", "ddi_model"]}
       intro={
         <>

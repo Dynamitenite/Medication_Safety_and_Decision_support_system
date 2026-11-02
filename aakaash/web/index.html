@@ -1,10 +1,20 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f6f7" />
     <link rel="icon" href="data:," />
     <title>Medication Safety Support: research prototype</title>
+    <script>
+      (function () {
+        var t = "light";
+        try { if (localStorage.getItem("medsafe.theme") === "dark") t = "dark"; } catch (e) {}
+        document.documentElement.dataset.theme = t;
+        var m = document.querySelector('meta[name="theme-color"]');
+        if (m) m.setAttribute("content", t === "dark" ? "#121212" : "#f6f6f7");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

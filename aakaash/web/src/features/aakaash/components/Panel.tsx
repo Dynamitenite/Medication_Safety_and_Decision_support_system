@@ -1,17 +1,19 @@
 import type { ReactNode } from "react";
 import type { Readiness } from "../api";
 import type { Query } from "../useApi";
+import { Sticker } from "./Sticker";
 
 export function NotReadyBox({ reason, fix, title }: { reason?: string | null; fix?: string | null; title?: string }) {
   return (
-    <div className="notice notice-warn" role="status">
+    <div className="notice" role="status">
       <div className="notice-title">
-        <span aria-hidden="true">⚠</span> {title ?? "Not ready"}
+        <Sticker>Not ready</Sticker>
+        {title}
       </div>
       {reason && <p>{reason}</p>}
       {fix && (
         <p className="muted">
-          <strong>To fix:</strong> {fix}
+          <strong>What is needed:</strong> {fix}
         </p>
       )}
     </div>
@@ -30,11 +32,12 @@ export function ErrorBox({ message, onRetry }: { message?: string; onRetry?: () 
   return (
     <div className="notice notice-error" role="alert">
       <div className="notice-title">
-        <span aria-hidden="true">✕</span> Could not load
+        <Sticker tone="danger">Error</Sticker>
+        The request failed.
       </div>
       <p>{message}</p>
       {onRetry && (
-        <button type="button" className="btn" onClick={onRetry}>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={onRetry}>
           Retry
         </button>
       )}
@@ -63,25 +66,17 @@ export function Panel<T extends Readiness>({
     body = <NotReadyBox reason={query.data.reason} fix={query.data.fix} />;
   else if (query.data) body = children(query.data);
   return (
-    <section className="panel" aria-labelledby={id ? `${id}-h` : undefined} id={id}>
+    <section className="card" aria-labelledby={id ? `${id}-h` : undefined} id={id}>
       <h2 id={id ? `${id}-h` : undefined}>{title}</h2>
-      {hint && <p className="muted panel-hint">{hint}</p>}
+      {hint && <p className="panel-hint">{hint}</p>}
       {body}
     </section>
   );
 }
 
 export function StatusBadge({ status }: { status: "ready" | "not_ready" | "coming_soon" }) {
-  const map = {
-    ready: { icon: "✓", text: "Ready", cls: "badge-ok" },
-    not_ready: { icon: "⚠", text: "Not ready", cls: "badge-warn" },
-    coming_soon: { icon: "◷", text: "Coming soon", cls: "badge-soon" },
-  }[status];
-  return (
-    <span className={`badge ${map.cls}`}>
-      <span aria-hidden="true">{map.icon}</span> {map.text}
-    </span>
-  );
+  if (status === "ready") return <Sticker tone="good">Ready</Sticker>;
+  return <Sticker>{status === "not_ready" ? "Not ready" : "Coming soon"}</Sticker>;
 }
 
 export function KeyValues({ items }: { items: [string, ReactNode][] }) {

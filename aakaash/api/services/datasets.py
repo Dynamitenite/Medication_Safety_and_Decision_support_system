@@ -74,7 +74,7 @@ def load_ddi(settings: Settings, dev_frac: float = 0.1, seed: int = 13) -> DDIDa
 
 def _ddi_not_ready(settings: Settings) -> dict:
     return {"status": "not_ready",
-            "reason": f"No .xml files found under {ddi_root(settings)}.",
+            "reason": f"No .xml files found under {settings.display(ddi_root(settings))}.",
             "fix": "Put the DDI Extraction 2013 corpus (the DDICorpus folder) in data/ddi2013."}
 
 
@@ -125,7 +125,7 @@ def dailymed_stats(settings: Settings) -> DailyMedStatsResponse:
     zips = dailymed_zips(settings)
     if not zips:
         return DailyMedStatsResponse(
-            status="not_ready", reason=f"No .zip files found in {folder}.",
+            status="not_ready", reason=f"No .zip files found in {settings.display(folder)}.",
             fix="Put the DailyMed human Rx label zips (dm_spl_release_human_rx_part*.zip) in "
                 "data/dailymed_rx.")
     infos = [ZipFileInfo(name=z.name, size_bytes=z.stat().st_size) for z in zips]
@@ -134,7 +134,7 @@ def dailymed_stats(settings: Settings) -> DailyMedStatsResponse:
         return DailyMedStatsResponse(
             status="not_ready", zip_files=infos,
             reason=f"{len(zips)} zip file(s) are present, but no label statistics have been "
-                   f"computed yet ({summary} is missing).",
+                   f"computed yet ({settings.display(summary)} is missing).",
             fix="From the aakaash folder run: .venv\Scripts\python.exe scripts\dailymed_stats.py "
                 "--max-labels-per-part 200 (sample) or without the cap (full).")
     try:
@@ -143,7 +143,8 @@ def dailymed_stats(settings: Settings) -> DailyMedStatsResponse:
     except (OSError, ValueError, ValidationError) as exc:
         return DailyMedStatsResponse(
             status="not_ready", zip_files=infos,
-            reason=f"{summary} could not be read: {type(exc).__name__}: {exc}",
+            reason=f"{settings.display(summary)} could not be read: "
+                   f"{type(exc).__name__}: {settings.scrub(str(exc))}",
             fix="Regenerate the statistics file.")
 
 
@@ -152,7 +153,7 @@ def tac_stats(settings: Settings) -> TacStatsResponse:
     folder = settings.data_dir / TAC_DIRNAME
     if not folder.is_dir() or next(folder.rglob("*.xml"), None) is None:
         return TacStatsResponse(
-            status="not_ready", reason=f"No .xml files found under {folder}.",
+            status="not_ready", reason=f"No .xml files found under {settings.display(folder)}.",
             fix="Put the TAC 2017 folders (train_xml, gold_xml, unannotated_xml) in data/tac2017.")
     s = tac2017.summarize(folder)
     return TacStatsResponse(

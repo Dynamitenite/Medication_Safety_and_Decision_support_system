@@ -2,6 +2,7 @@ import { Bar, BarChart, CartesianGrid, LabelList, ResponsiveContainer, Tooltip, 
 import { api } from "../api";
 import { useApi } from "../useApi";
 import { fmt, KeyValues, Panel } from "./Panel";
+import { Sticker } from "./Sticker";
 
 export function DailyMedPanel() {
   const q = useApi(api.dailymedStats);
@@ -9,7 +10,7 @@ export function DailyMedPanel() {
     <Panel
       id="dailymed"
       title="DailyMed prescription labels"
-      hint="Counts come from a real run of the project's label parser, written to a statistics file. The scope badge is the file's own."
+      hint="Counts come from a real run of the project's label parser, written to a statistics file. The scope label is the file's own."
       query={q}
     >
       {(d) => {
@@ -21,9 +22,7 @@ export function DailyMedPanel() {
         return (
           <>
             <p>
-              <span className={`badge badge-wrap ${d.is_sample ? "badge-warn" : "badge-ok"}`}>
-                <span aria-hidden="true">{d.is_sample ? "⚠" : "✓"}</span> {d.scope}
-              </span>
+              <Sticker tone={d.is_sample ? "neutral" : "good"} wrap>{d.scope}</Sticker>
             </p>
             <KeyValues
               items={[
@@ -44,12 +43,12 @@ export function DailyMedPanel() {
               <figcaption className="small muted">Labels containing each section</figcaption>
               <ResponsiveContainer width="100%" height={secRows.length * 34 + 24}>
                 <BarChart data={secRows} layout="vertical" margin={{ top: 4, right: 56, left: 8, bottom: 4 }}>
-                  <CartesianGrid horizontal={false} stroke="var(--grid)" />
+                  <CartesianGrid horizontal={false} stroke="rgb(var(--c-line))" />
                   <XAxis type="number" hide domain={[0, "dataMax"]} />
-                  <YAxis type="category" dataKey="section" width={150} tickLine={false} axisLine={false} tick={{ fill: "var(--text-muted)", fontSize: 13 }} />
-                  <Tooltip formatter={(v: number) => v.toLocaleString("en-US")} cursor={{ fill: "var(--hover)" }} />
-                  <Bar dataKey="labels" fill="var(--series-1)" maxBarSize={18} radius={[0, 4, 4, 0]} isAnimationActive={false}>
-                    <LabelList dataKey="labels" position="right" formatter={(v: number) => v.toLocaleString("en-US")} fill="var(--text)" fontSize={12} />
+                  <YAxis type="category" dataKey="section" width={150} tickLine={false} axisLine={false} tick={{ fill: "rgb(var(--c-muted))", fontSize: 13 }} />
+                  <Tooltip formatter={(v: number) => v.toLocaleString("en-US")} cursor={{ fill: "rgb(var(--c-text) / 0.06)" }} />
+                  <Bar dataKey="labels" fill="var(--chart-mechanism)" maxBarSize={18} radius={[0, 4, 4, 0]} isAnimationActive={false}>
+                    <LabelList dataKey="labels" position="right" formatter={(v: number) => v.toLocaleString("en-US")} fill="rgb(var(--c-text))" fontSize={12} />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -58,7 +57,7 @@ export function DailyMedPanel() {
               <table>
                 <caption>Section counts (table view of the chart)</caption>
                 <thead>
-                  <tr><th scope="col">section</th><th scope="col" className="num">labels with section</th><th scope="col" className="num">chunks</th></tr>
+                  <tr><th scope="col">Section</th><th scope="col" className="num">Labels with section</th><th scope="col" className="num">Chunks</th></tr>
                 </thead>
                 <tbody>
                   {secRows.map((r) => (

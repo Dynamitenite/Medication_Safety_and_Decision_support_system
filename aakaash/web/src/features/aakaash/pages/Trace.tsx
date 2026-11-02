@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { api, type TraceRow } from "../api";
 import { Panel } from "../components/Panel";
+import { Sticker, type StickerTone } from "../components/Sticker";
 import { useApi } from "../useApi";
 
 const CATEGORY_LABEL: Record<TraceRow["category"], string> = {
@@ -9,11 +10,17 @@ const CATEGORY_LABEL: Record<TraceRow["category"], string> = {
   not_in_papers: "NOT IN PAPERS",
   unclassified: "Unclassified",
 };
-const CATEGORY_CLASS: Record<TraceRow["category"], string> = {
-  from_papers: "cat-papers",
-  from_baseline_review: "cat-baseline",
-  not_in_papers: "cat-not",
-  unclassified: "cat-unknown",
+const CATEGORY_TONE: Record<TraceRow["category"], StickerTone> = {
+  from_papers: "neutral",
+  from_baseline_review: "neutral",
+  not_in_papers: "neutral",
+  unclassified: "danger",
+};
+const STATUS_TONE: Record<TraceRow["status_kind"], StickerTone> = {
+  untested: "neutral",
+  ran: "neutral",
+  verified: "good",
+  unknown: "danger",
 };
 const STATUS_LABEL: Record<TraceRow["status_kind"], string> = {
   untested: "UNTESTED",
@@ -21,7 +28,6 @@ const STATUS_LABEL: Record<TraceRow["status_kind"], string> = {
   verified: "VERIFIED",
   unknown: "Unknown",
 };
-const STATUS_ICON: Record<TraceRow["status_kind"], string> = { untested: "○", ran: "▶", verified: "✓", unknown: "?" };
 
 export function Trace() {
   const q = useApi(api.trace);
@@ -51,18 +57,18 @@ export function Trace() {
           <>
             <div className="chips" role="group" aria-label="Summary">
               {Object.entries(d.counts_by_category).map(([k, v]) => (
-                <span key={k} className={`badge ${CATEGORY_CLASS[k as TraceRow["category"]]}`}>
+                <Sticker key={k} tone={CATEGORY_TONE[k as TraceRow["category"]]}>
                   {CATEGORY_LABEL[k as TraceRow["category"]]}: {v}
-                </span>
+                </Sticker>
               ))}
               {Object.entries(d.counts_by_status).map(([k, v]) => (
-                <span key={k} className="badge badge-label">
+                <Sticker key={k} tone={STATUS_TONE[k as TraceRow["status_kind"]]}>
                   {STATUS_LABEL[k as TraceRow["status_kind"]]}: {v}
-                </span>
+                </Sticker>
               ))}
             </div>
             {d.malformed_rows.length > 0 && (
-              <div className="notice notice-warn">
+              <div className="notice">
                 {d.malformed_rows.length} table row(s) in PAPER_TRACE.md did not fit the expected five columns and are not shown.
               </div>
             )}
@@ -70,7 +76,7 @@ export function Trace() {
               <label>
                 Source{" "}
                 <select value={cat} onChange={(e) => setCat(e.target.value)}>
-                  <option value="all">all</option>
+                  <option value="all">All</option>
                   {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
                     <option key={k} value={k}>{v}</option>
                   ))}
@@ -79,7 +85,7 @@ export function Trace() {
               <label>
                 Status{" "}
                 <select value={st} onChange={(e) => setSt(e.target.value)}>
-                  <option value="all">all</option>
+                  <option value="all">All</option>
                   {Object.entries(STATUS_LABEL).map(([k, v]) => (
                     <option key={k} value={k}>{v}</option>
                   ))}
@@ -108,14 +114,12 @@ export function Trace() {
                         <div className="small muted"><code>{r.file}</code></div>
                       </th>
                       <td>
-                        <span className={`badge ${CATEGORY_CLASS[r.category]}`}>{CATEGORY_LABEL[r.category]}</span>
+                        <Sticker tone={CATEGORY_TONE[r.category]}>{CATEGORY_LABEL[r.category]}</Sticker>
                         <div className="small">{r.source}</div>
                       </td>
                       <td className="small">{r.note || "–"}</td>
                       <td>
-                        <span className={`badge status-${r.status_kind}`}>
-                          <span aria-hidden="true">{STATUS_ICON[r.status_kind]}</span> {STATUS_LABEL[r.status_kind]}
-                        </span>
+                        <Sticker tone={STATUS_TONE[r.status_kind]}>{STATUS_LABEL[r.status_kind]}</Sticker>
                         {r.status && <div className="small muted">{r.status}</div>}
                       </td>
                     </tr>
