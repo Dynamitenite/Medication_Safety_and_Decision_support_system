@@ -18,7 +18,7 @@ const TONE_TEXT: Record<Tone, string> = {
   critical: "Critical",
   high: "High",
   moderate: "Moderate",
-  none: "Not flagged by APPMS",
+  none: "No rule matched",
 };
 
 function pairTone(p: PairResult): Tone {
@@ -54,8 +54,8 @@ function PairCard({ p }: { p: PairResult }) {
         </span>
       </button>
       <div id={id} className="pair-body" hidden={!open}>
-        <section aria-label="APPMS rule lookup">
-          <h3>APPMS rule lookup</h3>
+        <section aria-label="Interaction rules">
+          <h3>Interaction rules</h3>
           <p className="small muted">{p.appms.source_label}</p>
           {p.appms.status === "not_ready" ? (
             <NotReadyBox reason={p.appms.reason} fix={p.appms.fix} />
@@ -213,13 +213,13 @@ export function Checker() {
             {result.data.appms.status === "not_ready" && (
               <div className="notice" role="status">
                 <div className="notice-title">
-                  <Sticker>Not ready</Sticker>APPMS rule lookup ({result.data.appms.source_label})
+                  <Sticker>Not ready</Sticker>{result.data.appms.source_label}
                 </div>
                 <p>{result.data.appms.reason}</p>
                 <p className="muted">
                   <strong>What is needed:</strong> {result.data.appms.fix}
                 </p>
-                <p className="small muted">So no pair is flagged by APPMS. Only the label text match below is available.</p>
+                <p className="small muted">So no pair is flagged by a rule. Only the label text match below is available.</p>
               </div>
             )}
             <ul className="pair-list">

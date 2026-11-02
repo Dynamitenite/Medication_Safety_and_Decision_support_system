@@ -391,3 +391,19 @@ mark.find-hit.current { background: rgb(var(--c-accent) / 0.55); }
   .label-body { max-height: 28rem; }
 }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+/* Interaction rules summary, patient picker, footer */
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+.stat-card { background: rgb(var(--c-raised)); border-radius: 8px; padding: 10px 12px; box-shadow: 0 0 0 1px rgb(var(--c-line)); }
+.stat-card dt { font-size: 0.8125rem; color: rgb(var(--c-muted)); }
+.stat-card dd { margin: 2px 0 0; font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+.picker-search { display: flex; align-items: center; gap: 8px; }
+.picker-search input { flex: 1; min-width: 0; }
+.picker-list { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 6px; }
+.picker-row { width: 100%; text-align: left; font: inherit; display: flex; flex-direction: column; gap: 2px; padding: 8px 12px; border: 0; border-radius: 8px; background: rgb(var(--c-raised)); color: rgb(var(--c-text)); box-shadow: 0 0 0 1px rgb(var(--c-line)); cursor: pointer; min-height: 44px; }
+.picker-row:hover { box-shadow: 0 0 0 1px rgb(var(--c-accent) / 0.5); }
+.picker-row[aria-pressed="true"] { box-shadow: 0 0 0 2px rgb(var(--c-accent)); }
+.picker-pager { display: flex; gap: 8px; margin: 8px 0 12px; }
+.picker-card { margin-top: 12px; padding-top: 4px; border-top: 1px solid rgb(var(--c-line)); }
+.app-foot { padding: 16px 0 8px; font-size: 0.75rem; }
+.app-foot a { color: rgb(var(--c-muted)); }

@@ -242,7 +242,7 @@ class TextMatch(ApiModel):
 
 
 class AppmsResult(Readiness):
-    source_label: str = "synthetic APPMS rules"
+    source_label: str = "Interaction rules"
     severity: Literal["critical", "high", "moderate"] | None = None
     explanation: str | None = None
 
@@ -266,3 +266,76 @@ class CheckerResponse(Readiness):
     medicines: list[CheckerMedicine] = Field(default_factory=list)
     appms: AppmsResult = Field(default_factory=lambda: AppmsResult(status="not_ready"))
     pairs: list[PairResult] = Field(default_factory=list)
+
+
+# ---- APPMS interaction rules -------------------------------------------------------------
+class AppmsSeverityCount(ApiModel):
+    severity: Literal["Critical", "High", "Moderate"]
+    scenarios: int
+
+
+class AppmsSummaryResponse(Readiness):
+    patients: int = 0
+    medication_rows: int = 0
+    scenarios: int = 0
+    rules: int = 0
+    flagged_scenarios: int = 0
+    not_flagged_scenarios: int = 0
+    severity: list[AppmsSeverityCount] = Field(default_factory=list)
+    distinct_explanations: int = 0
+    orphan_medication_rows: int = 0
+    note: str = ""
+
+
+class AppmsPatient(ApiModel):
+    patient_id: str
+    age_years: int
+    gender: str
+    state: str
+    district: str
+    residence_type: str
+    primary_condition: str | None
+    secondary_condition: str | None
+    reported_drug_allergy: str | None
+    egfr_category: str
+
+
+class AppmsMedication(ApiModel):
+    medication_record_id: str
+    drug_name: str
+    strength: str
+    route: str
+    indication: str
+    frequency: str
+    duration_days: int
+
+
+class AppmsPatientsResponse(Readiness):
+    total: int = 0
+    limit: int = 0
+    offset: int = 0
+    patients: list[AppmsPatient] = Field(default_factory=list)
+
+
+class AppmsPatientResponse(Readiness):
+    patient: AppmsPatient | None = None
+    medications: list[AppmsMedication] = Field(default_factory=list)
+
+
+class AppmsRuleMatch(ApiModel):
+    drug_a: str
+    drug_b: str
+    severity: Literal["Critical", "High", "Moderate"]
+    interaction_category: str
+    mechanism_or_risk: str
+    explanation: str
+    evidence_source: str
+    sample_scenarios: int
+
+
+class AppmsLookupResponse(Readiness):
+    drug_a: str = ""
+    drug_b: str = ""
+    matched: bool = False
+    rule: AppmsRuleMatch | None = None
+    message: str = ""

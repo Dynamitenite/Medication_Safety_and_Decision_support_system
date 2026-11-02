@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Route, Routes, useLocation, useParams } from "react-router-dom";
+import { Link, NavLink, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { Bell, Info, List, MagnifyingGlass, Moon, Pill, ArrowsLeftRight, SquaresFour, GitBranch, Sun, X } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { ComingSoon } from "../features/aakaash/pages/ComingSoon";
+import { DataMethods } from "../features/aakaash/pages/DataMethods";
 import { MedicinePage } from "../features/aakaash/pages/MedicinePage";
 import { MODULE_COMPONENTS, modulePath, SCREENS } from "../features/aakaash/registry";
 import { StatusProvider, useStatus } from "../features/aakaash/StatusContext";
@@ -136,10 +137,14 @@ export function App() {
               {SCREENS.map((s) => (
                 <Route key={s.id} path={s.path} element={<s.Component />} />
               ))}
+              <Route path="/about/data" element={<DataMethods />} />
               <Route path="/medicine/:setId" element={<MedicinePage />} />
               <Route path="/modules/:id" element={<ModuleRoute />} />
               <Route path="*" element={<><h1>Page not found</h1><p>Use the menu to go to a screen.</p></>} />
             </Routes>
+            <footer className="app-foot">
+              <Link to="/about/data">Data &amp; methods</Link>
+            </footer>
           </main>
         </div>
       </div>

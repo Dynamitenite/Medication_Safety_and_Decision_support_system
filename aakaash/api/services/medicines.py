@@ -1,7 +1,7 @@
 # SOURCE: NOT IN PAPERS. Reads artifacts/names.json (scripts/build_names.py) and re-parses single
 # labels from the DailyMed zips with medsafe.spl. Missing data gives status="not_ready"; nothing
-# is invented. APPMS (the synthetic rule set) does not exist in this repository yet, so that
-# source is always reported not_ready.
+# is invented. The APPMS rule lookup (services/appms.py) is reported not_ready when data/appms
+# is absent.
 """Name search, label view, same-active-moiety list and the pair checker."""
 from __future__ import annotations
 
@@ -15,10 +15,12 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
+from medsafe import appms as appms_data
 from medsafe.names import FUZZY_BACKEND, NameIndex, mentions, pairs
 from medsafe.spl import parse_label
 
 from ..config import Settings
+from . import appms as appms_service
 from ..schemas import (Alternative, AlternativesResponse, AppmsResult, CheckerMedicine,
                        CheckerResponse, LabelSection, MedicineResponse, PairResult, SuggestResponse,
                        Suggestion, TextMatch, TextMatchResult)
@@ -33,10 +35,22 @@ SECTION_ORDER = [("boxed_warning", "Boxed warning"), ("indications", "Indication
                  ("specific_populations", "Use in specific populations")]
 TEXT_MATCH_LABEL = ("text match, not a clinical judgement. Class-level mentions (for example "
                     "'anticoagulants') are not detected.")
-APPMS_NOT_READY = AppmsResult(
-    status="not_ready",
-    reason="No APPMS rule set or patient data exists in this repository, so no APPMS lookup was run.",
-    fix="add APPMS support")
+RULES_LABEL = "Interaction rules"
+SEV_RANK = {"Critical": 0, "High": 1, "Moderate": 2}
+
+
+def _rule_lookup(settings: Settings, data, a: dict, b: dict) -> AppmsResult:
+    """Interaction rules for a pair of labels, matched on active moieties (any combination)."""
+    if data is None:
+        return AppmsResult(status="not_ready", source_label=RULES_LABEL,
+                           reason="The interaction rules are not loaded.", fix=appms_service.FIX)
+    hits = [r for x in a["active_moieties"] for y in b["active_moieties"]
+            if (r := appms_data.find_rule(data, x, y))]
+    if not hits:
+        return AppmsResult(status="ready", source_label=RULES_LABEL)
+    r = min(hits, key=lambda h: SEV_RANK[h.severity])
+    return AppmsResult(status="ready", source_label=RULES_LABEL, severity=r.severity.lower(),
+                       explanation=f"{r.interaction_category}. {r.mechanism_or_risk}. {r.explanation_or_action}.")
 ALT_NOTE = ("Same active ingredient, matched on its active moiety. Not necessarily "
             "interchangeable. Confirm with a pharmacist.")
 MAX_MATCHES_PER_PAIR = 12
@@ -175,13 +189,16 @@ def check(settings: Settings, set_ids: list[str]) -> CheckerResponse:
         return _not_ready(CheckerResponse, settings)
     labels = {sid: load_label(settings, idx, sid) for sid in set_ids}
     out = []
+    rules = appms_service.get_data(settings)
+    rules_status = (AppmsResult(status="ready", source_label=RULES_LABEL) if rules is not None else
+                    _rule_lookup(settings, None, {}, {}))
     for x, y in pairs(set_ids):
         a, b = labels[x], labels[y]
         shared = bool(set(a["active_moieties"]) & set(b["active_moieties"]))
-        out.append(PairResult(a=_med(a), b=_med(b), appms=APPMS_NOT_READY,
+        out.append(PairResult(a=_med(a), b=_med(b), appms=_rule_lookup(settings, rules, a, b),
                               text_match=_text_match(a, b), same_active_moiety=shared))
-    # APPMS severity first (Critical, High, Moderate, unflagged); then more text matches first
+    # rule severity first (Critical, High, Moderate, unflagged); then more text matches first
     rank = {"critical": 0, "high": 1, "moderate": 2, None: 3}
     out.sort(key=lambda p: (rank[p.appms.severity], -p.text_match.matches_total))
     return CheckerResponse(status="ready", medicines=[_med(labels[s]) for s in set_ids],
-                           appms=APPMS_NOT_READY, pairs=out)
+                           appms=rules_status, pairs=out)

@@ -21,6 +21,12 @@ export type AlternativesResponse = S["AlternativesResponse"];
 export type CheckerResponse = S["CheckerResponse"];
 export type PairResult = S["PairResult"];
 export type CheckerMedicine = S["CheckerMedicine"];
+export type AppmsSummaryResponse = S["AppmsSummaryResponse"];
+export type AppmsPatientsResponse = S["AppmsPatientsResponse"];
+export type AppmsPatientResponse = S["AppmsPatientResponse"];
+export type AppmsLookupResponse = S["AppmsLookupResponse"];
+export type AppmsPatient = S["AppmsPatient"];
+export type AppmsMedication = S["AppmsMedication"];
 export type Readiness = { status: "ready" | "not_ready"; reason?: string | null; fix?: string | null };
 
 const BASE: string = import.meta.env.VITE_API_BASE ?? "";
@@ -65,6 +71,15 @@ export const api = {
   },
   dailymedStats: () => get<DailyMedStatsResponse>("/api/datasets/dailymed/stats"),
   tacStats: () => get<TacStatsResponse>("/api/datasets/tac2017/stats"),
+  appmsSummary: () => get<AppmsSummaryResponse>("/api/appms/summary"),
+  appmsPatients: (p: { q?: string; limit?: number; offset?: number }, signal?: AbortSignal) =>
+    get<AppmsPatientsResponse>(
+      `/api/appms/patients?${new URLSearchParams({ q: p.q ?? "", limit: String(p.limit ?? 8), offset: String(p.offset ?? 0) })}`,
+      signal,
+    ),
+  appmsPatient: (id: string) => get<AppmsPatientResponse>(`/api/appms/patients/${encodeURIComponent(id)}`),
+  appmsLookup: (a: string, b: string) =>
+    get<AppmsLookupResponse>(`/api/appms/lookup?${new URLSearchParams({ drug_a: a, drug_b: b })}`),
   trace: () => get<TraceResponse>("/api/trace"),
   suggest: (q: string, signal?: AbortSignal, limit = 8) =>
     get<SuggestResponse>(`/api/medicine/suggest?${new URLSearchParams({ q, limit: String(limit) })}`, signal),

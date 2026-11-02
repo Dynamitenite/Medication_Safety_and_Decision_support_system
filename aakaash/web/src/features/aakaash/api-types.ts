@@ -191,6 +191,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/appms/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Appms Summary */
+        get: operations["appms_summary_api_appms_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/appms/patients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Appms Patients */
+        get: operations["appms_patients_api_appms_patients_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/appms/patients/{patient_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Appms Patient */
+        get: operations["appms_patient_api_appms_patients__patient_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/appms/lookup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Appms Lookup */
+        get: operations["appms_lookup_api_appms_lookup_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -239,6 +307,123 @@ export interface components {
             /** Alternatives */
             alternatives: components["schemas"]["Alternative"][];
         };
+        /** AppmsLookupResponse */
+        AppmsLookupResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /**
+             * Drug A
+             * @default
+             */
+            drug_a: string;
+            /**
+             * Drug B
+             * @default
+             */
+            drug_b: string;
+            /**
+             * Matched
+             * @default false
+             */
+            matched: boolean;
+            rule: components["schemas"]["AppmsRuleMatch"] | null;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+        };
+        /** AppmsMedication */
+        AppmsMedication: {
+            /** Medication Record Id */
+            medication_record_id: string;
+            /** Drug Name */
+            drug_name: string;
+            /** Strength */
+            strength: string;
+            /** Route */
+            route: string;
+            /** Indication */
+            indication: string;
+            /** Frequency */
+            frequency: string;
+            /** Duration Days */
+            duration_days: number;
+        };
+        /** AppmsPatient */
+        AppmsPatient: {
+            /** Patient Id */
+            patient_id: string;
+            /** Age Years */
+            age_years: number;
+            /** Gender */
+            gender: string;
+            /** State */
+            state: string;
+            /** District */
+            district: string;
+            /** Residence Type */
+            residence_type: string;
+            /** Primary Condition */
+            primary_condition: string | null;
+            /** Secondary Condition */
+            secondary_condition: string | null;
+            /** Reported Drug Allergy */
+            reported_drug_allergy: string | null;
+            /** Egfr Category */
+            egfr_category: string;
+        };
+        /** AppmsPatientResponse */
+        AppmsPatientResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            patient: components["schemas"]["AppmsPatient"] | null;
+            /** Medications */
+            medications: components["schemas"]["AppmsMedication"][];
+        };
+        /** AppmsPatientsResponse */
+        AppmsPatientsResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /**
+             * Limit
+             * @default 0
+             */
+            limit: number;
+            /**
+             * Offset
+             * @default 0
+             */
+            offset: number;
+            /** Patients */
+            patients: components["schemas"]["AppmsPatient"][];
+        };
         /** AppmsResult */
         AppmsResult: {
             /**
@@ -252,13 +437,104 @@ export interface components {
             fix: string | null;
             /**
              * Source Label
-             * @default synthetic APPMS rules
+             * @default Interaction rules
              */
             source_label: string;
             /** Severity */
             severity: ("critical" | "high" | "moderate") | null;
             /** Explanation */
             explanation: string | null;
+        };
+        /** AppmsRuleMatch */
+        AppmsRuleMatch: {
+            /** Drug A */
+            drug_a: string;
+            /** Drug B */
+            drug_b: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "Critical" | "High" | "Moderate";
+            /** Interaction Category */
+            interaction_category: string;
+            /** Mechanism Or Risk */
+            mechanism_or_risk: string;
+            /** Explanation */
+            explanation: string;
+            /** Evidence Source */
+            evidence_source: string;
+            /** Sample Scenarios */
+            sample_scenarios: number;
+        };
+        /** AppmsSeverityCount */
+        AppmsSeverityCount: {
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "Critical" | "High" | "Moderate";
+            /** Scenarios */
+            scenarios: number;
+        };
+        /** AppmsSummaryResponse */
+        AppmsSummaryResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /**
+             * Patients
+             * @default 0
+             */
+            patients: number;
+            /**
+             * Medication Rows
+             * @default 0
+             */
+            medication_rows: number;
+            /**
+             * Scenarios
+             * @default 0
+             */
+            scenarios: number;
+            /**
+             * Rules
+             * @default 0
+             */
+            rules: number;
+            /**
+             * Flagged Scenarios
+             * @default 0
+             */
+            flagged_scenarios: number;
+            /**
+             * Not Flagged Scenarios
+             * @default 0
+             */
+            not_flagged_scenarios: number;
+            /** Severity */
+            severity: components["schemas"]["AppmsSeverityCount"][];
+            /**
+             * Distinct Explanations
+             * @default 0
+             */
+            distinct_explanations: number;
+            /**
+             * Orphan Medication Rows
+             * @default 0
+             */
+            orphan_medication_rows: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
         };
         /** CheckerMedicine */
         CheckerMedicine: {
@@ -1062,6 +1338,122 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CheckerResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    appms_summary_api_appms_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppmsSummaryResponse"];
+                };
+            };
+        };
+    };
+    appms_patients_api_appms_patients_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppmsPatientsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    appms_patient_api_appms_patients__patient_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                patient_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppmsPatientResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    appms_lookup_api_appms_lookup_get: {
+        parameters: {
+            query: {
+                drug_a: string;
+                drug_b: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppmsLookupResponse"];
                 };
             };
             /** @description Validation Error */

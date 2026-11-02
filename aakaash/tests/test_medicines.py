@@ -193,7 +193,7 @@ def test_checker_pairs_appms_not_ready_and_text_match(client, monkeypatch):
     monkeypatch.setattr(medicines, "load_label", lambda settings, idx, sid: parsed[sid])
     body = c.post("/api/checker", json={"set_ids": ["1", "4", "6"]}).json()
     assert body["status"] == "ready" and len(body["pairs"]) == 3
-    assert body["appms"]["status"] == "not_ready" and body["appms"]["fix"] == "add APPMS support"
+    assert body["appms"]["status"] == "not_ready" and body["appms"]["fix"].startswith("extract the APPMS zip")
     first = body["pairs"][0]                       # most text matches sorts first within unflagged
     assert {first["a"]["set_id"], first["b"]["set_id"]} == {"1", "4"}
     assert first["appms"]["status"] == "not_ready"
