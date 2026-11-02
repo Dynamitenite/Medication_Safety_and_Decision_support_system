@@ -4,13 +4,15 @@ import { MagnifyingGlass, X } from "@phosphor-icons/react";
 import { api } from "../api";
 import type { BrandSuggestion, SuggestResponse } from "../api";
 import { Sticker } from "./Sticker";
+import { FormTag } from "./viz/icons";
+import { NoResultsArt } from "./viz/Illustrations";
 
 const DEBOUNCE_MS = 150;
 // v2: entries are catalogue ids. The v1 list held US label ids and is no longer read.
 const RECENT_KEY = "medsafe.recent.v2";
 const RECENT_MAX = 6;
 
-export type Recent = { id: string; name: string; manufacturer: string | null; composition: string; discontinued?: boolean };
+export type Recent = { id: string; name: string; manufacturer: string | null; composition: string; discontinued?: boolean; form_family?: string; type?: string; price?: number | null; pack_size?: string };
 type Row = Recent & { match?: BrandSuggestion["match"]; matched_ingredient?: string | null; similar?: boolean };
 
 export function readRecent(): Recent[] {
@@ -27,7 +29,7 @@ export function readRecent(): Recent[] {
 function saveRecent(s: Recent) {
   try {
     const rest = readRecent().filter((r) => r.id !== s.id);
-    const item: Recent = { id: s.id, name: s.name, manufacturer: s.manufacturer, composition: s.composition, discontinued: s.discontinued };
+    const item: Recent = { ...s };
     localStorage.setItem(RECENT_KEY, JSON.stringify([item, ...rest].slice(0, RECENT_MAX)));
   } catch {
     /* storage blocked or full: recent searches are a convenience only */
@@ -133,7 +135,7 @@ export function MedicineSearch({ label, value, onValueChange, onSelect, placehol
       setOpen(false);
       setActive(-1);
       if (clearOnSelect) onValueChange("");
-      onSelect({ id: r.id, name: r.name, manufacturer: r.manufacturer, composition: r.composition, discontinued: r.discontinued });
+      onSelect({ ...r });
     },
     [clearOnSelect, onSelect, onValueChange],
   );
@@ -202,6 +204,7 @@ export function MedicineSearch({ label, value, onValueChange, onSelect, placehol
         </span>
       </span>
       <span className="combo-meta">
+        <span className="combo-tags"><FormTag family={r.form_family} />{r.type && <Sticker>{r.type}</Sticker>}{r.price != null && <Sticker>{`₹${r.price.toLocaleString("en-IN")} per pack`}</Sticker>}</span>
         {r.discontinued && <Sticker>Discontinued</Sticker>}
         <span className="small muted combo-maker">{r.manufacturer ?? "manufacturer not stated"}</span>
       </span>
@@ -264,9 +267,9 @@ export function MedicineSearch({ label, value, onValueChange, onSelect, placehol
       <span className="sr-only" role="status" aria-live="polite">
         {status}
       </span>
-      <div className="combo-pop" hidden={!expanded}>
+      <div className="combo-pop" tabIndex={0} hidden={!expanded}>
         {data && data.matches.length === 0 && (
-          <div className="combo-state small">We couldn’t find “{q}” in our database.</div>
+          <div className="combo-state small"><NoResultsArt />We couldn’t find “{q}” in our database.</div>
         )}
         <div id={listId} role="listbox" aria-label={showRecent ? "Recent searches" : "Suggestions"}>
           {matches.length > 0 && (

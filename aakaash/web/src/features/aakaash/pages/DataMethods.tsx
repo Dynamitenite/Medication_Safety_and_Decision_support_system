@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { AppmsSummaryResponse } from "../api";
@@ -11,6 +12,10 @@ import { RulesSection } from "../components/RulesSection";
 import { StatusTable } from "../components/StatusTable";
 import { useStatus } from "../StatusContext";
 import { useApi } from "../useApi";
+
+const CatalogueFormsChart = lazy(() => import("../components/viz/DataCharts").then(m => ({default:m.CatalogueFormsChart})));
+const CatalogueCoverageChart = lazy(() => import("../components/viz/DataCharts").then(m => ({default:m.CatalogueCoverageChart})));
+const RuleSeverityChart = lazy(() => import("../components/viz/DataCharts").then(m => ({default:m.RuleSeverityChart})));
 
 /** Release files DailyMed publishes for human prescription labels (part1 to part6). */
 const DAILYMED_PARTS = 6;
@@ -221,6 +226,7 @@ function Rules() {
         <section className="card" aria-labelledby="match-h">
           <h2 id="match-h">Sample patients and labels</h2>
           <MatchNumbers s={q.data} />
+          <RuleSeverityChart data={q.data} />
         </section>
       )}
     </>
@@ -287,6 +293,8 @@ function PendingModules() {
 
 export function DataMethods() {
   const ddi = useApi(api.ddiStats);
+  const forms = useApi(api.catalogueForms);
+  const catalogue = useApi(api.catalogueSummary);
   return (
     <>
       <h1>Data &amp; methods</h1>
@@ -298,6 +306,13 @@ export function DataMethods() {
 
       <Sources />
       <CatalogueSection />
+      <section className="card" aria-labelledby="catalogue-viz-h">
+        <h2 id="catalogue-viz-h">Catalogue figures</h2>
+        <Suspense fallback={<p role="status" className="muted">Loading charts…</p>}>
+          {forms.data?.status === "ready" && <CatalogueFormsChart data={forms.data} />}
+          {catalogue.data?.status === "ready" && <CatalogueCoverageChart data={catalogue.data} />}
+        </Suspense>
+      </section>
       <DoesNot />
       <AddingMedicines />
       <DailyMedPanel />

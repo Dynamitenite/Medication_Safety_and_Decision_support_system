@@ -37,6 +37,8 @@ export type AppmsMedication = S["AppmsMedication"];
 export type AppmsLabelRef = S["AppmsLabelRef"];
 export type ProfileOut = S["ProfileOut"];
 export type ProfileIn = S["ProfileIn"];
+export type ProfileOverview = S["ProfileOverview"];
+export type CatalogueFormsResponse = S["CatalogueFormsResponse"];
 export type AllergyOut = S["AllergyOut"];
 export type AllergyIn = S["AllergyIn"];
 export type ConditionOut = S["ConditionOut"];
@@ -149,6 +151,7 @@ export const api = {
       `/api/medicine/${encodeURIComponent(id)}/alternatives?${new URLSearchParams({ include_discontinued: String(includeDiscontinued) })}`,
     ),
   catalogueSummary: () => get<CatalogueSummaryResponse>("/api/catalogue/summary"),
+  catalogueForms: () => get<CatalogueFormsResponse>("/api/catalogue/forms"),
   label: (setId: string) => get<MedicineResponse>(`/api/label/${encodeURIComponent(setId)}`),
   labelAlternatives: (setId: string) => get<AlternativesResponse>(`/api/label/${encodeURIComponent(setId)}/alternatives`),
   login: (email: string, password: string) => send<LoginResponse>("POST", "/api/auth/login", { email, password }),
@@ -156,6 +159,7 @@ export const api = {
   me: () => get<MeResponse>("/api/auth/me"),
   deleteAccount: () => del("/api/account"),
   profile: () => get<ProfileOut>("/api/profile"),
+  profileOverview: () => get<ProfileOverview>("/api/profile/overview"),
   saveProfile: (b: ProfileIn) => send<ProfileOut>("PUT", "/api/profile", b),
   allergies: () => get<AllergyOut[]>("/api/allergies"),
   addAllergy: (b: AllergyIn) => send<AllergyOut>("POST", "/api/allergies", b),

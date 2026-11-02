@@ -212,6 +212,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/catalogue/forms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Catalogue Forms */
+        get: operations["catalogue_forms_api_catalogue_forms_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/label/{set_id}": {
         parameters: {
             query?: never;
@@ -416,6 +433,26 @@ export interface paths {
         get: operations["get_profile_api_profile_get"];
         /** Put Profile */
         put: operations["put_profile_api_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/profile/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Profile Overview
+         * @description Read-only: counts and the highest rule level among the current medicines. Stores nothing.
+         */
+        get: operations["profile_overview_api_profile_overview_get"];
+        put?: never;
         post?: never;
         delete?: never;
         options?: never;
@@ -1276,6 +1313,25 @@ export interface components {
             /** Matched Ingredient */
             matched_ingredient: string | null;
         };
+        /** CatalogueFormsResponse */
+        CatalogueFormsResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /** Families */
+            families: components["schemas"]["FormFamilyCount"][];
+        };
         /** CatalogueSummaryResponse */
         CatalogueSummaryResponse: {
             /**
@@ -1753,6 +1809,13 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** FormFamilyCount */
+        FormFamilyCount: {
+            /** Family */
+            family: string;
+            /** Products */
+            products: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2144,6 +2207,35 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * ProfileOverview
+         * @description Counts and the highest rule level among the user's current medicines, for the profile tiles.
+         */
+        ProfileOverview: {
+            /** Current Medicines */
+            current_medicines: number;
+            /** Allergies */
+            allergies: number;
+            /** Current Conditions */
+            current_conditions: number;
+            /** Highest Risk */
+            highest_risk: ("Medium" | "High" | "Critical") | null;
+            /**
+             * Risk Status
+             * @enum {string}
+             */
+            risk_status: "found" | "none_found" | "not_enough_data";
+            /**
+             * Pairs Checked
+             * @default 0
+             */
+            pairs_checked: number;
+            /**
+             * Risk Note
+             * @default
+             */
+            risk_note: string;
         };
         /** RuleHit */
         RuleHit: {
@@ -2716,6 +2808,26 @@ export interface operations {
             };
         };
     };
+    catalogue_forms_api_catalogue_forms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogueFormsResponse"];
+                };
+            };
+        };
+    };
     label_text_api_label__set_id__get: {
         parameters: {
             query?: never;
@@ -3065,6 +3177,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    profile_overview_api_profile_overview_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOverview"];
                 };
             };
         };

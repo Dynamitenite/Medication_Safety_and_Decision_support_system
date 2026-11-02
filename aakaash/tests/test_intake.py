@@ -304,3 +304,44 @@ def test_parser_reads_instruction_sections():
     assert text("patient_information")[-1] == "Guide text."
     assert text("instructions_for_use")[-1] == "Steps."
     assert "Advise patients" not in s["precautions"][0]["text"]
+
+
+# ---- profile overview and form counts --------------------------------------------------------
+def test_overview_needs_two_current_medicines(env):
+    c = sign_in()
+    body = c.get("/api/profile/overview").json()
+    assert body["risk_status"] == "not_enough_data" and body["highest_risk"] is None
+    assert (body["current_medicines"], body["allergies"], body["current_conditions"]) == (0, 0, 0)
+    add_record(c, catalogue_id="14", start_date=str(TODAY))
+    assert c.get("/api/profile/overview").json()["risk_status"] == "not_enough_data"
+
+
+def test_overview_highest_level_among_current_pairs(env):
+    c = sign_in()
+    add_record(c, catalogue_id="14", start_date=str(TODAY))                                 # warfarin
+    add_record(c, catalogue_id="1", start_date=str(TODAY))                                  # paracetamol: Medium
+    add_record(c, catalogue_id="5", start_date="2025-01-01", end_date="2025-01-10")        # past: not counted
+    c.post("/api/allergies", json={"allergen": "Dust", "severity": "mild"})
+    body = c.get("/api/profile/overview").json()
+    assert (body["risk_status"], body["highest_risk"], body["pairs_checked"]) == ("found", "Medium", 1)
+    assert (body["current_medicines"], body["allergies"]) == (2, 1)
+    add_record(c, catalogue_id="5", start_date=str(TODAY))                                  # metformin: Critical
+    assert c.get("/api/profile/overview").json()["highest_risk"] == "Critical"
+
+
+def test_overview_none_found_is_not_a_safety_claim(env):
+    c = sign_in()
+    add_record(c, catalogue_id="3", start_date=str(TODAY))
+    add_record(c, catalogue_id="9", start_date=str(TODAY))
+    body = c.get("/api/profile/overview").json()
+    assert body["risk_status"] == "none_found" and "does not mean the combination is safe" in body["risk_note"]
+
+
+def test_overview_requires_sign_in(env):
+    assert TestClient(app).get("/api/profile/overview").status_code == 401
+
+
+def test_catalogue_forms_counts(env):
+    body = TestClient(app).get("/api/catalogue/forms").json()
+    assert body["status"] == "ready" and body["total"] == sum(f["products"] for f in body["families"])
+    assert "oral solid" in {f["family"] for f in body["families"]}

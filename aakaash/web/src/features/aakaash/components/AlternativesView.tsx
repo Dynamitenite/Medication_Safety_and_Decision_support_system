@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router-dom";
-import type { AlternativeBrand, BrandAlternativesResponse } from "../api";
+import type { AlternativeBrand, BrandAlternativesResponse, BrandRow } from "../api";
 import { Sticker } from "./Sticker";
+import { FormTag } from "./viz/icons";
+
+const PriceChart = lazy(() => import("./viz/PriceChart"));
 
 const SHOW = 10;
 
@@ -20,6 +23,7 @@ function AltRow({ a, showForm }: { a: AlternativeBrand; showForm?: boolean }) {
     <li>
       <span>
         <Link to={`/medicine/${a.id}`}>{a.name}</Link>
+        <FormTag family={a.form_family} />
         <span className="small muted"> · {a.manufacturer ?? "manufacturer not stated"} · {a.pack_size}</span>
       </span>
       <span className="alt-price">
@@ -60,7 +64,7 @@ function AltList({ rows, total, showForm }: { rows: AlternativeBrand[]; total: n
   );
 }
 
-export function Alternatives({ id, data, showDisc, setShowDisc }: { id: string; data: BrandAlternativesResponse; showDisc: boolean; setShowDisc: (v: boolean) => void }) {
+export function Alternatives({ id, data, showDisc, setShowDisc, selected }: { id: string; data: BrandAlternativesResponse; showDisc: boolean; setShowDisc: (v: boolean) => void; selected?: BrandRow }) {
   const unknownForm = data.form_family === "unknown";
   return (
     <>
@@ -80,6 +84,10 @@ export function Alternatives({ id, data, showDisc, setShowDisc }: { id: string; 
       <h3>
         Same ingredients, strength and form {!unknownForm && <span className="small muted">({data.form_family})</span>}
       </h3>
+      <div className="alt-counts" aria-label="Alternative group counts">
+        <span>Same form <strong>{data.same_total}</strong></span><span>Different form <strong>{data.different_form_total}</strong></span>
+        <span>Form not stated <strong>{data.form_not_stated_total}</strong></span><span>Composition unclear <strong>{data.unclear_total}</strong></span>
+      </div>
       {data.same_total === 0 ? (
         <p className="muted">
           {data.composition_unclear
@@ -91,7 +99,7 @@ export function Alternatives({ id, data, showDisc, setShowDisc }: { id: string; 
               : "No other brand in our database has the same ingredients, strength and form."}
         </p>
       ) : (
-        <AltList key={`${id}-${showDisc}-same`} rows={data.same} total={data.same_total} />
+        <><Suspense fallback={<p className="muted" role="status">Loading price chart…</p>}><PriceChart alts={data.same.map(a => ({id:a.id,name:a.name,manufacturer:a.manufacturer,pack_size:a.pack_size,price:a.price,discontinued:a.discontinued,different_pack_size:a.different_pack_size}))} selected={selected ? {id: selected.id,name: selected.name,manufacturer: selected.manufacturer,pack_size: selected.pack_size,price: selected.price} : null} total={data.same_total} /></Suspense><AltList key={`${id}-${showDisc}-same`} rows={data.same} total={data.same_total} /></>
       )}
       {data.different_form_total > 0 && (
         <div className="alt-other-form">

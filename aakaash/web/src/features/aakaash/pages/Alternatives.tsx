@@ -41,7 +41,7 @@ function Selected({ id, showDisc, setShowDisc }: { id: string; showDisc: boolean
         {alt.state === "error" && <ErrorBox message={alt.message} onRetry={alt.reload} />}
         {!alt.data && alt.state !== "error" && <Skeleton lines={3} />}
         {alt.data?.status === "not_ready" && <NotReadyBox reason={alt.data.reason} fix={alt.data.fix} />}
-        {alt.data?.status === "ready" && <AlternativesView id={id} data={alt.data} showDisc={showDisc} setShowDisc={setShowDisc} />}
+        {alt.data?.status === "ready" && <AlternativesView id={id} data={alt.data} showDisc={showDisc} setShowDisc={setShowDisc} selected={b} />}
         <Disclaimer />
       </section>
     </>

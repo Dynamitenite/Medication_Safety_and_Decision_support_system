@@ -14,6 +14,9 @@ import { MedicineSearch } from "../components/MedicineSearch";
 import { ErrorBox } from "../components/Panel";
 import { Skeleton } from "../components/LabelTabs";
 import { Sticker } from "../components/Sticker";
+import { TimelineChart, TimelineTable, ViewSwitch, MEDICINE_OUTCOME_STYLE, CONDITION_OUTCOME_STYLE } from "../components/viz/Timeline";
+import { RecordFormTag } from "../components/viz/RecordFormTag";
+import type { TimelineInput } from "../viz/timeline";
 import { CONDITION_OUTCOME_LABEL, courseText, fmtDate, KIND_LABEL, MEDICINE_OUTCOME_LABEL } from "../format";
 import { useApi, type Query } from "../useApi";
 
@@ -216,12 +219,15 @@ function ConditionRow({ c, onEdit, onDelete }: { c: ConditionOut; onEdit: () => 
 
 function ConditionsTab() {
   const q = useApi(api.conditions);
+  const [view, setView] = useState<"list" | "timeline" | "table">("list");
   const [form, setForm] = useState<{ id?: number; status: "current" | "past" } | null>(null);
   const del = useConfirmDelete(q.reload);
   const done = () => (setForm(null), q.reload());
   return (
     <Loaded query={q}>
       {(all) => {
+        const timelineItems: TimelineInput[] = all.map(c => ({ id: `condition-${c.id}`, label: c.name, start: c.onset_date, end: c.resolved_date, outcome: c.status === "current" ? "ongoing" : c.outcome, openEnded: c.status === "current" }));
+        if (view !== "list") return <><div className="toolbar"><ViewSwitch label="Condition history view" value={view} options={[{id:"list",label:"List"},{id:"timeline",label:"Timeline"},{id:"table",label:"Table"}]} onChange={setView}/></div>{view === "timeline" ? <section className="card"><h2>Condition timeline</h2><p className="small muted">Bars show recorded onset and resolved dates. The today line marks the current date; undated entries are listed below.</p><TimelineChart items={timelineItems} styles={CONDITION_OUTCOME_STYLE} today={today()} noun="conditions"/></section> : <TimelineTable items={timelineItems} styles={CONDITION_OUTCOME_STYLE} today={today()} caption="Condition history"/>}<div className="toolbar"><button className="btn btn-secondary btn-sm" type="button" onClick={() => setView("list")}>Return to list to edit</button></div></>;
         const group = (status: "current" | "past", title: string) => {
           const items = all.filter((c) => c.status === status);
           return (
@@ -252,6 +258,7 @@ function ConditionsTab() {
         };
         return (
           <>
+            <div className="toolbar"><ViewSwitch label="Condition history view" value={view} options={[{id:"list",label:"List"},{id:"timeline",label:"Timeline"},{id:"table",label:"Table"}]} onChange={setView}/></div>
             {group("current", "Current")}
             {group("past", "Past")}
             {del.dialog("Delete this condition?")}
@@ -364,6 +371,7 @@ function MedicineRow({ m, onEdit, onDelete }: { m: MedicineRecordOut; onEdit: ()
       <div className="row-body">
         <span className="row-main">
           {m.display_name}
+          {m.catalogue_id && <> <RecordFormTag catalogueId={m.catalogue_id} /></>}
           {m.status === "past" && m.outcome && <> <Sticker tone={m.outcome === "cured" || m.outcome === "improved" ? "good" : "neutral"}>{MEDICINE_OUTCOME_LABEL[m.outcome]}</Sticker></>}
         </span>
         {m.reason && <span className="small">For {m.reason}</span>}
@@ -383,6 +391,7 @@ function MedicineRow({ m, onEdit, onDelete }: { m: MedicineRecordOut; onEdit: ()
 
 function MedicinesTab() {
   const q = useApi(api.medicineRecords);
+  const [view, setView] = useState<"list" | "timeline" | "table">("list");
   // "new" = add form open; a number = that record is being edited
   const [editing, setEditing] = useState<"new" | number | null>(null);
   const del = useConfirmDelete(q.reload);
@@ -390,6 +399,8 @@ function MedicinesTab() {
   return (
     <Loaded query={q}>
       {(all) => {
+        const timelineItems: TimelineInput[] = all.map(m => ({ id: `medicine-${m.id}`, label: m.display_name, start: m.start_date, end: m.end_date, outcome: m.status === "current" ? "ongoing" : m.outcome ?? "unknown", openEnded: m.status === "current" }));
+        if (view !== "list") return <><div className="toolbar"><ViewSwitch label="Medicine history view" value={view} options={[{id:"list",label:"List"},{id:"timeline",label:"Timeline"},{id:"table",label:"Table"}]} onChange={setView}/></div>{view === "timeline" ? <section className="card"><h2>Medicine course timeline</h2><p className="small muted">Bars show recorded start and end dates; open arrows mark ongoing courses. Colour, pattern and outcome labels show how each course ended.</p><TimelineChart items={timelineItems} styles={MEDICINE_OUTCOME_STYLE} today={today()} noun="medicine courses"/></section> : <TimelineTable items={timelineItems} styles={MEDICINE_OUTCOME_STYLE} today={today()} caption="Medicine courses"/>}<div className="toolbar"><button className="btn btn-secondary btn-sm" type="button" onClick={() => setView("list")}>Return to list to edit</button></div></>;
         const group = (status: MedicineRecordOut["status"], title: string, always = false) => {
           const items = all.filter((m) => m.status === status);
           if (!always && items.length === 0) return null;
@@ -415,6 +426,7 @@ function MedicinesTab() {
         };
         return (
           <>
+            <div className="toolbar"><ViewSwitch label="Medicine history view" value={view} options={[{id:"list",label:"List"},{id:"timeline",label:"Timeline"},{id:"table",label:"Table"}]} onChange={setView}/></div>
             {editing === "new" ? (
               <MedicineForm onSaved={done} onCancel={() => setEditing(null)} />
             ) : (

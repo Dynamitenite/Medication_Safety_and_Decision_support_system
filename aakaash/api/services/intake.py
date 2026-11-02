@@ -9,7 +9,7 @@ import json
 from datetime import date, timedelta
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from medsafe import health
@@ -17,11 +17,11 @@ from medsafe.appms_match import ingredient_keys
 from medsafe.risk import ALLERGY_LEVEL, LEVELS, RULE_LEVEL, allergy_matches, highest
 
 from ..config import Settings
-from ..db import Allergy, MedicineRecord, User
+from ..db import Allergy, Condition, MedicineRecord, User
 from ..schemas import (AddMedicinesRequest, AddMedicinesResponse, AllergyFinding, AnalyzedMedicine, AnalyzeRequest,
                        AnalyzeResponse, AppmsResult, CheckerIngredient, CheckerMedicine, CourseIn, DetailLabel,
                        DetailSection, IngredientDetails, LevelledHit, MedicineDetailsResponse, MedicineRecordIn,
-                       PairFinding)
+                       PairFinding, ProfileOverview)
 from . import accounts, catalogue, medicines
 from . import appms as appms_service
 from .catalogue import INCOMPLETE_NOTE, LABEL_NOTE, UNCLEAR_NOTE, _brand_med, _generic_med, _Med, _row
@@ -228,6 +228,34 @@ def analyze(db: Session, settings: Settings, user: User, ids: list[str], today: 
                            medicines=roster, allergies_checked=len(allergies), allergy_note=ALLERGY_NOTE,
                            allergy_findings=found, pairs=pairs, pairs_checked=checked, disclaimer=DISCLAIMER,
                            level_rule=LEVEL_RULE)
+
+
+def overview(db: Session, settings: Settings, user: User, today: date | None = None) -> ProfileOverview:
+    """Profile tiles: counts, and the highest level the interaction rules give any pair of current
+    medicines. Read-only; uses the same rules as the risk analysis."""
+    today = today or date.today()
+    records = _current_records(db, user, today)
+    n_all = db.scalar(select(func.count()).select_from(Allergy).where(Allergy.user_id == user.id)) or 0
+    n_cond = db.scalar(select(func.count()).select_from(Condition).where(
+        Condition.user_id == user.id, Condition.status == "current")) or 0
+    base = dict(current_medicines=len(records), allergies=n_all, current_conditions=n_cond)
+    cat = catalogue.get_catalogue(settings)
+    rules = appms_service.get_data(settings)
+    if len(records) < 2 or cat is None or rules is None:
+        why = ("Fewer than two current medicines." if len(records) < 2
+               else "The interaction rules or the medicine catalogue are not available right now.")
+        return ProfileOverview(risk_status="not_enough_data", risk_note=why, **base)
+    idx = medicines.get_index(settings)
+    meds = [_record_med(cat, idx, r)[0] for r in records]
+    levels, checked = [], 0
+    for x in range(len(meds)):
+        for y in range(x + 1, len(meds)):
+            checked += 1
+            res = catalogue._rules(rules, meds[x], meds[y])
+            levels += [RULE_LEVEL[h.severity] for h in res.hits]
+    top = highest(levels)
+    return ProfileOverview(risk_status="found" if top else "none_found", highest_risk=top, pairs_checked=checked,
+                           risk_note=NONE_TEXT if not top else "", **base)
 
 
 def analyze_request(db: Session, settings: Settings, user: User, body: AnalyzeRequest) -> AnalyzeResponse:

@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import threading
 import time
+from collections import Counter
 from pathlib import Path
 
 from fastapi import HTTPException
@@ -19,7 +20,7 @@ from medsafe.names import mentions, norm, pairs
 from medsafe.synonyms import canonical, read_rows
 
 from ..config import Settings
-from ..schemas import (AlternativeBrand, AppmsResult, BrandAlternativesResponse, BrandResponse, BrandRow,
+from ..schemas import (CatalogueFormsResponse, FormFamilyCount, AlternativeBrand, AppmsResult, BrandAlternativesResponse, BrandResponse, BrandRow,
                        BrandSuggestion, CatalogueSummaryResponse, CheckerIngredient, CheckerMedicine,
                        CheckerResponse, IngredientDetail, PairResult, RuleHit, SecondaryHit, SecondaryInteraction,
                        SecondaryResult, StrengthGroup, SuggestResponse, SynonymRow, TextMatch, TextMatchResult,
@@ -177,6 +178,16 @@ def summary(settings: Settings) -> CatalogueSummaryResponse:
         dailymed_parts_loaded=m.get("dailymed_parts_loaded", []), dailymed_labels_loaded=r.get("dailymed_labels_loaded", 0),
         top_unlinked=[UnlinkedIngredient(**x) for x in r.get("top_unlinked", [])],
         synonyms=[SynonymRow(**x) for x in read_rows()])
+
+
+def forms(settings: Settings) -> CatalogueFormsResponse:
+    """Number of products in each dosage-form family (medsafe/forms.py)."""
+    cat = get_catalogue(settings)
+    if cat is None:
+        return _not_ready(CatalogueFormsResponse, settings)
+    counts = Counter(cat.family(i) for i in range(len(cat.ids)))
+    return CatalogueFormsResponse(status="ready", total=len(cat.ids),
+                                  families=[FormFamilyCount(family=f, products=n) for f, n in counts.most_common()])
 
 
 # ---- checker --------------------------------------------------------------------------------

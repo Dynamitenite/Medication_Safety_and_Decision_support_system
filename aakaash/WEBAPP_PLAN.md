@@ -279,3 +279,10 @@ Use `api.auth.current_user` as the dependency for any new personal endpoint and 
 - New npm dependencies: `tesseract.js` 7.0.0 and `@tesseract.js-data/eng` 1.0.0 (exact versions). `npm run dev` and `npm run build` first run `scripts/copy-ocr.mjs`, which copies the worker, the LSTM core builds and the English model into `web/public/ocr/`. That folder is gitignored (the language data is a model file), so after a fresh clone run `npm install` and the copy happens on the next dev or build. `npm test` runs the parser tests.
 - `scripts/build_names.py` now writes `instruction_sections` per label and keeps the instruction sections out of the `sections` count; rebuild `names.json` and then `catalogue.json` after pulling.
 - `medicine_record.notes` holds the food timing as "Food: after food" when one was entered; there is no new column.
+
+## 9. Update 2026-11-02: data-driven visual pass
+
+- Added a read-only profile overview and dosage-form counts; the overview reuses the existing interaction rules and current-medicine scope.
+- Added form-family, severity, allergy, and outcome icons; WHO adult BMI scale; course and history timelines; add-course bars; the risk finding graph; alternative price chart; and catalogue/rule tables paired with their charts.
+- Charts use existing Recharts and are split into lazy page/chart chunks. Icon art and line illustrations are hand-drawn SVG. Search and medicine pages show only fields already present in their existing responses.
+- Added fixture-only tests for BMI visibility/categories, timeline layout, price selection and interaction graph caps. No new endpoint changes a prior response; no patient, catalogue, index, model or database files were added.

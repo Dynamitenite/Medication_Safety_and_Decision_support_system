@@ -1,18 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { List, SignIn, SignOut, X } from "@phosphor-icons/react";
-import { ComingSoon } from "../features/aakaash/pages/ComingSoon";
-import { Account } from "../features/aakaash/pages/Account";
-import { AddMedicine } from "../features/aakaash/pages/AddMedicine";
-import { Alternatives } from "../features/aakaash/pages/Alternatives";
-import { DataMethods } from "../features/aakaash/pages/DataMethods";
-import { History } from "../features/aakaash/pages/History";
-import { LabelPage } from "../features/aakaash/pages/LabelPage";
-import { Login } from "../features/aakaash/pages/Login";
-import { MedicinePage } from "../features/aakaash/pages/MedicinePage";
-import { Menu, MENU_ICONS } from "../features/aakaash/pages/Menu";
-import { Profile } from "../features/aakaash/pages/Profile";
-import { Trace } from "../features/aakaash/pages/Trace";
+import { Gear, List, SignIn, SignOut, X } from "@phosphor-icons/react";
+import { MENU_ICONS } from "../features/aakaash/pages/MenuIcons";
 import { AuthProvider, RequireAuth, useAuth } from "../features/aakaash/auth/AuthContext";
 import { Disclaimer } from "../features/aakaash/components/Disclaimer";
 import { MENU, MODULE_COMPONENTS, SCREENS } from "../features/aakaash/registry";
@@ -21,6 +10,18 @@ import { ThemeToggle } from "./ThemeToggle";
 
 /** Screens whose tables and charts use the full width; the others are text pages. */
 const WIDE_PATHS = new Set(["/about/data", "/about/trace"]);
+const ComingSoon = lazy(() => import("../features/aakaash/pages/ComingSoon").then(m => ({ default: m.ComingSoon })));
+const Account = lazy(() => import("../features/aakaash/pages/Account").then(m => ({ default: m.Account })));
+const AddMedicine = lazy(() => import("../features/aakaash/pages/AddMedicine").then(m => ({ default: m.AddMedicine })));
+const Alternatives = lazy(() => import("../features/aakaash/pages/Alternatives").then(m => ({ default: m.Alternatives })));
+const DataMethods = lazy(() => import("../features/aakaash/pages/DataMethods").then(m => ({ default: m.DataMethods })));
+const History = lazy(() => import("../features/aakaash/pages/History").then(m => ({ default: m.History })));
+const LabelPage = lazy(() => import("../features/aakaash/pages/LabelPage").then(m => ({ default: m.LabelPage })));
+const Login = lazy(() => import("../features/aakaash/pages/Login").then(m => ({ default: m.Login })));
+const MedicinePage = lazy(() => import("../features/aakaash/pages/MedicinePage").then(m => ({ default: m.MedicinePage })));
+const Menu = lazy(() => import("../features/aakaash/pages/Menu").then(m => ({ default: m.Menu })));
+const Profile = lazy(() => import("../features/aakaash/pages/Profile").then(m => ({ default: m.Profile })));
+const Trace = lazy(() => import("../features/aakaash/pages/Trace").then(m => ({ default: m.Trace })));
 
 function ModuleRoute() {
   const { id = "" } = useParams();
@@ -84,6 +85,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
               {auth.user.email}
             </div>
             <NavLink to="/account" className={plainLink}>
+              <Gear size={18} aria-hidden="true" />
               Account settings
             </NavLink>
             <button type="button" className="nav-link nav-button" onClick={logOut}>
@@ -126,6 +128,7 @@ function Shell() {
             <strong>Medication Safety Support</strong>
           </header>
           <main className={WIDE_PATHS.has(pathname) ? "content wide" : "content"} id="main" tabIndex={-1}>
+            <Suspense fallback={<p className="muted" role="status">Loading page…</p>}>
             <Routes>
               <Route path="/" element={guard(<Menu />)} />
               <Route path="/profile" element={guard(<Profile />)} />
@@ -146,6 +149,7 @@ function Shell() {
               <Route path="/modules/:id" element={guard(<ModuleRoute />)} />
               <Route path="*" element={<><h1>Page not found</h1><p>Use the menu to go to a screen.</p></>} />
             </Routes>
+            </Suspense>
           </main>
           <footer className="app-foot">
             <Disclaimer />
@@ -160,10 +164,10 @@ function Shell() {
 export function App() {
   return (
     <AuthProvider>
-      <Routes>
+      <Suspense fallback={<div className="login-wrap"><p role="status">Loading…</p></div>}><Routes>
         <Route path="/login" element={<Login />} />
         <Route path="*" element={<Shell />} />
-      </Routes>
+      </Routes></Suspense>
     </AuthProvider>
   );
 }

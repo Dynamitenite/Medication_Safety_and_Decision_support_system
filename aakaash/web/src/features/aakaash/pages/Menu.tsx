@@ -1,14 +1,6 @@
 import { Link, Navigate, useSearchParams } from "react-router-dom";
-import { ArrowsLeftRight, ClockCounterClockwise, PlusCircle, UserCircle } from "@phosphor-icons/react";
-import type { Icon } from "@phosphor-icons/react";
 import { MENU } from "../registry";
-
-export const MENU_ICONS: Record<string, Icon> = {
-  profile: UserCircle,
-  history: ClockCounterClockwise,
-  add: PlusCircle,
-  alternatives: ArrowsLeftRight,
-};
+import { MENU_ICONS } from "./MenuIcons";
 
 /** The signed-in start page: the four options as large tiles. */
 export function Menu() {

@@ -7,6 +7,8 @@ import { Disclaimer } from "../components/Disclaimer";
 import { LabelTabs, Skeleton } from "../components/LabelTabs";
 import { ErrorBox, KeyValues, NotReadyBox } from "../components/Panel";
 import { Sticker } from "../components/Sticker";
+import { FormTag } from "../components/viz/icons";
+import { LabelSectionStrip } from "../components/viz/LabelSections";
 import { useApi } from "../useApi";
 
 
@@ -87,6 +89,7 @@ function LabelSection({ ing, choice, onChoose, rule, note, formNote, formUnknown
               <p className="small muted">
                 <Link to={`/label/${lab.data.set_id}`}>Open this US label on its own page</Link>
               </p>
+              <LabelSectionStrip label={lab.data} />
               <LabelTabs med={lab.data} />
             </>
           )}
@@ -169,6 +172,7 @@ function BrandPage({ id }: { id: string }) {
         {b.discontinued && <Sticker>Discontinued</Sticker>}
       </div>
       <section className="card" aria-label="Medicine summary">
+        <div className="medicine-tags"><FormTag family={b.form_family} /><Sticker>{b.type || "Type not stated"}</Sticker><Sticker>{rupees(b.price)} per pack</Sticker></div>
         <KeyValues
           items={[
             ["Manufacturer", b.manufacturer ?? "not stated"],
@@ -226,7 +230,7 @@ function BrandPage({ id }: { id: string }) {
         {!alt.data && alt.state !== "error" && <Skeleton lines={3} />}
         {alt.data?.status === "not_ready" && <NotReadyBox reason={alt.data.reason} fix={alt.data.fix} />}
         {alt.data?.status === "ready" && (
-          <Alternatives id={id} data={alt.data} showDisc={showDisc} setShowDisc={(v) => set({ disc: v ? "1" : "" })} />
+          <Alternatives id={id} data={alt.data} showDisc={showDisc} setShowDisc={(v) => set({ disc: v ? "1" : "" })} selected={b} />
         )}
         <Disclaimer />
       </section>

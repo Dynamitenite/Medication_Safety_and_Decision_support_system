@@ -1,10 +1,13 @@
 import { Link } from "react-router-dom";
+import type { ReactNode } from "react";
 import { Warning } from "@phosphor-icons/react";
 import type { AllergyFinding, AnalyzeResponse, CheckerMedicine, PairFinding, RiskLevel } from "../api";
 import { SEVERITY_LABEL } from "../format";
 import { Disclaimer } from "./Disclaimer";
 import { ErrorBox, NotReadyBox } from "./Panel";
 import { Sticker } from "./Sticker";
+import { findingId } from "../viz/graph";
+import { LevelGlyph, SeverityGlyph } from "./viz/icons";
 
 export type Analysis = { state: "idle" } | { state: "loading" } | { state: "error"; message: string } | { state: "ok"; data: AnalyzeResponse };
 
@@ -20,7 +23,7 @@ export function RiskMeter({ level }: { level: RiskLevel | null }) {
       <div className="risk-meter" role="img" aria-label={label}>
         {LEVELS.map((l) => (
           <span key={l} className={`risk-seg ${lvClass(l)}${l === level ? " on" : ""}`} aria-hidden="true">
-            {l}
+            <LevelGlyph level={l} size={14} />{l}
           </span>
         ))}
       </div>
@@ -34,7 +37,7 @@ export function RiskMeter({ level }: { level: RiskLevel | null }) {
 }
 
 function LevelBadge({ level }: { level: RiskLevel }) {
-  return <span className={`badge lv-badge ${lvClass(level)}`}>{level}</span>;
+  return <span className={`badge lv-badge ${lvClass(level)}`}><LevelGlyph level={level} size={14} />{level}</span>;
 }
 
 const ings = (m: CheckerMedicine) => (m.kind === "generic" && m.ingredients.length === 1 && m.ingredients[0].name === m.name ? "ingredients not known" : m.ingredients.map((g) => g.name).join(" + ") || "ingredients not known");
@@ -43,7 +46,7 @@ const role = (r: "new" | "current") => (r === "new" ? "to add" : "current");
 function PairCard({ p }: { p: PairFinding }) {
   const n = p.text_match.matches_total;
   return (
-    <li className={`finding${p.level ? ` ${lvClass(p.level)}` : ""}`}>
+    <li id={findingId("p", p.a.key, p.b.key)} tabIndex={-1} className={`finding${p.level ? ` ${lvClass(p.level)}` : ""}`}>
       <div className="finding-head">
         <span className="finding-names">
           {p.a.name} <span className="small muted">({role(p.a_role)})</span> <span className="muted">+</span> {p.b.name}{" "}
@@ -107,7 +110,7 @@ function PairCard({ p }: { p: PairFinding }) {
 
 function AllergyCard({ f }: { f: AllergyFinding }) {
   return (
-    <li className={`finding ${lvClass(f.level)}`}>
+    <li id={findingId("a", f.allergy_id, f.medicine.key)} tabIndex={-1} className={`finding ${lvClass(f.level)}`}>
       <div className="finding-head">
         <span className="finding-names">
           {f.medicine.name} <span className="muted">+</span> your allergy to {f.allergen}
@@ -117,7 +120,7 @@ function AllergyCard({ f }: { f: AllergyFinding }) {
       <h4>Reason (your allergies)</h4>
       <p>
         You recorded an allergy to <strong>{f.allergen}</strong>
-        {f.reaction ? ` (reaction: ${f.reaction})` : ""}, severity: {SEVERITY_LABEL[f.severity].toLowerCase()}. {f.medicine.name} contains{" "}
+        {f.reaction ? ` (reaction: ${f.reaction})` : ""}, severity: <SeverityGlyph severity={f.severity} size={14} /> {SEVERITY_LABEL[f.severity].toLowerCase()}. {f.medicine.name} contains{" "}
         <strong>{f.ingredients.join(", ")}</strong>.
       </p>
       <p className="small muted">
@@ -133,7 +136,7 @@ function AllergyCard({ f }: { f: AllergyFinding }) {
 }
 
 /** The analysis of the "To add" list against the user's current medicines and allergies. */
-export function RiskAnalysis({ result, onRetry }: { result: Analysis; onRetry: () => void }) {
+export function RiskAnalysis({ result, onRetry, graph }: { result: Analysis; onRetry: () => void; graph?: ReactNode }) {
   if (result.state === "idle") return <p className="muted">The check runs when you add a medicine to the list.</p>;
   if (result.state === "loading")
     return (
@@ -193,6 +196,8 @@ export function RiskAnalysis({ result, onRetry }: { result: Analysis; onRetry: (
           {d.level_rule} <Link to="/about/data">How levels are set</Link>
         </p>
       </details>
+
+      {graph}
 
       {findings.length > 0 && <ul className="finding-list">{findings.map((f) => f.el)}</ul>}
       {findings.length === 0 && d.pairs_checked > 0 && (

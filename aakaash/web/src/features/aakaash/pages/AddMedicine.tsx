@@ -8,6 +8,9 @@ import { MedicineSearch, type Recent } from "../components/MedicineSearch";
 import { RiskAnalysis, type Analysis } from "../components/RiskAnalysis";
 import { ScanPrescription } from "../components/ScanPrescription";
 import { Sticker } from "../components/Sticker";
+import { CourseBar, longestCourse } from "../components/viz/CourseBars";
+import { InteractionGraph } from "../components/viz/InteractionGraph";
+import { NoMedicinesArt } from "../components/viz/Illustrations";
 import { emptyCourse, toCourse, type ToAddItem } from "../toAdd";
 
 const MAX = 10;
@@ -62,7 +65,7 @@ function ToAddCard({ it, onChange, onRemove }: { it: ToAddItem; onChange: (p: Pa
     window.setTimeout(() => ref.current?.querySelector("input")?.focus(), 0);
   };
   return (
-    <li className="card to-add">
+    <div className="card to-add">
       <div className="card-head">
         <h3>{it.name}</h3>
         <span className="row-actions">
@@ -83,7 +86,7 @@ function ToAddCard({ it, onChange, onRemove }: { it: ToAddItem; onChange: (p: Pa
         {editing && <CourseFields it={it} onChange={onChange} />}
       </div>
       <MedicineDetailsCard it={it} onEditCourse={edit} />
-    </li>
+    </div>
   );
 }
 
@@ -232,11 +235,14 @@ export function AddMedicine() {
           </p>
         )}
         {items.length === 0 ? (
-          <p className="muted">No medicines yet. Pick one above.</p>
+          <div className="empty-illustrated"><NoMedicinesArt /><p className="muted">No medicines yet. Pick one above.</p></div>
         ) : (
           <ul className="to-add-list">
             {items.map((it) => (
-              <ToAddCard key={it.id} it={it} onChange={(p) => change(it.id, p)} onRemove={() => remove(it)} />
+              <li key={it.id} className="to-add-item">
+                <ToAddCard it={it} onChange={(p) => change(it.id, p)} onRemove={() => remove(it)} />
+                <CourseBar it={it} maxDays={longestCourse(items)} />
+              </li>
             ))}
           </ul>
         )}
@@ -251,7 +257,7 @@ export function AddMedicine() {
                 {analysis.state === "loading" ? "Checking…" : "Check before adding"}
               </button>
             </div>
-            <RiskAnalysis result={analysis} onRetry={run} />
+            <RiskAnalysis result={analysis} onRetry={run} graph={analysis.state === "ok" && analysis.data.status === "ready" ? <InteractionGraph data={analysis.data} /> : undefined} />
           </section>
 
           <section className="card add-bar" aria-label="Add to my medicines">

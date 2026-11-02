@@ -13,9 +13,9 @@ from .db import User, get_db
 from .schemas import (AddMedicinesRequest, AddMedicinesResponse, AnalyzeRequest, AnalyzeResponse,
                       MedicineDetailsResponse, AllergyIn, AllergyOut, AlternativesResponse, AppmsLookupResponse, AppmsPatientResponse,
                       AppmsPatientsResponse, AppmsSummaryResponse, BrandAlternativesResponse, BrandResponse,
-                      CatalogueSummaryResponse, CheckerRequest, CheckerResponse, ConditionIn, ConditionOut,
+                      CatalogueFormsResponse, CatalogueSummaryResponse, CheckerRequest, CheckerResponse, ConditionIn, ConditionOut,
                       ConditionStatus, LoginRequest, LoginResponse, MeResponse, MedicineRecordIn,
-                      MedicineRecordOut, MedicineResponse, ProfileIn, ProfileOut,
+                      MedicineRecordOut, MedicineResponse, ProfileIn, ProfileOut, ProfileOverview,
                       SuggestResponse, DDIExamplesResponse, DDILabel, DDIStatsResponse, DailyMedStatsResponse,
                       Health, StatusResponse, TacStatsResponse, TraceResponse)
 from .services import accounts, appms, catalogue, datasets, intake, medicines, status, trace
@@ -92,6 +92,11 @@ def catalogue_summary(settings: Settings = Depends(get_settings)) -> CatalogueSu
     return catalogue.summary(settings)
 
 
+@router.get("/catalogue/forms", response_model=CatalogueFormsResponse)
+def catalogue_forms(settings: Settings = Depends(get_settings)) -> CatalogueFormsResponse:
+    return catalogue.forms(settings)
+
+
 @router.get("/label/{set_id}", response_model=MedicineResponse)
 def label_text(set_id: str, settings: Settings = Depends(get_settings)) -> MedicineResponse:
     return medicines.medicine(settings, set_id)
@@ -166,6 +171,13 @@ def get_profile(user: User = Depends(auth.current_user), db: Session = Depends(g
 def put_profile(body: ProfileIn, user: User = Depends(auth.current_user),
                 db: Session = Depends(get_db)) -> ProfileOut:
     return accounts.put_profile(db, user, body)
+
+
+@router.get("/profile/overview", response_model=ProfileOverview)
+def profile_overview(user: User = Depends(auth.current_user), db: Session = Depends(get_db),
+                     settings: Settings = Depends(get_settings)) -> ProfileOverview:
+    """Read-only: counts and the highest rule level among the current medicines. Stores nothing."""
+    return intake.overview(db, settings, user)
 
 
 @router.get("/allergies", response_model=list[AllergyOut])

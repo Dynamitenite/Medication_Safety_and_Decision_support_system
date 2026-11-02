@@ -1,11 +1,15 @@
 import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { PencilSimple, Plus, Trash } from "@phosphor-icons/react";
+import { CalendarBlank, PencilSimple, Plus, Ruler, Scales, Trash } from "@phosphor-icons/react";
 import { api, errorText, type AllergyOut, type ProfileIn, type ProfileOut } from "../api";
 import { ConfirmDialog, EmptyState, Field, FormError } from "../components/Form";
 import { ErrorBox, KeyValues } from "../components/Panel";
 import { Skeleton } from "../components/LabelTabs";
 import { Sticker } from "../components/Sticker";
+import { BmiScaleCard } from "../components/viz/BmiScale";
+import { RecordFormTag } from "../components/viz/RecordFormTag";
+import { LevelGlyph, SeverityGlyph } from "../components/viz/icons";
+import { NoAllergiesArt, NoMedicinesArt } from "../components/viz/Illustrations";
 import { courseText, fmtDate, SEVERITY_LABEL, SEX_LABEL } from "../format";
 import { useApi, type Query } from "../useApi";
 
@@ -151,14 +155,16 @@ function PatientCard() {
           />
         ) : (
           <>
+            <div className="profile-stats" aria-label="Age, height and weight">
+              <div><CalendarBlank size={18} aria-hidden="true"/><span className="small muted">Age</span><strong>{p.age != null ? `${p.age} years` : "Not given"}</strong></div>
+              <div><Ruler size={18} aria-hidden="true"/><span className="small muted">Height</span><strong>{p.height_cm != null ? `${p.height_cm} cm` : "Not given"}</strong></div>
+              <div><Scales size={18} aria-hidden="true"/><span className="small muted">Weight</span><strong>{p.weight_kg != null ? `${p.weight_kg} kg` : "Not given"}</strong></div>
+            </div>
+            <BmiScaleCard age={p.age} bmi={p.bmi} />
             <KeyValues
               items={[
                 ["Name", p.name ?? NOT_GIVEN],
-                ["Age", p.age != null ? `${p.age} years` : NOT_GIVEN],
                 ["Sex", p.sex ? SEX_LABEL[p.sex] : NOT_GIVEN],
-                ["Height", p.height_cm != null ? `${p.height_cm} cm` : NOT_GIVEN],
-                ["Weight", p.weight_kg != null ? `${p.weight_kg} kg` : NOT_GIVEN],
-                ["BMI", p.bmi != null ? p.bmi.toFixed(1) : NOT_GIVEN],
                 ["Blood group", p.blood_group ?? NOT_GIVEN],
               ]}
             />
@@ -294,7 +300,7 @@ function Allergies() {
         <>
           {editing === "new" && <AllergyForm onSaved={done} onCancel={() => setEditing(null)} />}
           {items.length === 0 && editing !== "new" && (
-            <EmptyState title="No allergies added yet." hint="Add anything you are allergic to, so it is on record." />
+            <div className="empty-illustrated"><NoAllergiesArt /><EmptyState title="No allergies added yet." hint="Add anything you are allergic to, so it is on record." /></div>
           )}
           <ul className="rows">
             {items.map((a) =>
@@ -306,9 +312,9 @@ function Allergies() {
                 <li key={a.id}>
                   <div className="row-body">
                     <span className="row-main">
-                      {a.allergen} <Sticker tone={a.severity === "severe" ? "danger" : "neutral"}>{SEVERITY_LABEL[a.severity]}</Sticker>
+                      {a.allergen} <Sticker tone={a.severity === "severe" ? "danger" : "neutral"}><SeverityGlyph severity={a.severity} size={14} /> {SEVERITY_LABEL[a.severity]}</Sticker>
                     </span>
-                    {a.reaction && <span className="small muted">{a.reaction}</span>}
+            {a.reaction && <span className="small muted">{a.reaction}</span>}
                   </div>
                   <div className="row-actions">
                     <button type="button" className="btn btn-plain btn-icon btn-sm" aria-label={`Edit ${a.allergen}`} onClick={() => setEditing(a.id)}>
@@ -347,12 +353,12 @@ function CurrentMedicines() {
       {(all) => {
         const current = all.filter((m) => m.status === "current");
         if (current.length === 0)
-          return <EmptyState title="No current medicines." hint="Medicines you are taking now appear here." action={<Link to="/history?tab=medicines" className="btn btn-secondary btn-sm">Add a medicine</Link>} />;
+          return <div className="empty-illustrated"><NoMedicinesArt /><EmptyState title="No current medicines." hint="Medicines you are taking now appear here." action={<Link to="/history?tab=medicines" className="btn btn-secondary btn-sm">Add a medicine</Link>} /></div>;
         return (
           <ul className="rows">
             {current.slice(0, 5).map((m) => (
               <li key={m.id}>
-                <span className="row-main">{m.display_name}</span>
+                <span className="row-main">{m.display_name}{m.catalogue_id && <> <RecordFormTag catalogueId={m.catalogue_id} /></>}</span>
                 <span className="small muted">{[m.dose, m.frequency, courseText(m)].filter(Boolean).join(" · ")}</span>
               </li>
             ))}
@@ -369,9 +375,23 @@ function CurrentMedicines() {
 }
 
 export function Profile() {
+  const overview = useApi(api.profileOverview);
   return (
     <>
       <h1>My profile</h1>
+      <section className="profile-overview" aria-label="Profile summary">
+        {overview.state === "error" ? <ErrorBox message={overview.message} onRetry={overview.reload} /> : overview.data ? <>
+          <div className="summary-tile"><strong>{overview.data.current_medicines}</strong><span>Current medicines</span></div>
+          <div className="summary-tile"><strong>{overview.data.allergies}</strong><span>Allergies</span></div>
+          <div className="summary-tile"><strong>{overview.data.current_conditions}</strong><span>Current conditions</span></div>
+          <div className={`summary-tile summary-risk${overview.data.highest_risk ? ` lv-${overview.data.highest_risk.toLowerCase()}` : ""}`}>
+            <LevelGlyph level={overview.data.highest_risk} size={20} />
+            <strong>{overview.data.highest_risk ?? (overview.data.risk_status === "none_found" ? "No finding" : "Not enough data")}</strong>
+            <span>Highest current-medicine pair</span>
+            {overview.data.risk_note && <span className="small muted">{overview.data.risk_note}</span>}
+          </div>
+        </> : <div className="summary-loading" aria-busy="true">Loading profile summary…</div>}
+      </section>
       <PatientCard />
       <CurrentConditions />
       <Allergies />

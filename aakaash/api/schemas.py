@@ -837,6 +837,27 @@ class AnalyzeResponse(Readiness):
     level_rule: str = ""
 
 
+class ProfileOverview(ApiModel):
+    """Counts and the highest rule level among the user's current medicines, for the profile tiles."""
+    current_medicines: int
+    allergies: int
+    current_conditions: int
+    highest_risk: RiskLevel | None = None
+    risk_status: Literal["found", "none_found", "not_enough_data"]
+    pairs_checked: int = 0
+    risk_note: str = ""
+
+
+class FormFamilyCount(ApiModel):
+    family: str
+    products: int
+
+
+class CatalogueFormsResponse(Readiness):
+    total: int = 0
+    families: list[FormFamilyCount] = Field(default_factory=list)
+
+
 class AddMedicinesRequest(ApiModel):
     items: list[CourseIn] = Field(min_length=1, max_length=10)
     acknowledged_warning: bool = False

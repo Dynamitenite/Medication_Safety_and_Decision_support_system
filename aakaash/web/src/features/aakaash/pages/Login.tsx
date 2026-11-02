@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import { ThemeToggle } from "../../../app/ThemeToggle";
+import { ClockCounterClockwise, MagnifyingGlass, Scales } from "@phosphor-icons/react";
 import { errorText } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { Field, FormError } from "../components/Form";
@@ -38,7 +39,12 @@ export function Login() {
     <div className="login-wrap">
       <main className="login-card card" id="main">
         <h1>Medication Safety Support</h1>
-        <p className="lead">Sign in to see your profile, your medical history and your medicines.</p>
+        <p className="lead">A place to review your medicines and health history.</p>
+        <ul className="login-points">
+          <li><Scales size={18} aria-hidden="true" />Check a new medicine against your current ones</li>
+          <li><ClockCounterClockwise size={18} aria-hidden="true" />Keep your medical history</li>
+          <li><MagnifyingGlass size={18} aria-hidden="true" />Find lower-priced alternatives</li>
+        </ul>
         <form onSubmit={submit} noValidate>
           <div className="form-stack">
             <Field label="Email">
