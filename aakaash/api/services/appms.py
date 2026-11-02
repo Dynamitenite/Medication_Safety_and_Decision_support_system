@@ -10,13 +10,14 @@ from fastapi import HTTPException
 
 from medsafe import appms
 from medsafe.appms import AppmsData, AppmsMissing
+from medsafe.appms_match import IngredientMatcher
 
 from ..config import Settings
-from ..schemas import (AppmsLookupResponse, AppmsMedication, AppmsPatient, AppmsPatientResponse,
+from ..schemas import (AppmsLabelRef, AppmsLookupResponse, AppmsMatchSummary, AppmsUnmatched, AppmsMedication, AppmsPatient, AppmsPatientResponse,
                        AppmsPatientsResponse, AppmsRuleMatch, AppmsSeverityCount, AppmsSummaryResponse)
 
-FIX = "extract the APPMS zip into data\\appms\\"
-NOTE = "Not flagged means no rule matched. It does not mean the combination is safe."
+FIX = "The interaction rules files are not installed on this server. Ask the administrator to add them."
+NOTE = "No rule matched does not mean the combination is safe."
 
 _lock = threading.Lock()
 _cache: dict[str, tuple[tuple, AppmsData]] = {}
@@ -50,9 +51,37 @@ def get_data(settings: Settings) -> AppmsData | None:
 
 def _not_ready(cls, settings: Settings):
     gone = appms.missing_files(_folder(settings))
-    where = settings.display(_folder(settings))
-    reason = f"{where} is missing or incomplete ({', '.join(gone)})." if gone else "The interaction rules could not be read."
+    reason = "The interaction rules are not available right now." if gone else "The interaction rules could not be read."
     return cls(status="not_ready", reason=reason, fix=FIX)
+
+
+_matchers: dict[int, IngredientMatcher] = {}
+
+
+def matcher(settings: Settings) -> IngredientMatcher | None:
+    """Active-ingredient matcher over the DailyMed name index. None if the index is missing."""
+    from . import medicines  # late import: medicines imports this module
+    idx = medicines.get_index(settings)
+    if idx is None:
+        return None
+    with _lock:
+        m = _matchers.get(id(idx))
+        if m is None:
+            _matchers.clear()
+            m = _matchers[id(idx)] = IngredientMatcher(idx.labels)
+        return m
+
+
+def match_summary(d: AppmsData, m: IngredientMatcher) -> AppmsMatchSummary:
+    counts: dict[str, int] = {}
+    for x in d.medications:
+        counts[x.drug_name] = counts.get(x.drug_name, 0) + 1
+    hit = {n for n in counts if m.match(n)}
+    return AppmsMatchSummary(
+        medication_rows=len(d.medications), rows_matched=sum(c for n, c in counts.items() if n in hit),
+        drug_names=len(counts), names_matched=len(hit),
+        unmatched=[AppmsUnmatched(drug_name=n, rows=c)
+                   for n, c in sorted(counts.items(), key=lambda t: (-t[1], t[0])) if n not in hit])
 
 
 def summary(settings: Settings) -> AppmsSummaryResponse:
@@ -61,7 +90,9 @@ def summary(settings: Settings) -> AppmsSummaryResponse:
         return _not_ready(AppmsSummaryResponse, settings)
     flagged = [s for s in d.scenarios if s.flagged]
     ids = {p.patient_id for p in d.patients}
+    m = matcher(settings)
     return AppmsSummaryResponse(
+        match=match_summary(d, m) if m else None,
         status="ready", patients=len(d.patients), medication_rows=len(d.medications),
         scenarios=len(d.scenarios), rules=len(d.rules), flagged_scenarios=len(flagged),
         not_flagged_scenarios=len(d.scenarios) - len(flagged),
@@ -98,7 +129,16 @@ def patient(settings: Settings, patient_id: str) -> AppmsPatientResponse:
     p = next((x for x in d.patients if x.patient_id == patient_id), None)
     if p is None:
         raise HTTPException(404, f"No sample patient with id {patient_id}.")
-    meds = [AppmsMedication(**m.model_dump(exclude={"patient_id"})) for m in d.meds_by_patient.get(patient_id, [])]
+    mt = matcher(settings)
+    meds = []
+    for x in d.meds_by_patient.get(patient_id, []):
+        hits = mt.match(x.drug_name) if mt else []
+        ref = None
+        if hits:
+            h = hits[0]
+            ref = AppmsLabelRef(set_id=h["set_id"], name=h["products"][0] if h["products"] else x.drug_name,
+                                manufacturer=h["manufacturer"])
+        meds.append(AppmsMedication(**x.model_dump(exclude={"patient_id"}), label_count=len(hits), label=ref))
     return AppmsPatientResponse(status="ready", patient=_patient(p), medications=meds)
 
 

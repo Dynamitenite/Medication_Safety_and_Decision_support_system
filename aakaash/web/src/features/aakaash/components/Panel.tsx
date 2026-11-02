@@ -7,7 +7,7 @@ export function NotReadyBox({ reason, fix, title }: { reason?: string | null; fi
   return (
     <div className="notice" role="status">
       <div className="notice-title">
-        <Sticker>Not ready</Sticker>
+        <Sticker>Unavailable</Sticker>
         {title}
       </div>
       {reason && <p>{reason}</p>}

@@ -73,7 +73,7 @@ def test_not_ready_when_folder_missing(tmp_path):
         for url in ("/api/appms/summary", "/api/appms/patients", "/api/appms/patients/P1",
                     "/api/appms/lookup?drug_a=a&drug_b=b"):
             b = c.get(url).json()
-            assert b["status"] == "not_ready" and b["fix"] == "extract the APPMS zip into data\\appms\\"
+            assert b["status"] == "not_ready" and b["fix"] == appms_service.FIX
             assert str(tmp_path) not in b["reason"]
     finally:
         app.dependency_overrides.clear()

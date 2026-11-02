@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, NavLink, Route, Routes, useLocation, useParams } from "react-router-dom";
-import { Bell, Info, List, MagnifyingGlass, Moon, Pill, ArrowsLeftRight, SquaresFour, GitBranch, Sun, X } from "@phosphor-icons/react";
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
+import { List, MagnifyingGlass, Moon, Pill, Sun, X } from "@phosphor-icons/react";
 import type { Icon } from "@phosphor-icons/react";
 import { ComingSoon } from "../features/aakaash/pages/ComingSoon";
 import { DataMethods } from "../features/aakaash/pages/DataMethods";
 import { MedicinePage } from "../features/aakaash/pages/MedicinePage";
+import { Trace } from "../features/aakaash/pages/Trace";
+import { Disclaimer } from "../features/aakaash/components/Disclaimer";
 import { MODULE_COMPONENTS, modulePath, SCREENS } from "../features/aakaash/registry";
 import { StatusProvider, useStatus } from "../features/aakaash/StatusContext";
 import { Sticker } from "../features/aakaash/components/Sticker";
@@ -13,15 +15,10 @@ import { applyTheme, readTheme, type Theme } from "./theme";
 const ICONS: Record<string, Icon> = {
   home: MagnifyingGlass,
   checker: Pill,
-  dashboard: SquaresFour,
-  interaction_risk: ArrowsLeftRight,
-  personalized_alert: Bell,
-  trace: GitBranch,
-  about: Info,
 };
 
 /** Screens whose tables and charts use the full width; the others are text pages. */
-const WIDE_PATHS = new Set(["/dashboard", "/trace"]);
+const WIDE_PATHS = new Set(["/about/data", "/about/trace"]);
 
 function ModuleRoute() {
   const { id = "" } = useParams();
@@ -61,7 +58,6 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
       <div className="sidebar-head">
         <div>
           <div className="sidebar-title">Medication Safety Support</div>
-          <div className="sidebar-sub font-nav">Subareas A and B</div>
         </div>
         <button ref={closeRef} type="button" className="btn btn-plain btn-icon btn-sm mobile-only" aria-label="Close menu" onClick={onClose}>
           <X size={18} />
@@ -81,23 +77,21 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             );
           })}
         </ul>
-        <h2 className="nav-heading font-nav">Coming soon</h2>
-        {q.state === "loading" && !q.data && <p className="small muted nav-note">Loading…</p>}
-        {q.state === "error" && (
-          <p className="small nav-note">
-            Module list unavailable. <button type="button" className="btn btn-plain btn-sm" onClick={q.reload}>Retry</button>
-          </p>
+        {q.data && q.data.modules.length > 0 && (
+          <>
+            <h2 className="nav-heading font-nav">Coming soon</h2>
+            <ul>
+              {q.data.modules.map((m) => (
+                <li key={m.id}>
+                  <NavLink to={modulePath(m.id)} className={soonLink}>
+                    <span>{m.label}</span>
+                    <Sticker>Soon</Sticker>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
-        <ul>
-          {q.data?.modules.map((m) => (
-            <li key={m.id}>
-              <NavLink to={modulePath(m.id)} className={soonLink}>
-                <span>{m.label}</span>
-                <Sticker>Soon</Sticker>
-              </NavLink>
-            </li>
-          ))}
-        </ul>
       </nav>
       <div className="sidebar-foot">
         <ThemeToggle />
@@ -131,21 +125,25 @@ export function App() {
             </button>
             <strong>Medication Safety Support</strong>
           </header>
-          <div className="banner" role="note">Research prototype. Decision support only. Not medical advice.</div>
           <main className={WIDE_PATHS.has(pathname) ? "content wide" : "content"} id="main" tabIndex={-1}>
             <Routes>
               {SCREENS.map((s) => (
                 <Route key={s.id} path={s.path} element={<s.Component />} />
               ))}
               <Route path="/about/data" element={<DataMethods />} />
+              <Route path="/about/trace" element={<Trace />} />
+              <Route path="/about" element={<Navigate to="/about/data" replace />} />
+              <Route path="/dashboard" element={<Navigate to="/about/data" replace />} />
+              <Route path="/trace" element={<Navigate to="/about/trace" replace />} />
               <Route path="/medicine/:setId" element={<MedicinePage />} />
               <Route path="/modules/:id" element={<ModuleRoute />} />
               <Route path="*" element={<><h1>Page not found</h1><p>Use the menu to go to a screen.</p></>} />
             </Routes>
-            <footer className="app-foot">
-              <Link to="/about/data">Data &amp; methods</Link>
-            </footer>
           </main>
+          <footer className="app-foot">
+            <Disclaimer />
+            <Link to="/about/data">Data &amp; methods</Link>
+          </footer>
         </div>
       </div>
     </StatusProvider>

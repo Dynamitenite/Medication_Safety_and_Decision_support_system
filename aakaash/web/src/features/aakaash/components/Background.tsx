@@ -1,6 +1,6 @@
-import { ErrorBox, LoadingBox } from "../components/Panel";
-import { Sticker } from "../components/Sticker";
 import { useStatus } from "../StatusContext";
+import { ErrorBox, LoadingBox } from "./Panel";
+import { Sticker } from "./Sticker";
 
 const FROM_REVIEW = "FROM BASELINE REVIEW (ICMLAS 2025)";
 
@@ -9,7 +9,7 @@ const REQUIREMENTS: { id: string; text: string; where: string; use: string }[] =
     id: "R1",
     text: "Analyse a patient's medication profile and alert the clinician to interactions, contraindications, allergies and side effects.",
     where: "§IV-C; §III-E",
-    use: "Personalized Alert (interaction evidence only for now; the allergy and contraindication checks are listed as coming soon).",
+    use: "Interaction evidence in the checker only for now; allergy and contraindication checks are not built.",
   },
   {
     id: "R2",
@@ -21,7 +21,7 @@ const REQUIREMENTS: { id: string; text: string; where: string; use: string }[] =
     id: "R3",
     text: "Privacy and security matter.",
     where: "§V-A",
-    use: "This prototype stores no patient data on the server: the profile travels in the request body and there is no database. See Limitations.",
+    use: "This app stores no patient data on the server: the medicine list travels in the request body and there is no database.",
   },
   {
     id: "R4",
@@ -37,27 +37,22 @@ const REQUIREMENTS: { id: string; text: string; where: string; use: string }[] =
   },
 ];
 
-export function About() {
+/** Project background for the Data & methods page: what the project is, its design stages, the review paper it draws on. */
+export function Background() {
   const q = useStatus();
   return (
     <>
-      <h1>About</h1>
-      <p className="notice" role="note">
-        <strong>Research prototype. Decision support only. Not medical advice.</strong> Nothing here replaces the judgement of a
-        pharmacist or doctor.
-      </p>
-
       <section className="card">
-        <h2>What this is</h2>
+        <h2>The project</h2>
         <p>
-          A prototype for two subareas of the project “AI-Powered Personalized Medication Safety &amp; Decision Support System”
-          (Group 4, course 24RM604, with Selvam Medicals):
+          This app is a research prototype for two subareas of the project “AI-Powered Personalized Medication Safety &amp; Decision
+          Support System” (Group 4, course 24RM604, with Selvam Medicals):
         </p>
         <ul>
-          <li><strong>A.</strong> Medicine information retrieval and generic alternative recommendation (cosine-similarity retrieval over drug-label text).</li>
-          <li><strong>B.</strong> Medication safety risk detection and personalized alert generation (drug-pair interaction type from text, with explanation).</li>
+          <li><strong>A.</strong> Medicine information retrieval and generic alternative recommendation (planned: cosine-similarity retrieval over drug-label text; today the search is by name).</li>
+          <li><strong>B.</strong> Medication safety risk detection and personalized alert generation (planned: drug-pair interaction type from text, with explanation; today the checker uses interaction rules and label text).</li>
         </ul>
-        <p>The data are DailyMed prescription labels, the DDI Extraction 2013 corpus and TAC 2017 labels. The Dashboard shows what is actually loaded.</p>
+        <p>The data are DailyMed prescription labels, the DDI Extraction 2013 corpus, TAC 2017 labels and an interaction-rule dataset. The sections above show what is actually loaded.</p>
       </section>
 
       <section className="card">
@@ -88,7 +83,7 @@ export function About() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th scope="col">No.</th><th scope="col">Requirement</th><th scope="col">Where in the paper</th><th scope="col">How this prototype uses it</th></tr>
+              <tr><th scope="col">No.</th><th scope="col">Requirement</th><th scope="col">Where in the paper</th><th scope="col">How this app uses it</th></tr>
             </thead>
             <tbody>
               {REQUIREMENTS.map((r) => (
@@ -105,18 +100,7 @@ export function About() {
         <p className="small muted">No reference from that paper's own reference list is cited.</p>
       </section>
 
-      <section className="card">
-        <h2>Limitations</h2>
-        <ul>
-          <li><strong>No patient data is stored on the server.</strong> There is no database and no login; a profile exists only in the request that carries it (requirement R3).</li>
-          <li>The first retrieval encoder and interaction classifier are <strong>classical baselines</strong> (TF-IDF cosine similarity; TF-IDF with a linear model). They are not deep learning and not Focal Loss. Where they are used, the screen says so.</li>
-          <li>The interaction classifier is trained on sentences from DrugBank and MedLine. Label text is a different kind of text, so accuracy on labels may be lower. This has not been measured.</li>
-          <li>Only the DailyMed zips present in <code>data/dailymed_rx</code> are used; the Dashboard shows exactly which and how many labels.</li>
-          <li>Alternatives are matched on the active moiety of the active ingredient. That groups products that share a moiety but are not interchangeable. A professional confirms any substitution.</li>
-          <li>Allergy, contraindication, duplicate-therapy and disease-precaution checks and the full patient profile are not built (see the coming-soon entries).</li>
-        </ul>
-      </section>
-
+      
       <section className="card">
         <h2>Future work</h2>
         <ul>

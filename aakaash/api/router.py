@@ -72,7 +72,7 @@ def medicine_alternatives(set_id: str, settings: Settings = Depends(get_settings
 
 @router.post("/checker", response_model=CheckerResponse)
 def checker(body: CheckerRequest, settings: Settings = Depends(get_settings)) -> CheckerResponse:
-    return medicines.check(settings, body.set_ids)
+    return medicines.check(settings, body.set_ids, body.names)
 
 
 @router.get("/appms/summary", response_model=AppmsSummaryResponse)

@@ -1,22 +1,13 @@
 import type { ComponentType } from "react";
-import { About } from "./pages/About";
 import { Checker } from "./pages/Checker";
-import { Dashboard } from "./pages/Dashboard";
 import { Home } from "./pages/Home";
-import { InteractionRisk, PersonalizedAlert } from "./pages/ToBuildPages";
-import { Trace } from "./pages/Trace";
 
-/** Screens of this app. (The coming-soon modules are NOT listed here; see MODULE_COMPONENTS.) */
+/** Screens in the main navigation. (Data & methods and the paper trace are footer-linked routes in App.tsx; the coming-soon modules are in MODULE_COMPONENTS.) */
 export type Screen = { id: string; path: string; label: string; Component: ComponentType };
 
 export const SCREENS: Screen[] = [
   { id: "home", path: "/", label: "Search", Component: Home },
   { id: "checker", path: "/checker", label: "Interaction Checker", Component: Checker },
-  { id: "dashboard", path: "/dashboard", label: "Dashboard", Component: Dashboard },
-  { id: "interaction_risk", path: "/interaction-risk", label: "Interaction Risk", Component: InteractionRisk },
-  { id: "personalized_alert", path: "/personalized-alert", label: "Personalized Alert", Component: PersonalizedAlert },
-  { id: "trace", path: "/trace", label: "Trace", Component: Trace },
-  { id: "about", path: "/about", label: "About", Component: About },
 ];
 
 /**

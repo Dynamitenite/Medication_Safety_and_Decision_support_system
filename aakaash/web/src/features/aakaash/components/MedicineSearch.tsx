@@ -264,7 +264,7 @@ export function MedicineSearch({ label, value, onValueChange, onSelect, placehol
         )}
         {!showRecent && view.kind === "ok" && view.data.status === "not_ready" && (
           <div className="combo-state">
-            <Sticker>Not ready</Sticker> <span className="small">{view.data.reason}</span>
+            <Sticker>Unavailable</Sticker> <span className="small">{view.data.reason}</span>
             <p className="small muted">
               <strong>What is needed:</strong> {view.data.fix}
             </p>
@@ -272,13 +272,11 @@ export function MedicineSearch({ label, value, onValueChange, onSelect, placehol
         )}
         {!showRecent && view.kind === "ok" && view.data.status === "ready" && view.data.suggestions.length === 0 && (
           <div className="combo-state small">
-            No medicine found for “{q}”. Try fewer letters or the generic name.
+            We couldn’t find that medicine in our database. Try fewer letters or the generic name.
           </div>
         )}
         {!showRecent && view.kind === "ok" && view.data.status === "ready" && view.data.suggestions.length > 0 && (
-          <div className="combo-foot small muted">
-            Matched by name only ({view.data.matcher} for typos). {view.data.elapsed_ms} ms.
-          </div>
+          <div className="combo-foot small muted">Matched by name.</div>
         )}
       </div>
     </div>

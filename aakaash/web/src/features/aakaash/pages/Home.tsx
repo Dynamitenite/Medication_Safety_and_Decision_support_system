@@ -12,7 +12,7 @@ export function Home() {
       <section className="hero">
         <h1>Find a medicine</h1>
         <p className="lead">
-          Search the DailyMed prescription labels by brand name, generic name or active ingredient. Every result is a real label;
+          Search prescription medicine labels by brand name, generic name or active ingredient. You see the label text as published;
           nothing is generated.
         </p>
         <MedicineSearch
@@ -26,8 +26,7 @@ export function Home() {
         />
       </section>
       <p className="small muted hero-links">
-        Checking more than one medicine? Use the <Link to="/checker">interaction checker</Link>. Dataset status is on the{" "}
-        <Link to="/dashboard">dashboard</Link>.
+        Taking more than one medicine? Use the <Link to="/checker">interaction checker</Link>.
       </p>
     </>
   );

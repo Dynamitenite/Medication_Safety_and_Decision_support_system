@@ -27,6 +27,8 @@ export type AppmsPatientResponse = S["AppmsPatientResponse"];
 export type AppmsLookupResponse = S["AppmsLookupResponse"];
 export type AppmsPatient = S["AppmsPatient"];
 export type AppmsMedication = S["AppmsMedication"];
+export type AppmsLabelRef = S["AppmsLabelRef"];
+export type NamePairResult = S["NamePairResult"];
 export type Readiness = { status: "ready" | "not_ready"; reason?: string | null; fix?: string | null };
 
 const BASE: string = import.meta.env.VITE_API_BASE ?? "";
@@ -85,10 +87,10 @@ export const api = {
     get<SuggestResponse>(`/api/medicine/suggest?${new URLSearchParams({ q, limit: String(limit) })}`, signal),
   medicine: (id: string) => get<MedicineResponse>(`/api/medicine/${encodeURIComponent(id)}`),
   alternatives: (id: string) => get<AlternativesResponse>(`/api/medicine/${encodeURIComponent(id)}/alternatives`),
-  check: (setIds: string[]) =>
+  check: (setIds: string[], names: string[] = []) =>
     request<CheckerResponse>("/api/checker", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ set_ids: setIds }),
+      body: JSON.stringify({ set_ids: setIds, names }),
     }),
 };

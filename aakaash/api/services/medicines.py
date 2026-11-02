@@ -16,13 +16,14 @@ from pathlib import Path
 from fastapi import HTTPException
 
 from medsafe import appms as appms_data
+from medsafe.appms_match import ingredient_keys, label_keys
 from medsafe.names import FUZZY_BACKEND, NameIndex, mentions, pairs
 from medsafe.spl import parse_label
 
 from ..config import Settings
 from . import appms as appms_service
 from ..schemas import (Alternative, AlternativesResponse, AppmsResult, CheckerMedicine,
-                       CheckerResponse, LabelSection, MedicineResponse, PairResult, SuggestResponse,
+                       CheckerResponse, LabelSection, MedicineResponse, NamePairResult, PairResult, SuggestResponse,
                        Suggestion, TextMatch, TextMatchResult)
 
 NAMES_FILE = "names.json"
@@ -33,24 +34,29 @@ SECTION_ORDER = [("boxed_warning", "Boxed warning"), ("indications", "Indication
                  ("precautions", "Precautions"), ("drug_interactions", "Drug interactions"),
                  ("adverse_reactions", "Adverse reactions"),
                  ("specific_populations", "Use in specific populations")]
-TEXT_MATCH_LABEL = ("text match, not a clinical judgement. Class-level mentions (for example "
-                    "'anticoagulants') are not detected.")
+TEXT_MATCH_LABEL = ("Sentences in each label's Drug Interactions section that name the other medicine. "
+                    "Class-level mentions (for example 'anticoagulants') are not detected.")
 RULES_LABEL = "Interaction rules"
 SEV_RANK = {"Critical": 0, "High": 1, "Moderate": 2}
 
 
-def _rule_lookup(settings: Settings, data, a: dict, b: dict) -> AppmsResult:
-    """Interaction rules for a pair of labels, matched on active moieties (any combination)."""
+def _rule_from_keys(settings: Settings, data, ka: set[str], kb: set[str]) -> AppmsResult:
+    """Interaction rules for two medicines, given their active-ingredient keys (any combination)."""
     if data is None:
         return AppmsResult(status="not_ready", source_label=RULES_LABEL,
                            reason="The interaction rules are not loaded.", fix=appms_service.FIX)
-    hits = [r for x in a["active_moieties"] for y in b["active_moieties"]
-            if (r := appms_data.find_rule(data, x, y))]
+    hits = [r for x in ka for y in kb if (r := appms_data.find_rule(data, x, y))]
     if not hits:
         return AppmsResult(status="ready", source_label=RULES_LABEL)
     r = min(hits, key=lambda h: SEV_RANK[h.severity])
     return AppmsResult(status="ready", source_label=RULES_LABEL, severity=r.severity.lower(),
                        explanation=f"{r.interaction_category}. {r.mechanism_or_risk}. {r.explanation_or_action}.")
+
+
+def _rule_lookup(settings: Settings, data, a: dict, b: dict) -> AppmsResult:
+    return _rule_from_keys(settings, data, label_keys(a), label_keys(b))
+
+
 ALT_NOTE = ("Same active ingredient, matched on its active moiety. Not necessarily "
             "interchangeable. Confirm with a pharmacist.")
 MAX_MATCHES_PER_PAIR = 12
@@ -181,9 +187,14 @@ def _text_match(a: dict, b: dict) -> TextMatchResult:
                            matches_total=total, notes=notes)
 
 
-def check(settings: Settings, set_ids: list[str]) -> CheckerResponse:
+def check(settings: Settings, set_ids: list[str], names: list[str] | None = None) -> CheckerResponse:
+    names = [n.strip() for n in (names or []) if n.strip()]
     if len(set(set_ids)) != len(set_ids):
         raise HTTPException(422, "Each medicine can be added only once.")
+    if len({n.lower() for n in names}) != len(names):
+        raise HTTPException(422, "Each medicine can be added only once.")
+    if len(set_ids) + len(names) < 2:
+        raise HTTPException(422, "Add at least 2 medicines.")
     idx = get_index(settings)
     if idx is None:
         return _not_ready(CheckerResponse, settings)
@@ -200,5 +211,16 @@ def check(settings: Settings, set_ids: list[str]) -> CheckerResponse:
     # rule severity first (Critical, High, Moderate, unflagged); then more text matches first
     rank = {"critical": 0, "high": 1, "moderate": 2, None: 3}
     out.sort(key=lambda p: (rank[p.appms.severity], -p.text_match.matches_total))
+    # pairs with a medicine that has no label: rules only, by name
+    entries = ([(_med(labels[s]).name, label_keys(labels[s]), True) for s in set_ids] +
+               [(n, ingredient_keys(n), False) for n in names])
+    name_pairs = []
+    for i, (na, ka, ia) in enumerate(entries):
+        for nb, kb, ib in entries[i + 1:]:
+            if ia and ib:
+                continue
+            name_pairs.append(NamePairResult(a=na, b=nb, a_in_database=ia, b_in_database=ib,
+                                             appms=_rule_from_keys(settings, rules, ka, kb)))
+    name_pairs.sort(key=lambda p: rank[p.appms.severity])
     return CheckerResponse(status="ready", medicines=[_med(labels[s]) for s in set_ids],
-                           appms=rules_status, pairs=out)
+                           appms=rules_status, pairs=out, name_pairs=name_pairs)

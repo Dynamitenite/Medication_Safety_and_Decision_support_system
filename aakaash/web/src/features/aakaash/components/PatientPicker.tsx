@@ -21,7 +21,7 @@ const conditions = (p: AppmsPatient) => [p.primary_condition, p.secondary_condit
 
 /** Searchable sample-patient list. Choosing one loads its profile and medication list and shows
  *  both below. `onPick` hands the same data to the page that embeds this, so other pages can reuse it. */
-export function PatientPicker({ onPick, label = "Find a sample patient" }: { onPick?: (p: PickedPatient) => void; label?: string }) {
+export function PatientPicker({ onPick, label = "Find a sample patient", showCard = true }: { onPick?: (p: PickedPatient) => void; label?: string; showCard?: boolean }) {
   const inputId = useId();
   const [text, setText] = useState("");
   const [q, setQ] = useState("");
@@ -101,7 +101,7 @@ export function PatientPicker({ onPick, label = "Find a sample patient" }: { onP
       {picked.state === "loading" && <LoadingBox what="patient" />}
       {picked.state === "error" && <ErrorBox message={picked.message} />}
       {picked.notReady && <NotReadyBox reason={picked.notReady.reason} fix={picked.notReady.fix} />}
-      {picked.data && <PatientCard {...picked.data} />}
+      {picked.data && showCard && <PatientCard {...picked.data} />}
     </div>
   );
 }
@@ -127,7 +127,7 @@ export function PatientCard({ patient: p, medications }: PickedPatient) {
           </div>
         ))}
       </dl>
-      <h4>Medications ({medications.length})</h4>
+      <h4>Medicines ({medications.length})</h4>
       {medications.length === 0 ? (
         <p className="muted">No medications listed.</p>
       ) : (

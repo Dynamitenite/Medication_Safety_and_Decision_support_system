@@ -221,7 +221,9 @@ class AlternativesResponse(Readiness):
 
 
 class CheckerRequest(ApiModel):
-    set_ids: list[str] = Field(min_length=2, max_length=10)
+    set_ids: list[str] = Field(default_factory=list, max_length=10)
+    # medicines with no DailyMed label: only the interaction rules can be looked up, by name
+    names: list[str] = Field(default_factory=list, max_length=10)
 
 
 class CheckerMedicine(ApiModel):
@@ -262,16 +264,39 @@ class PairResult(ApiModel):
     same_active_moiety: bool
 
 
+class NamePairResult(ApiModel):
+    """A pair where at least one medicine has no label: interaction rules only."""
+    a: str
+    b: str
+    a_in_database: bool
+    b_in_database: bool
+    appms: AppmsResult
+
+
 class CheckerResponse(Readiness):
     medicines: list[CheckerMedicine] = Field(default_factory=list)
     appms: AppmsResult = Field(default_factory=lambda: AppmsResult(status="not_ready"))
     pairs: list[PairResult] = Field(default_factory=list)
+    name_pairs: list[NamePairResult] = Field(default_factory=list)
 
 
 # ---- APPMS interaction rules -------------------------------------------------------------
 class AppmsSeverityCount(ApiModel):
     severity: Literal["Critical", "High", "Moderate"]
     scenarios: int
+
+
+class AppmsUnmatched(ApiModel):
+    drug_name: str
+    rows: int
+
+
+class AppmsMatchSummary(ApiModel):
+    medication_rows: int
+    rows_matched: int
+    drug_names: int
+    names_matched: int
+    unmatched: list[AppmsUnmatched]
 
 
 class AppmsSummaryResponse(Readiness):
@@ -285,6 +310,7 @@ class AppmsSummaryResponse(Readiness):
     distinct_explanations: int = 0
     orphan_medication_rows: int = 0
     note: str = ""
+    match: AppmsMatchSummary | None = None
 
 
 class AppmsPatient(ApiModel):
@@ -300,8 +326,16 @@ class AppmsPatient(ApiModel):
     egfr_category: str
 
 
+class AppmsLabelRef(ApiModel):
+    set_id: str
+    name: str
+    manufacturer: str | None
+
+
 class AppmsMedication(ApiModel):
     medication_record_id: str
+    label_count: int = 0  # DailyMed labels with the same active ingredient
+    label: AppmsLabelRef | None = None  # one of them, for loading into the checker
     drug_name: str
     strength: str
     route: str

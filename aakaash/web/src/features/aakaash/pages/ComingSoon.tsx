@@ -3,7 +3,7 @@ import { ErrorBox, LoadingBox } from "../components/Panel";
 import { Sticker } from "../components/Sticker";
 import { useStatus } from "../StatusContext";
 
-/** Name, stage, "Coming soon", owner. Nothing else: no sample data, no mock output. */
+/** Name and "Coming soon". Nothing else: no sample data, no mock output. */
 export function ComingSoon({ id: idProp }: { id?: string }) {
   const params = useParams();
   const id = idProp ?? params.id;
@@ -14,8 +14,8 @@ export function ComingSoon({ id: idProp }: { id?: string }) {
   if (!m)
     return (
       <>
-        <h1>Unknown module</h1>
-        <p>The API does not list a module with id “{id}”.</p>
+        <h1>Page not found</h1>
+        <p>There is no feature with that address.</p>
       </>
     );
   return (
@@ -24,25 +24,7 @@ export function ComingSoon({ id: idProp }: { id?: string }) {
       <p>
         <Sticker>Coming soon</Sticker>
       </p>
-      <p>This module is not built yet. Owner: {m.owner}.</p>
-      <div className="table-wrap coming-table">
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Stage</th>
-              <th scope="col">Owner</th>
-            </tr>
-          </thead>
-          <tbody>
-            {m.stages.map((n, i) => (
-              <tr key={n}>
-                <td>Stage {n}: {m.stage_names[i]}</td>
-                <td>{m.owner}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <p>This feature is not available yet.</p>
     </>
   );
 }

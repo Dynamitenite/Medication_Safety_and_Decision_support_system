@@ -307,6 +307,15 @@ export interface components {
             /** Alternatives */
             alternatives: components["schemas"]["Alternative"][];
         };
+        /** AppmsLabelRef */
+        AppmsLabelRef: {
+            /** Set Id */
+            set_id: string;
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+        };
         /** AppmsLookupResponse */
         AppmsLookupResponse: {
             /**
@@ -340,10 +349,29 @@ export interface components {
              */
             message: string;
         };
+        /** AppmsMatchSummary */
+        AppmsMatchSummary: {
+            /** Medication Rows */
+            medication_rows: number;
+            /** Rows Matched */
+            rows_matched: number;
+            /** Drug Names */
+            drug_names: number;
+            /** Names Matched */
+            names_matched: number;
+            /** Unmatched */
+            unmatched: components["schemas"]["AppmsUnmatched"][];
+        };
         /** AppmsMedication */
         AppmsMedication: {
             /** Medication Record Id */
             medication_record_id: string;
+            /**
+             * Label Count
+             * @default 0
+             */
+            label_count: number;
+            label: components["schemas"]["AppmsLabelRef"] | null;
             /** Drug Name */
             drug_name: string;
             /** Strength */
@@ -535,6 +563,14 @@ export interface components {
              * @default
              */
             note: string;
+            match: components["schemas"]["AppmsMatchSummary"] | null;
+        };
+        /** AppmsUnmatched */
+        AppmsUnmatched: {
+            /** Drug Name */
+            drug_name: string;
+            /** Rows */
+            rows: number;
         };
         /** CheckerMedicine */
         CheckerMedicine: {
@@ -552,7 +588,9 @@ export interface components {
         /** CheckerRequest */
         CheckerRequest: {
             /** Set Ids */
-            set_ids: string[];
+            set_ids?: string[];
+            /** Names */
+            names?: string[];
         };
         /** CheckerResponse */
         CheckerResponse: {
@@ -570,6 +608,8 @@ export interface components {
             appms: components["schemas"]["AppmsResult"];
             /** Pairs */
             pairs: components["schemas"]["PairResult"][];
+            /** Name Pairs */
+            name_pairs: components["schemas"]["NamePairResult"][];
         };
         /** ComponentStatus */
         ComponentStatus: {
@@ -848,6 +888,21 @@ export interface components {
              * @default to be confirmed
              */
             owner: string;
+        };
+        /**
+         * NamePairResult
+         * @description A pair where at least one medicine has no label: interaction rules only.
+         */
+        NamePairResult: {
+            /** A */
+            a: string;
+            /** B */
+            b: string;
+            /** A In Database */
+            a_in_database: boolean;
+            /** B In Database */
+            b_in_database: boolean;
+            appms: components["schemas"]["AppmsResult"];
         };
         /** PairResult */
         PairResult: {

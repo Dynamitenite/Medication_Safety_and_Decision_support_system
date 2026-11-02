@@ -193,7 +193,7 @@ def test_checker_pairs_appms_not_ready_and_text_match(client, monkeypatch):
     monkeypatch.setattr(medicines, "load_label", lambda settings, idx, sid: parsed[sid])
     body = c.post("/api/checker", json={"set_ids": ["1", "4", "6"]}).json()
     assert body["status"] == "ready" and len(body["pairs"]) == 3
-    assert body["appms"]["status"] == "not_ready" and body["appms"]["fix"].startswith("extract the APPMS zip")
+    assert body["appms"]["status"] == "not_ready" and body["appms"]["fix"] == __import__("api.services.appms", fromlist=["FIX"]).FIX
     first = body["pairs"][0]                       # most text matches sorts first within unflagged
     assert {first["a"]["set_id"], first["b"]["set_id"]} == {"1", "4"}
     assert first["appms"]["status"] == "not_ready"
@@ -203,3 +203,24 @@ def test_checker_pairs_appms_not_ready_and_text_match(client, monkeypatch):
     assert any("no Drug Interactions section" in n for n in tm["notes"])  # label 4 has none
     quiet = [p for p in body["pairs"] if "6" in (p["a"]["set_id"], p["b"]["set_id"])][0]
     assert quiet["text_match"]["matches_total"] == 0
+
+
+# ---- APPMS name to label matching (hand-written fixtures) -------------------------------
+def test_ingredient_matcher_strips_form_words_only():
+    from medsafe.appms_match import IngredientMatcher, ingredient_keys
+    assert ingredient_keys("ENALAPRIL MALEATE") == {"enalapril maleate", "enalapril"}
+    assert ingredient_keys("Isosorbide mononitrate") == {"isosorbide mononitrate"}
+    labels = [
+        {"set_id": "1", "products": ["Zed"], "ingredients": ["ENALAPRIL MALEATE"], "moieties": ["enalaprilat anhydrous"], "manufacturer": "B"},
+        {"set_id": "2", "products": ["albuterol"], "ingredients": ["ALBUTEROL SULFATE"], "moieties": ["albuterol"], "manufacturer": "A"},
+    ]
+    m = IngredientMatcher(labels)
+    assert [l["set_id"] for l in m.match("Enalapril")] == ["1"]
+    assert m.match("Salbutamol") == []  # a name difference is not guessed
+
+
+def test_checker_name_only_pairs_need_two_medicines(monkeypatch):
+    from api.app import app
+    from fastapi.testclient import TestClient
+    c = TestClient(app)
+    assert c.post("/api/checker", json={"set_ids": [], "names": ["Solo"]}).status_code == 422

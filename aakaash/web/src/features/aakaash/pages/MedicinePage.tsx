@@ -128,7 +128,7 @@ function Tabs({ med }: { med: MedicineResponse }) {
   }
 
   if (!current) {
-    return <p className="muted">The parser found none of the label sections in this label, so there is no text to show.</p>;
+    return <p className="muted">No text could be read from this label.</p>;
   }
   return (
     <>
@@ -189,7 +189,7 @@ function Alternatives({ data }: { data: AlternativesResponse }) {
   const [all, setAll] = useState(false);
   const shown = all ? data.alternatives : data.alternatives.slice(0, 20);
   if (!data.active_moieties.length)
-    return <p className="muted">This label records no active moiety, so no same-ingredient labels can be matched.</p>;
+    return <p className="muted">This label records no active ingredient, so no same-ingredient labels can be matched.</p>;
   return (
     <>
       <p className="small">{data.note}</p>
@@ -198,7 +198,7 @@ function Alternatives({ data }: { data: AlternativesResponse }) {
         {data.active_moieties.length > 1 && " (combination: only labels with the same full set match)"}.{" "}
         {data.alternatives.length
           ? `${data.alternatives.length} product and manufacturer groups, ${data.total_labels} labels.`
-          : "No other label has the same active moiety in this data."}
+          : "No other label has the same active ingredient in our database."}
       </p>
       {shown.length > 0 && (
         <ul className="alt-list">
@@ -261,13 +261,13 @@ export function MedicinePage() {
             items={[
               ["Generic name", m.generic_names.join(", ") || "not stated on the label"],
               ["Manufacturer", m.manufacturer ?? "not stated on the label"],
-              ["Active ingredients (as written on the label)", m.ingredients.join(", ") || "none recorded"],
-              ["Active moiety (used for matching)", m.active_moieties.join(", ") || "none recorded"],
+              ["Ingredients (as written on the label)", m.ingredients.join(", ") || "none recorded"],
+              ["Active ingredient (used for matching)", m.active_moieties.join(", ") || "none recorded"],
               ...(m.products.length > 1 ? ([["Other product names", m.products.slice(1).join(", ")]] as [string, ReactNode][]) : []),
             ]}
           />
           <p className="small muted">
-            <Sticker>DailyMed set id</Sticker> <code>{m.set_id}</code>
+            <Sticker>Label id</Sticker> <code>{m.set_id}</code>
           </p>
         </section>
       </>
