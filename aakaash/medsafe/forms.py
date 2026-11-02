@@ -117,6 +117,20 @@ def classify_spl(form: str | None, routes: list[str] | None = None) -> str:
     return UNKNOWN
 
 
+def describe(dosage_forms: list[dict] | None) -> str | None:
+    """'Tablet, film coated · Oral' for display; up to two products, then '+ more'. None when the SPL has no form."""
+    parts = []
+    for p in dosage_forms or []:
+        f = (p.get("form") or "").strip()
+        if not f:
+            continue
+        r = ", ".join(x[:1] + x[1:].lower() for x in p.get("routes") or [])
+        t = f[:1] + f[1:].lower() + (f" · {r}" if r else "")
+        if t not in parts:
+            parts.append(t)
+    return "; ".join(parts[:2]) + (" + more" if len(parts) > 2 else "") if parts else None
+
+
 def classify_label(dosage_forms: list[dict] | None, title: str | None) -> tuple[list[str], bool]:
     """(families, inferred) for a DailyMed label. dosage_forms is the parser's [{'form', 'routes'}].
     With no form in the SPL the title words are used and inferred is True."""

@@ -30,7 +30,7 @@ function Alternatives({ data }: { data: AlternativesResponse }) {
               <Link to={`/label/${a.set_id}`}>
                 <span className="alt-name">{a.product}</span>
                 <span className="small muted">
-                  {a.manufacturer ?? "manufacturer not stated"}
+                  {a.form ?? "form not stated"} · {a.manufacturer ?? "manufacturer not stated"}
                   {a.label_count > 1 ? ` · ${a.label_count} labels` : ""}
                 </span>
               </Link>
@@ -75,6 +75,7 @@ export function LabelPage() {
             items={[
               ["Generic name", m.generic_names.join(", ") || "not stated on the label"],
               ["Manufacturer", m.manufacturer ?? "not stated on the label"],
+              ["Dosage form and route", m.form ?? "not stated on the label"],
               ["Ingredients (as written on the label)", m.ingredients.join(", ") || "none recorded"],
               ["Active ingredient (used for matching)", m.active_moieties.join(", ") || "none recorded"],
               ...(m.products.length > 1 ? ([["Other product names", m.products.slice(1).join(", ")]] as [string, ReactNode][]) : []),

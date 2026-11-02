@@ -8,7 +8,7 @@ from api.services import appms as appms_service, catalogue as catalogue_service,
 from medsafe.appms_match import ingredient_keys
 from medsafe.catalogue import (FLAG_CONFLICT, FLAG_INCOMPLETE, Catalogue, LabelLinker, build,
                                composition_source, parse_interactions, parse_item, strength_key)
-from medsafe.forms import classify_label, classify_product, classify_spl
+from medsafe.forms import classify_label, classify_product, classify_spl, describe
 from medsafe.synonyms import KINDS, canonical, read_rows
 
 from fixtures_catalogue import LABELS, PARSED, ROWS, lab, row, write_artifacts
@@ -213,6 +213,12 @@ def test_spl_form_family(form, routes, family):
     assert classify_spl(form, routes) == family
 
 
+def test_describe_form_and_route():
+    assert describe([{"form": "TABLET, FILM COATED", "routes": ["ORAL"]}]) == "Tablet, film coated · Oral"
+    assert describe([{"form": "KIT", "routes": []}, {"form": "TABLET", "routes": ["ORAL"]}, {"form": "SOLUTION", "routes": []}]) == "Kit; Tablet · Oral + more"
+    assert describe([]) is None
+
+
 def test_label_without_form_is_inferred_from_title():
     assert classify_label([{"form": "TABLET", "routes": ["ORAL"]}], "x") == (["oral solid"], False)
     assert classify_label([], "Amoxicillin oral suspension") == (["oral liquid"], True)
@@ -246,12 +252,58 @@ def test_default_label_follows_the_brand_form(cat):
     assert none["form_match"] == "no_label"
 
 
-def test_repeated_ingredient_is_flagged_not_summed(cat, built):
+def test_repeated_ingredient_is_unclear_and_not_summed(cat, built):
     i = ix(cat, "Estrosplit Tablet")
-    assert cat.repeated(i) and cat.row(i)["composition_repeated"]
-    assert cat.row(i)["composition"] == "Estradiol (1mg) + Estradiol (1mg)"      # as listed
-    assert built[1]["composition_repeated"] == 1 and not cat.repeated(ix(cat, "Metfo 500 Tablet"))
+    assert cat.unclear(i) and cat.row(i)["composition_unclear"]
+    assert cat.row(i)["composition"] == "Estradiol (1mg) + Estradiol (1mg)"      # as listed, strengths not added
+    assert cat.row(ix(cat, "Paraunclear Tablet"))["composition"] == "Paracetamol (300mg) + Paracetamol (700mg)"
+    assert built[1]["composition_unclear"] == 3 and not cat.unclear(ix(cat, "Metfo 500 Tablet"))
     assert built[1]["dosage_form"]["families"]["oral solid"] > 0
+    # an unclear brand is not counted as a complete composition
+    assert built[1]["brands_complete"] + built[1]["brands_flagged"] == len(ROWS)
+    assert cat.suggest("estrosplit")[0]                                            # still found by name
+
+
+def test_unclear_products_never_match_and_are_listed_apart(cat):
+    unclear = {"Paraunclear Tablet"}
+    for name in ("Dolotest 650 Tablet", "Calpara 650 Tablet", "Parafen 500 Tablet"):
+        a = cat.alternatives(ix(cat, name), include_discontinued=True)
+        listed = [r["name"] for k in ("same", "different_form", "form_not_stated") for r in a[k]]
+        listed += [r["name"] for g in a["other_strength"] for r in g["brands"]]
+        assert not unclear & set(listed)
+        assert [r["name"] for r in a["unclear"]] == ["Paraunclear Tablet"] and a["unclear_total"] == 1
+        assert a["composition_unclear"] is False
+    # a clear product with the same single strength as one half of an unclear one is not its match either
+    e = cat.alternatives(ix(cat, "Estro 1 Tablet"))
+    assert e["same"] == [] and e["other_strength"] == []
+    assert [r["name"] for r in e["unclear"]] == ["Estrosplit Two Tablet", "Estrosplit Tablet"]     # cheapest first (14, 18)
+    assert e["unclear"][0]["composition_unclear"]
+
+
+def test_selected_unclear_product_has_no_matches(cat):
+    # two unclear rows have the identical composition, and still are not each other's same-strength match
+    a = cat.alternatives(ix(cat, "Estrosplit Tablet"))
+    assert a["composition_unclear"] and a["same"] == [] and a["different_form"] == [] and a["form_not_stated"] == []
+    assert a["other_strength"] == [] and a["same_total"] == 0
+    assert [r["name"] for r in a["unclear"]] == ["Estrosplit Two Tablet"]
+
+
+def test_unclear_api_caveat_and_checker_counts_the_ingredient_once(client, monkeypatch):
+    c, s = client
+    write_artifacts(s.artifacts_dir)
+    a = c.get("/api/medicine/23/alternatives").json()
+    msg = "The listed composition repeats an ingredient and may be wrong. Confirm with a pharmacist."
+    assert any(x.startswith(msg) for x in a["caveats"]) and a["same"] == [] and a["composition_unclear"]
+    assert [x["id"] for x in a["unclear"]] == ["25"]
+    d = c.get("/api/medicine/23").json()
+    assert d["brand"]["composition_unclear"] and len(d["ingredient_details"]) == 2          # shown as listed
+    assert [x["strength"] for x in d["ingredient_details"]] == ["1mg", "1mg"]
+    _rules(s, "Warfarin,Estradiol,High,Clot,Raised,Monitor,Src\n")
+    monkeypatch.setattr(medicines, "load_label", lambda settings, idx, sid: PARSED[sid])
+    body = c.post("/api/checker", json={"catalogue_ids": ["26", "14"]}).json()
+    m = body["medicines"][0]
+    assert [g["name"] for g in m["ingredients"]] == ["Paracetamol"] and m["composition_unclear"]   # once, not 300 + 700
+    assert any(msg in n for n in body["pairs"][0]["notes"])
 
 
 # ---- API -------------------------------------------------------------------------------------

@@ -81,6 +81,12 @@ function Body({ s }: { s: CatalogueSummaryResponse }) {
           “composition may be incomplete” note, and an alternative is never shown as a complete match for them.
         </li>
         <li>For {fmt(s.composition_conflict)} products the two composition fields disagree; the fuller one is used and both are shown.</li>
+        <li>
+          <strong>Composition unclear: {fmt(s.composition_unclear)} products</strong> list the same ingredient more than once (for
+          example paracetamol 300 mg and paracetamol 700 mg). The listed composition may be wrong. Strengths are shown as listed, never
+          added up, and the data is not edited. Such a product is never offered as a match for another product and has no matches of its
+          own; it appears only under “Composition unclear” for products with the same ingredient. The checker counts the ingredient once.
+        </li>
         <li>Strengths are compared as written. A product whose strength is not stated is never offered as a same-strength alternative.</li>
         <li>Prices are per pack as listed{s.price_not_stated ? `; ${fmt(s.price_not_stated)} products list no price` : ""}. Prices may be out of date.</li>
       </ul>

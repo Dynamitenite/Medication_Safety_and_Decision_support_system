@@ -349,7 +349,7 @@ mark sub { font-size: 0.65em; color: rgb(var(--c-muted)); }
 .alt-rows { list-style: none; margin: 8px 0; padding: 0; border-top: 1px solid rgb(var(--c-line)); }
 .alt-rows > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 16px; padding: 10px 4px; border-bottom: 1px solid rgb(var(--c-line)); align-items: center; }
 .alt-rows a { font-weight: 500; }
-.alt-other-form { margin-top: 16px; padding: 4px 0 4px 14px; border-left: 3px dashed rgb(var(--c-line)); }
+.alt-other-form { margin: 16px 0 20px; padding: 4px 0 4px 14px; border-left: 3px dashed rgb(var(--c-line)); }
 .alt-price { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .alt-tags { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1 / -1; }
 .alt-tags:empty { display: none; }

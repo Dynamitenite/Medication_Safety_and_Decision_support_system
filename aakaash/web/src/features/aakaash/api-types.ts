@@ -326,6 +326,8 @@ export interface components {
             ingredients: string[];
             /** Label Count */
             label_count: number;
+            /** Form */
+            form: string | null;
         };
         /** AlternativeBrand */
         AlternativeBrand: {
@@ -351,8 +353,8 @@ export interface components {
             composition_incomplete: boolean;
             /** Composition Conflict */
             composition_conflict: boolean;
-            /** Composition Repeated */
-            composition_repeated: boolean;
+            /** Composition Unclear */
+            composition_unclear: boolean;
             /** Form Family */
             form_family: string;
             /** Price Difference */
@@ -702,6 +704,18 @@ export interface components {
              */
             form_family: string;
             /**
+             * Composition Unclear
+             * @default false
+             */
+            composition_unclear: boolean;
+            /**
+             * Unclear Total
+             * @default 0
+             */
+            unclear_total: number;
+            /** Unclear */
+            unclear: components["schemas"]["AlternativeBrand"][];
+            /**
              * Same Total
              * @default 0
              */
@@ -808,8 +822,8 @@ export interface components {
             composition_incomplete: boolean;
             /** Composition Conflict */
             composition_conflict: boolean;
-            /** Composition Repeated */
-            composition_repeated: boolean;
+            /** Composition Unclear */
+            composition_unclear: boolean;
             /** Form Family */
             form_family: string;
         };
@@ -837,8 +851,8 @@ export interface components {
             composition_incomplete: boolean;
             /** Composition Conflict */
             composition_conflict: boolean;
-            /** Composition Repeated */
-            composition_repeated: boolean;
+            /** Composition Unclear */
+            composition_unclear: boolean;
             /** Form Family */
             form_family: string;
             /**
@@ -899,6 +913,11 @@ export interface components {
              * @default 0
              */
             composition_conflict: number;
+            /**
+             * Composition Unclear
+             * @default 0
+             */
+            composition_unclear: number;
             /**
              * From Full Composition
              * @default 0
@@ -986,6 +1005,11 @@ export interface components {
             ingredients: components["schemas"]["CheckerIngredient"][];
             /** Composition Incomplete */
             composition_incomplete: boolean;
+            /**
+             * Composition Unclear
+             * @default false
+             */
+            composition_unclear: boolean;
         };
         /** CheckerRequest */
         CheckerRequest: {
@@ -1315,6 +1339,8 @@ export interface components {
             active_moieties: string[];
             /** Effective Time */
             effective_time: string | null;
+            /** Form */
+            form: string | null;
             /** Sections */
             sections: components["schemas"]["LabelSection"][];
         };

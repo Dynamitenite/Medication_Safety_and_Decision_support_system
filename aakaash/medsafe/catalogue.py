@@ -31,7 +31,7 @@ SHORT_FIELDS = ("short_composition1", "short_composition2")
 EMPTY_INTERACTIONS = '{"drug": [], "brand": [], "effect": []}'
 FLAG_INCOMPLETE = 1  # two short fields and no salt_composition: the short fields hold at most two
 FLAG_CONFLICT = 2    # salt_composition and the short fields disagree; salt_composition is used
-FLAG_REPEATED = 4    # one ingredient is listed more than once (often with different strengths)
+FLAG_UNCLEAR = 4     # the composition repeats one normalised ingredient (e.g. Paracetamol 300mg + Paracetamol 700mg)
 MIN_PREFIX = 2
 MIN_SIMILAR = 3
 MAX_SIMILAR = 4
@@ -219,7 +219,7 @@ def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int =
                     ing_names.append(Counter())
                     ing_rows.append(0)
                 out.append([ing_ix[k], it["strength"], it["name"]])
-            comps.append({"text": text, "items": out, "repeated": len({o[0] for o in out}) != len(out)})
+            comps.append({"text": text, "items": out, "unclear": len({o[0] for o in out}) != len(out)})
         for ing, _, written in comps[c]["items"]:
             ing_names[ing][written] += 1
             ing_rows[ing] += 1
@@ -233,8 +233,8 @@ def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int =
         cols["form"].append(intern("form", fam))
         form_terms[(fam, term)] += 1
         form_where[where] += 1
-        if comps[c]["repeated"]:
-            flags |= FLAG_REPEATED
+        if comps[c]["unclear"]:
+            flags |= FLAG_UNCLEAR
         cols["price"].append(price if price > 0 else None)
         cols["disc"].append(1 if clean(r["Is_discontinued"]).upper() == "TRUE" else 0)
         cols["comp"].append(c)
@@ -249,7 +249,7 @@ def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int =
         rep["discontinued"] += cols["disc"][-1]
         rep["composition_incomplete"] += bool(flags & FLAG_INCOMPLETE)
         rep["composition_conflict"] += bool(flags & FLAG_CONFLICT)
-        rep["composition_repeated"] += bool(flags & FLAG_REPEATED)
+        rep["composition_unclear"] += bool(flags & FLAG_UNCLEAR)
         rep["price_not_stated"] += price <= 0
         rep["from_salt_composition"] += bool(split_salt(r.get("salt_composition")))
 
@@ -279,7 +279,7 @@ def build(rows: Iterable[dict], labels: list[dict], *, unparseable_sample: int =
         "top_terms": [{"term": t, "family": f, "products": n} for (f, t), n in form_terms.most_common(21) if t][:20],
         "labels_by_family": dict(Counter(f for v in used_labels.values() for f in v["families"])),
         "labels_form_inferred": sum(1 for v in used_labels.values() if v["form_inferred"])}
-    report.update({k: rep[k] for k in ("rows", "discontinued", "composition_incomplete", "composition_conflict", "composition_repeated",
+    report.update({k: rep[k] for k in ("rows", "discontinued", "composition_incomplete", "composition_conflict", "composition_unclear",
                                        "price_not_stated", "from_salt_composition", "unparseable_items",
                                        "rows_with_unparseable_items", "interactions_unreadable")})
     report["unparseable_sample"] = bad_items
@@ -298,7 +298,7 @@ def link_report(data: dict) -> dict:
     b = data["brands"]
     tot = Counter()
     for c, f in zip(b["comp"], b["flags"]):
-        grp = "incomplete" if f & (FLAG_INCOMPLETE | FLAG_CONFLICT) else "complete"
+        grp = "incomplete" if f & (FLAG_INCOMPLETE | FLAG_CONFLICT | FLAG_UNCLEAR) else "complete"
         tot[grp] += 1
         tot[grp + "_all_linked"] += comp_linked[c]
     unl = sorted((x for x in ings if not x["link"]["set_ids"]), key=lambda x: (-x["rows"], x["key"]))
@@ -408,8 +408,8 @@ class Catalogue:
     def family(self, i: int) -> str:
         return self.forms[self.form_ix[i]]
 
-    def repeated(self, i: int) -> bool:
-        return bool(self.flags[i] & FLAG_REPEATED)
+    def unclear(self, i: int) -> bool:
+        return bool(self.flags[i] & FLAG_UNCLEAR)
 
     def incomplete(self, i: int) -> bool:
         return bool(self.flags[i] & FLAG_INCOMPLETE)
@@ -425,7 +425,7 @@ class Catalogue:
                 "type": self.types[self.type_ix[i]], "pack_size": self.packs[self.pack_ix[i]], "price": self.price[i],
                 "discontinued": bool(self.disc[i]), "composition": self.comps[self.comp[i]]["text"],
                 "ingredients": self.ingredient_names(i), "composition_incomplete": self.incomplete(i),
-                "composition_conflict": self.conflict(i), "composition_repeated": self.repeated(i),
+                "composition_conflict": self.conflict(i), "composition_unclear": self.unclear(i),
                 "form_family": self.family(i)}
 
     # ---- suggest ------------------------------------------------------------------------
@@ -595,14 +595,20 @@ class Catalogue:
         fam = self.family(sel)
         sk, tk = self._set_key[c], self._str_key[c]
         same_comps = self._by_str.get(tk, []) if tk is not None else []
-        pool = self._by_price(self._collect(same_comps, sel, include_discontinued))
+        # a product whose composition repeats an ingredient is never a match, and has no matches: it is only
+        # listed apart, under the products with the same ingredient set
+        sel_unclear = self.unclear(sel)
+        pool = [] if sel_unclear else [i for i in self._by_price(self._collect(same_comps, sel, include_discontinued))
+                                       if not self.unclear(i)]
         same = [i for i in pool if fam != UNKNOWN and self.family(i) == fam]
         diff = [i for i in pool if self.family(i) not in (fam, UNKNOWN)]
         unknown = [i for i in pool if self.family(i) == UNKNOWN]
         other_comps = [x for x in self._by_set.get(sk, []) if tk is None or self._str_key[x] != tk]
         groups: dict = defaultdict(list)
         hidden = 0
-        for i in self._collect(other_comps, sel, include_discontinued):
+        for i in ([] if sel_unclear else self._collect(other_comps, sel, include_discontinued)):
+            if self.unclear(i):
+                continue
             if self.family(i) != fam:
                 hidden += 1
                 continue
@@ -616,11 +622,15 @@ class Catalogue:
                           "strength_stated": self._str_key[self.comp[rows[0]]] is not None,
                           "brands": [self._alt_row(i, sel) for i in rows[:group_limit]]})
         other.sort(key=lambda g: (-g["brands_total"], g["composition"]))
-        return {"strength_stated": tk is not None, "form_family": fam, "same_total": len(same),
+        unclear = self._by_price([i for i in self._collect(self._by_set.get(sk, []), sel, include_discontinued)
+                                  if self.unclear(i)])
+        return {"strength_stated": tk is not None, "form_family": fam, "composition_unclear": sel_unclear,
+                "same_total": len(same),
                 "same": [self._alt_row(i, sel) for i in same[:limit]],
                 "different_form_total": len(diff), "different_form": [self._alt_row(i, sel) for i in diff[:limit]],
                 "form_not_stated_total": len(unknown),
                 "form_not_stated": [self._alt_row(i, sel) for i in unknown[:limit]],
                 "other_strength_groups_total": len(other), "other_strength": other[:20],
                 "other_strength_other_form_hidden": hidden,
+                "unclear_total": len(unclear), "unclear": [self._alt_row(i, sel) for i in unclear[:limit]],
                 "flagged_in_same": sum(1 for i in same if self.flags[i] & (FLAG_INCOMPLETE | FLAG_CONFLICT))}

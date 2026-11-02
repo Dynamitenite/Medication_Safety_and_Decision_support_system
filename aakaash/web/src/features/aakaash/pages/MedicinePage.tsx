@@ -69,7 +69,7 @@ function LabelSection({ ing, choice, onChoose, rule, note, formNote, formUnknown
             <select id={selectId} value={chosen.set_id} onChange={(e) => onChoose(e.target.value)} disabled={ing.labels.length < 2}>
               {ing.labels.map((l) => (
                 <option key={l.set_id} value={l.set_id}>
-                  {l.manufacturer ?? "manufacturer not stated"} · {l.product || l.title} · {labelForm(l)} · {l.sections} sections{l.default ? " (default)" : ""}
+                  {labelForm(l)} · {l.product || l.title} · {l.manufacturer ?? "manufacturer not stated"} · {l.sections} sections{l.default ? " (default)" : ""}
                 </option>
               ))}
             </select>
@@ -121,7 +121,8 @@ function AltRow({ a, showForm }: { a: AlternativeBrand; showForm?: boolean }) {
         {showForm && <Sticker>Form: {a.form_family}</Sticker>}
         {a.discontinued && <Sticker>Discontinued</Sticker>}
         {a.different_pack_size && <Sticker>Different pack size</Sticker>}
-        {(a.composition_incomplete || a.composition_conflict) && <Sticker wrap>Composition may be incomplete</Sticker>}
+        {a.composition_unclear && <Sticker wrap>Composition unclear</Sticker>}
+        {!a.composition_unclear && (a.composition_incomplete || a.composition_conflict) && <Sticker wrap>Composition may be incomplete</Sticker>}
       </span>
     </li>
   );
@@ -172,7 +173,9 @@ function Alternatives({ id, data, showDisc, setShowDisc }: { id: string; data: B
       </h3>
       {data.same_total === 0 ? (
         <p className="muted">
-          {!data.strength_stated
+          {data.composition_unclear
+            ? "Not available: the listed composition of this product repeats an ingredient and may be wrong."
+            : !data.strength_stated
             ? "Not available: the strength is not stated."
             : unknownForm
               ? "Not available: the dosage form of this product could not be determined."
@@ -195,8 +198,20 @@ function Alternatives({ id, data, showDisc, setShowDisc }: { id: string; data: B
           <AltList key={`${id}-${showDisc}-unk`} rows={data.form_not_stated} total={data.form_not_stated_total} />
         </div>
       )}
+      {data.unclear_total > 0 && (
+        <div className="alt-other-form">
+          <h3>Composition unclear</h3>
+          <p className="small muted">
+            These products have the same ingredient but their listed composition repeats an ingredient and may be wrong. They are not
+            offered as matches. Confirm with a pharmacist.
+          </p>
+          <AltList key={`${id}-${showDisc}-unclear`} rows={data.unclear} total={data.unclear_total} />
+        </div>
+      )}
       <h3>Same ingredients, different strength</h3>
-      {data.other_strength.length === 0 ? (
+      {data.composition_unclear ? (
+        <p className="muted">Not available: the listed composition of this product repeats an ingredient and may be wrong.</p>
+      ) : data.other_strength.length === 0 ? (
         <p className="muted">None in our database.</p>
       ) : (
         <ul className="groups">
@@ -311,15 +326,15 @@ function BrandPage({ id }: { id: string }) {
         />
         <h2 className="small muted">Composition</h2>
         <IngredientChips items={d.ingredient_details} />
-        {b.composition_incomplete && (
+        {b.composition_incomplete && !b.composition_unclear && (
           <p className="small">
             <Sticker wrap>Composition may be incomplete</Sticker> Only two ingredients are listed for this product. It may contain more.
           </p>
         )}
-        {b.composition_repeated && (
+        {b.composition_unclear && (
           <p className="small">
-            <Sticker wrap>Repeated ingredient</Sticker> The catalogue lists the same ingredient more than once, with different strengths
-            (for example the parts of a multi-part pack or a layered tablet). The strengths are shown as listed and are not added up.
+            <Sticker wrap>Composition unclear</Sticker> The listed composition repeats an ingredient and may be wrong. Confirm with a
+            pharmacist. Strengths are shown as listed and are not added up.
           </p>
         )}
         {b.composition_conflict && (
@@ -332,9 +347,9 @@ function BrandPage({ id }: { id: string }) {
 
       {ing ? (
         <>
-          {d.ingredient_details.length > 1 && (
+          {new Set(d.ingredient_details.map((x) => x.key)).size > 1 && (
             <div className="seg" role="group" aria-label="Show US label text for">
-              {d.ingredient_details.map((x, i) => (
+              {d.ingredient_details.map((x, i) => d.ingredient_details.findIndex((y) => y.key === x.key) !== i ? null : (
                 <button key={i} type="button" className="btn btn-secondary btn-sm" aria-pressed={i === ingIx}
                   onClick={() => set({ ing: i ? String(i) : "", label: "", tab: "", find: "" })}>
                   {x.name}

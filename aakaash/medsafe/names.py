@@ -16,6 +16,8 @@ except ImportError:  # pragma: no cover - depends on the environment
     fuzz = process = None
     FUZZY_BACKEND = "difflib"
 
+from .forms import describe
+
 TYPE_RANK = {"brand": 0, "generic": 1, "ingredient": 2}
 MATCH_NAMES = {0: "prefix", 1: "word", 2: "substring", 3: "fuzzy"}
 FUZZY_CUTOFF = 85  # rapidfuzz WRatio, 0-100
@@ -128,7 +130,7 @@ class NameIndex:
             name = l["products"][0] if l["products"] else (l["generic"][0] if l["generic"] else "")
             g = groups.setdefault((norm(name), l["manufacturer"] or ""), {
                 "product": name, "manufacturer": l["manufacturer"], "set_id": l["set_id"],
-                "ingredients": l["ingredients"], "label_count": 0})
+                "ingredients": l["ingredients"], "label_count": 0, "form": describe(l.get("dosage_forms"))})
             g["label_count"] += 1
         return sorted(groups.values(), key=lambda g: (norm(g["product"]), g["manufacturer"] or ""))
 

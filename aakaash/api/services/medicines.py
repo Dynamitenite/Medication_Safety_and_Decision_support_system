@@ -13,6 +13,7 @@ from pathlib import Path
 
 from fastapi import HTTPException
 
+from medsafe.forms import describe
 from medsafe.names import NameIndex
 from medsafe.spl import parse_label
 
@@ -101,7 +102,7 @@ def medicine(settings: Settings, set_id: str) -> MedicineResponse:
         status="ready", set_id=set_id, title=lab["title"], products=lab["product_names"],
         generic_names=lab["generic_names"], manufacturer=lab["manufacturer"],
         ingredients=lab["ingredients_raw"], active_moieties=lab["active_moieties"],
-        effective_time=lab["effective_time"], sections=[s for s in sections if s.text.strip()])
+        effective_time=lab["effective_time"], form=describe(lab.get("dosage_forms")), sections=[s for s in sections if s.text.strip()])
 
 
 def alternatives(settings: Settings, set_id: str) -> AlternativesResponse:

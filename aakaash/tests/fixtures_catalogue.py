@@ -44,6 +44,11 @@ ROWS = [
     row("22", "Calpara 650 Dry Syrup", "Paracetamol (500mg)", price="12", pack="bottle of 30 ml Oral Suspension"),
     row("23", "Estrosplit Tablet", "Estradiol (1mg)", "Estradiol (1mg)",
         salt="Estradiol (1mg) + Estradiol (1mg)", price="18"),
+    row("24", "Estro 1 Tablet", "Estradiol (1mg)", price="9"),
+    row("25", "Estrosplit Two Tablet", "Estradiol (1mg)", "Estradiol (1mg)",
+        salt="Estradiol (1mg) + Estradiol (1mg)", price="14"),
+    row("26", "Paraunclear Tablet", "Paracetamol (300mg)", "Paracetamol (700mg)",
+        salt="Paracetamol (300mg) + Paracetamol (700mg)", price="7"),
 ]
 
 SECTIONS = ["indications", "drug_interactions", "adverse_reactions"]

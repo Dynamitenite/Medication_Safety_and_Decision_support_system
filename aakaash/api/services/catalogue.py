@@ -41,8 +41,7 @@ DIFF_FORM_NOTE = ("Same ingredients and strength, but a different dosage form. T
 NO_FORM_NOTE = "Same ingredients and strength, but the dosage form is not stated, so it could not be compared."
 FORM_NOTE = "No US label in the same form; showing a label for the same ingredient in another form"
 FORM_UNKNOWN_NOTE = ("The dosage form of this product could not be determined, so the label shown was not chosen by form.")
-REPEATED_NOTE = ("The catalogue lists the same ingredient more than once, with different strengths (for example the "
-                 "parts of a multi-part pack or a layered tablet). The strengths are shown as listed and are not added up.")
+UNCLEAR_NOTE = "The listed composition repeats an ingredient and may be wrong. Confirm with a pharmacist."
 INCOMPLETE_NOTE = ("Composition may be incomplete: the catalogue lists only two ingredients for this product, and "
                    "it may contain more.")
 CONFLICT_NOTE = "The catalogue gives two different compositions for this product; the fuller one is used."
@@ -128,14 +127,14 @@ def alternatives(settings: Settings, cid: str, include_discontinued: bool, limit
     i = _row(cat, cid)
     a = cat.alternatives(i, include_discontinued, limit)
     caveats = []
-    if cat.incomplete(i):
+    if cat.incomplete(i) and not cat.unclear(i):  # the unclear note already says the composition may be wrong
         caveats.append(INCOMPLETE_NOTE + " The brands below share the listed ingredients and strengths only.")
     if cat.conflict(i):
         caveats.append(CONFLICT_NOTE + " Treat the match as unconfirmed.")
     if not a["strength_stated"]:
         caveats.append("The strength of this product is not stated, so no brand can be matched on strength.")
-    if cat.repeated(i):
-        caveats.append(REPEATED_NOTE)
+    if cat.unclear(i):
+        caveats.append(UNCLEAR_NOTE + " No other brand is offered as a match.")
     if a["form_family"] == "unknown":
         caveats.append("The dosage form of this product could not be determined from its name or pack label, so no "
                        "brand is listed as the same form.")
@@ -148,6 +147,8 @@ def alternatives(settings: Settings, cid: str, include_discontinued: bool, limit
         status="ready", id=cid, note=ALT_NOTE, price_note=PRICE_NOTE, caveats=caveats,
         strength_stated=a["strength_stated"], include_discontinued=include_discontinued, form_family=a["form_family"],
         same_total=a["same_total"], same=[AlternativeBrand(**x) for x in a["same"]],
+        composition_unclear=a["composition_unclear"], unclear_total=a["unclear_total"],
+        unclear=[AlternativeBrand(**x) for x in a["unclear"]],
         different_form_total=a["different_form_total"], different_form=[AlternativeBrand(**x) for x in a["different_form"]],
         form_not_stated_total=a["form_not_stated_total"], form_not_stated=[AlternativeBrand(**x) for x in a["form_not_stated"]],
         other_strength_other_form_hidden=a["other_strength_other_form_hidden"],
@@ -166,6 +167,7 @@ def summary(settings: Settings) -> CatalogueSummaryResponse:
         original_source=m.get("original_source", ""), file_date=m.get("file_date"), built_at=m.get("built_at"),
         brands=r.get("rows", 0), discontinued=r.get("discontinued", 0),
         composition_incomplete=r.get("composition_incomplete", 0), composition_conflict=r.get("composition_conflict", 0),
+        composition_unclear=r.get("composition_unclear", 0),
         from_full_composition=r.get("from_salt_composition", 0), price_not_stated=r.get("price_not_stated", 0),
         distinct_ingredients=r.get("distinct_ingredients", 0), ingredients_linked=r.get("ingredients_linked", 0),
         ingredients_linked_combination_only=r.get("ingredients_linked_combination_only", 0),
@@ -213,7 +215,11 @@ def _brand_med(cat: Catalogue, cid: str) -> _Med:
     i = _row(cat, cid)
     ings = []
     fam = cat.family(i)
+    seen = set()
     for ing, _, written in cat.comps[cat.comp[i]]["items"]:
+        if ing in seen:  # a repeated ingredient is checked once; strengths are not used here or added up
+            continue
+        seen.add(ing)
         x = cat.ingredients[ing]
         ids, _ = cat.ordered_labels(x["link"]["set_ids"], fam)
         ings.append(_Ing(written, x["key"], x["us_name"], ids, x["link"]["moieties"],
@@ -222,7 +228,8 @@ def _brand_med(cat: Catalogue, cid: str) -> _Med:
                           manufacturer=cat.manufacturers[cat.mfr_ix[i]] or None, kind="brand",
                           ingredients=[CheckerIngredient(name=g.name, us_name=g.us_name, label_set_id=g.ref,
                                                          label_name=g.label_name) for g in ings],
-                          composition_incomplete=cat.incomplete(i) or cat.conflict(i))
+                          composition_incomplete=cat.incomplete(i) or cat.conflict(i),
+                          composition_unclear=cat.unclear(i))
     return _Med(out, ings, i)
 
 
@@ -332,7 +339,8 @@ def check(settings: Settings, catalogue_ids: list[str], names: list[str] | None 
     for x, y in pairs(list(range(len(meds)))):
         a, b = meds[x], meds[y]
         shared = sorted({g.name for g in a.ings for h in b.ings if g.key == h.key})
-        notes = [f"{m.out.name}: {INCOMPLETE_NOTE}" for m in (a, b) if m.out.composition_incomplete]
+        notes = [f"{m.out.name}: {INCOMPLETE_NOTE}" for m in (a, b) if m.out.composition_incomplete and not m.out.composition_unclear]
+        notes += [f"{m.out.name}: {UNCLEAR_NOTE}" for m in (a, b) if m.out.composition_unclear]
         out.append(PairResult(a=a.out, b=b.out, appms=_rules(rules, a, b), text_match=_text(settings, idx, a, b),
                               shared_ingredients=shared, secondary=_secondary(cat, a, b), notes=notes))
     # rule severity first (Critical, High, Moderate, unflagged); then more text matches first

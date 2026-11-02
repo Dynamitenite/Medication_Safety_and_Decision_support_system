@@ -179,7 +179,7 @@ class BrandRow(ApiModel):
     ingredients: list[str]
     composition_incomplete: bool  # two listed ingredients and no full composition: may hold more
     composition_conflict: bool    # the catalogue's two composition fields disagree
-    composition_repeated: bool    # the same ingredient is listed more than once, often at different strengths
+    composition_unclear: bool     # the composition repeats an ingredient (maybe wrong); never a match for another product
     form_family: str              # dosage-form family from the name and pack label (medsafe/forms.py); "unknown"
 
 
@@ -262,6 +262,9 @@ class BrandAlternativesResponse(Readiness):
     strength_stated: bool = True
     include_discontinued: bool = False
     form_family: str = "unknown"  # the selected product's family
+    composition_unclear: bool = False  # the selected product's composition repeats an ingredient: no matches
+    unclear_total: int = 0
+    unclear: list[AlternativeBrand] = Field(default_factory=list)  # unclear products with the same ingredient set
     same_total: int = 0
     same: list[AlternativeBrand] = Field(default_factory=list)
     different_form_total: int = 0
@@ -296,6 +299,7 @@ class CatalogueSummaryResponse(Readiness):
     discontinued: int = 0
     composition_incomplete: int = 0
     composition_conflict: int = 0
+    composition_unclear: int = 0
     from_full_composition: int = 0
     price_not_stated: int = 0
     distinct_ingredients: int = 0
@@ -327,6 +331,7 @@ class MedicineResponse(Readiness):
     ingredients: list[str] = Field(default_factory=list)  # raw names as on the label
     active_moieties: list[str] = Field(default_factory=list)  # used for matching
     effective_time: str | None = None
+    form: str | None = None  # dosage form and route from the label's SPL, e.g. "Tablet · Oral"
     sections: list[LabelSection] = Field(default_factory=list)
 
 
@@ -336,6 +341,7 @@ class Alternative(ApiModel):
     set_id: str
     ingredients: list[str]
     label_count: int
+    form: str | None = None  # dosage form and route of this label
 
 
 class AlternativesResponse(Readiness):
@@ -368,6 +374,7 @@ class CheckerMedicine(ApiModel):
     kind: Literal["brand", "generic"]
     ingredients: list[CheckerIngredient]
     composition_incomplete: bool
+    composition_unclear: bool = False
 
 
 class TextMatch(ApiModel):
