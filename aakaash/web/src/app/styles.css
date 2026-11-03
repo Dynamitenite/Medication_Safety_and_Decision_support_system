@@ -629,6 +629,15 @@ mark.find-hit.current { background: rgb(var(--c-accent) / 0.55); }
 .tl-bar:focus .tl-hit, .tl-bar.sel .tl-hit { stroke: rgb(var(--c-accent)); stroke-width: 1.5; }
 .tl-detail { min-height: 1.3em; }
 .tl-undated { padding: 8px 12px; background: rgb(var(--c-bg)); border-radius: 6px; }
+/* Graph / Table and List / Timeline switches: themed, they had no styles and showed as browser-default buttons */
+.seg-toggle { display: inline-flex; padding: 2px; gap: 2px; background: rgb(var(--c-raised)); border-radius: 6px; box-shadow: 0 0 0 1px rgb(var(--c-line)); }
+.seg-toggle button { appearance: none; border: 0; border-radius: 4px; background: transparent; color: rgb(var(--c-muted)); font: 500 0.8125rem var(--font-base); min-height: 30px; padding: 0 12px; cursor: pointer; transition: background 150ms, color 150ms; }
+.seg-toggle button:hover { color: rgb(var(--c-text)); }
+.seg-toggle button.on, .seg-toggle button[aria-pressed="true"], .seg-toggle button[aria-selected="true"] { background: rgb(var(--c-card)); color: rgb(var(--c-accent)); box-shadow: inset 0 1px 0 var(--bevel-hi), 0 0 0 1px rgb(var(--c-line)), 0 1px 0 var(--bevel-lo); }
+.seg-toggle button:focus-visible { outline: 2px solid rgb(var(--c-accent)); outline-offset: 1px; }
+/* keep node names that sit at the edge of the circle inside the card on narrow screens */
+.graph-wrap { overflow: visible; }
+@media (max-width: 560px) { .graph-svg { width: calc(100% - 96px); max-width: 460px; } }
 .outcome-glyph { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .course-bar { display: grid; grid-template-columns: minmax(80px, .5fr) minmax(0, 1fr); align-items: center; gap: 10px; padding: 0 14px 12px; }
 .course-track { height: 10px; background: rgb(var(--c-raised)); border: 1px solid rgb(var(--c-line)); border-radius: 6px; overflow: hidden; }
