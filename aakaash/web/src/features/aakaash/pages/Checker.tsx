@@ -110,7 +110,7 @@ function PairCard({ p }: { p: PairResult }) {
             <p>No known interaction found in our rules. This does not mean the combination is safe.</p>
           )}
         </section>
-        <section aria-label="Label text">
+        <div>
           <h3>Label text (US FDA)</h3>
           <p className="small muted">{p.text_match.source_label}</p>
           {n === 0 ? (
@@ -140,7 +140,7 @@ function PairCard({ p }: { p: PairResult }) {
               {t}
             </p>
           ))}
-        </section>
+        </div>
         {p.secondary.hits.length > 0 && (
           <section aria-label="Interactions listed with the product">
             <h3>Interactions listed with the product</h3>

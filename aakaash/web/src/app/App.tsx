@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "rea
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Gear, List, SignIn, SignOut, X } from "@phosphor-icons/react";
 import { MENU_ICONS } from "../features/aakaash/pages/MenuIcons";
+import { useScrollRegions } from "./useScrollRegions";
 import { AuthProvider, RequireAuth, useAuth } from "../features/aakaash/auth/AuthContext";
 import { Disclaimer } from "../features/aakaash/components/Disclaimer";
 import { MENU, MODULE_COMPONENTS, SCREENS } from "../features/aakaash/registry";
@@ -103,9 +104,16 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
 const guard = (page: ReactNode) => <RequireAuth>{page}</RequireAuth>;
 
 function Shell() {
+  useScrollRegions();
   const [drawer, setDrawer] = useState(false);
   const { pathname } = useLocation();
   useEffect(() => setDrawer(false), [pathname]);
+  // a keyboard user who follows a link would otherwise be left on the link that is gone: start at the new page
+  const firstPage = useRef(true);
+  useEffect(() => {
+    if (firstPage.current) firstPage.current = false;
+    else document.getElementById("main")?.focus({ preventScroll: true });
+  }, [pathname]);
   useEffect(() => {
     document.body.classList.toggle("drawer-open", drawer);
     const esc = (e: KeyboardEvent) => e.key === "Escape" && setDrawer(false);

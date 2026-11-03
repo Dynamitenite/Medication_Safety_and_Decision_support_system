@@ -170,7 +170,7 @@ export function TimelineChart({ items, styles, today, noun }: { items: TimelineI
       )}
       {layout.undated.length > 0 && (
         <div className="tl-undated">
-          <h4>Dates not entered</h4>
+          <h3>Dates not entered</h3>
           <p className="small muted">These have no start date, so they cannot be placed on the timeline.</p>
           <ul className="small">
             {layout.undated.map((u) => (

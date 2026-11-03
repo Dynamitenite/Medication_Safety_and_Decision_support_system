@@ -259,7 +259,7 @@ select:focus-visible, input[type="search"]:focus-visible { outline-offset: 1px; 
 mark { padding: 0.05em 0.3em; border-radius: 4px; color: inherit; }
 mark.e1 { background: rgb(var(--c-accent) / 0.22); }
 mark.e2 { background: rgb(var(--c-text) / 0.1); box-shadow: inset 0 -2px 0 rgb(var(--c-subtle)); }
-mark sub { font-size: 0.65em; color: rgb(var(--c-muted)); }
+mark sub { font-size: 0.65em; color: rgb(var(--c-text)); }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
 
 /* About and Coming soon */
@@ -529,10 +529,11 @@ mark.find-hit.current { background: rgb(var(--c-accent) / 0.55); }
   letter-spacing: 0.04em; text-transform: uppercase; color: rgb(var(--c-muted));
   background: rgb(var(--lv) / 0.06); box-shadow: inset 0 0 0 1px rgb(var(--lv) / 0.18);
 }
-.risk-seg.on { color: rgb(var(--lv)); font-weight: 700; background: rgb(var(--c-card)); box-shadow: inset 0 0 0 2px rgb(var(--lv)); }
+.risk-seg.on { color: color-mix(in srgb, rgb(var(--lv)) 70%, rgb(var(--c-text))); font-weight: 700; background: rgb(var(--c-card)); box-shadow: inset 0 0 0 2px rgb(var(--lv)); }
 .risk-meter-text { margin: 6px 0 0; }
-.lv-text { color: rgb(var(--lv)); }
-.lv-badge { background: rgb(var(--lv) / 0.1); color: rgb(var(--lv)); box-shadow: 0 0 0 1px rgb(var(--lv) / 0.35); }
+/* level colours as text are mixed toward the text colour so they keep 4.5:1 on their tinted background */
+.lv-text { color: color-mix(in srgb, rgb(var(--lv)) 70%, rgb(var(--c-text))); }
+.lv-badge { background: rgb(var(--lv) / 0.1); color: color-mix(in srgb, rgb(var(--lv)) 70%, rgb(var(--c-text))); box-shadow: 0 0 0 1px rgb(var(--lv) / 0.35); }
 .risk-panel {
   display: flex; gap: 12px; align-items: flex-start; margin: 4px 0 12px; padding: 14px 16px; border-radius: 6px;
   background: rgb(var(--lv) / 0.1); border: 1px solid rgb(var(--lv) / 0.5); color: rgb(var(--c-text)); font-weight: 600;
@@ -635,7 +636,7 @@ mark.find-hit.current { background: rgb(var(--c-accent) / 0.55); }
 .seg-toggle { display: inline-flex; padding: 2px; gap: 2px; background: rgb(var(--c-raised)); border-radius: 6px; box-shadow: 0 0 0 1px rgb(var(--c-line)); }
 .seg-toggle button { appearance: none; border: 0; border-radius: 4px; background: transparent; color: rgb(var(--c-muted)); font: 500 0.8125rem var(--font-base); min-height: 30px; padding: 0 12px; cursor: pointer; transition: background 150ms, color 150ms; }
 .seg-toggle button:hover { color: rgb(var(--c-text)); }
-.seg-toggle button.on, .seg-toggle button[aria-pressed="true"], .seg-toggle button[aria-selected="true"] { background: rgb(var(--c-card)); color: rgb(var(--c-accent)); box-shadow: inset 0 1px 0 var(--bevel-hi), 0 0 0 1px rgb(var(--c-line)), 0 1px 0 var(--bevel-lo); }
+.seg-toggle button.on, .seg-toggle button[aria-pressed="true"], .seg-toggle button[aria-selected="true"] { background: rgb(var(--c-card)); color: rgb(var(--c-accent-text)); box-shadow: inset 0 1px 0 var(--bevel-hi), 0 0 0 1px rgb(var(--c-line)), 0 1px 0 var(--bevel-lo); }
 .seg-toggle button:focus-visible { outline: 2px solid rgb(var(--c-accent)); outline-offset: 1px; }
 .outcome-glyph { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 .course-bar { display: grid; grid-template-columns: minmax(80px, .5fr) minmax(0, 1fr); align-items: center; gap: 10px; padding: 0 14px 12px; }

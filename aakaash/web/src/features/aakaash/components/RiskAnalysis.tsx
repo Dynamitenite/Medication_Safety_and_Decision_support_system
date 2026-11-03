@@ -83,7 +83,7 @@ function PairCard({ p }: { p: PairFinding }) {
         </p>
       )}
       {n > 0 && (
-        <section aria-label="Label text">
+        <div>
           <h4>Label text (supporting evidence, does not change the level)</h4>
           <p className="small muted">{p.text_match.source_label}</p>
           <ul className="evidence">
@@ -99,7 +99,7 @@ function PairCard({ p }: { p: PairFinding }) {
             ))}
           </ul>
           {n > p.text_match.matches.length && <p className="small muted">Showing {p.text_match.matches.length} of {n} sentences.</p>}
-        </section>
+        </div>
       )}
       {p.notes.map((t) => (
         <p key={t} className="small">

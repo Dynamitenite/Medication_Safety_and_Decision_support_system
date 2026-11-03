@@ -6,7 +6,7 @@
 //   node scripts/visual-check.mjs [baseUrl=http://127.0.0.1:4173] [outDir=../artifacts/screens]
 import { mkdirSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { THEMES, VIEWPORTS, launch, newContext, pickMedicine, seedHistory, signUp, waitDetails, waitRisk } from "./lib/pw.mjs";
+import { THEMES, VIEWPORTS, launch, newContext, pickMedicine, seedHistory, signUp, suggest, waitDetails, waitRisk } from "./lib/pw.mjs";
 
 const base = process.argv[2] ?? "http://127.0.0.1:4173";
 const outDir = resolve(process.argv[3] ?? "../artifacts/screens");
@@ -151,6 +151,14 @@ for (const vp of VIEWPORTS) {
     await inspect(page, tag, "about-trace");
     await go("/account");
     await inspect(page, tag, "account");
+    // the pages reached from search results and links
+    const dolo = (await suggest(ctx, "Dolo 650")).find((m) => m.name === "Dolo 650 Tablet");
+    const setId = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.exec(await (await ctx.request.get(`/api/medicine/${dolo.id}`)).text())?.[0];
+    for (const [name, path] of [["search", "/search"], ["checker", "/checker"], ["medicine", `/medicine/${dolo.id}`], ["label", `/label/${setId}`], ["module", "/modules/allergy_check"], ["not-found", "/no-such-page"]]) {
+      await go(path);
+      await page.waitForTimeout(1200);
+      await inspect(page, tag, name);
+    }
     await ctx.close();
   }
 }
