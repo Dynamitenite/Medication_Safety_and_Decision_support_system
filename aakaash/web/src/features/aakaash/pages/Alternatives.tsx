@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { Alternatives as AlternativesView, rupees } from "../components/AlternativesView";
-import { Disclaimer } from "../components/Disclaimer";
 import { Skeleton } from "../components/LabelTabs";
 import { MedicineSearch } from "../components/MedicineSearch";
 import { ErrorBox, NotReadyBox } from "../components/Panel";
@@ -43,7 +42,6 @@ function Selected({ id, showDisc, setShowDisc }: { id: string; showDisc: boolean
         {!alt.data && alt.state !== "error" && <Skeleton lines={3} />}
         {alt.data?.status === "not_ready" && <NotReadyBox reason={alt.data.reason} fix={alt.data.fix} />}
         {alt.data?.status === "ready" && <AlternativesView id={id} data={alt.data} showDisc={showDisc} setShowDisc={setShowDisc} selected={b} />}
-        <Disclaimer />
       </section>
       <SimilarUse id={id} />
     </>
@@ -64,7 +62,7 @@ export function Alternatives() {
   return (
     <>
       <h1>Alternative medicines</h1>
-      <p className="lead">Choose a medicine to see other brands with the same ingredients, and the price of each.</p>
+      <p className="lead">Find cheaper brands with the same ingredients.</p>
       <section className="card">
         <MedicineSearch
           large

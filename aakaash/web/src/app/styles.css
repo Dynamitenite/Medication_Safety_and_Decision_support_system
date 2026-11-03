@@ -705,3 +705,15 @@ mark.find-hit.current { background: rgb(var(--c-accent) / 0.55); }
 .cite-chip[aria-expanded="true"] { background: rgb(var(--c-accent) / 0.25); }
 .cite-static { cursor: default; }
 .notice-inline { margin: 6px 0; padding: 8px 12px; border-radius: 6px; border: 1px solid rgb(var(--c-rose) / 0.5); overflow-wrap: anywhere; }
+
+/* Disclosure: details kept out of the way until asked for */
+.disclosure { margin: 10px 0; }
+.disclosure > summary { font-size: 0.875rem; min-height: 32px; display: flex; align-items: center; }
+.disclosure-body { padding-top: 6px; }
+.overall { margin: 4px 0 12px; }
+.overall-level { margin: 0 0 6px; font-weight: 600; }
+.overall .risk-panel { margin-bottom: 4px; }
+.pair-head { cursor: default; min-height: 0; padding-bottom: 4px; }
+.pair-head:hover { background: transparent; }
+.pair-summary { padding: 0 16px 10px; }
+.pair-summary p { margin: 4px 0; }

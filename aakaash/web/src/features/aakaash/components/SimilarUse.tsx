@@ -3,6 +3,7 @@ import { api } from "../api";
 import type { SimilarUseSuggestion } from "../api";
 import { useApi } from "../useApi";
 import { rupees } from "./AlternativesView";
+import { Disclosure } from "./Disclosure";
 import { Sticker } from "./Sticker";
 
 const formLine = (l: SimilarUseSuggestion["supporting_label"]) => (l.form ? (l.route ? `${l.form} · ${l.route}` : l.form) : "form not stated");
@@ -74,6 +75,7 @@ export function SimilarUse({ id }: { id: string }) {
   return (
     <section className="card" aria-labelledby="su-h">
       <h2 id="su-h">{d.heading}</h2>
+      <Disclosure title="Show suggestions">
       <p className="small">{d.note}</p>
       {d.combination_note && <p className="small muted">{d.combination_note}</p>}
       {d.groups.map((g) => (
@@ -93,6 +95,7 @@ export function SimilarUse({ id }: { id: string }) {
           )}
         </div>
       ))}
+      </Disclosure>
     </section>
   );
 }

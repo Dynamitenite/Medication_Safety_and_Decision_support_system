@@ -73,8 +73,9 @@ try {
   await waitRisk(page);
   const risk = (await text(page, "section[aria-labelledby=risk-h]")).replace(/\s+/g, " ");
   check("risk: Ecosprin + Warf 5 found at High", /Ecosprin 75 Tablet \(to add\) \+ Warf 5 Tablet \(current\)/.test(risk) && (await page.locator(".risk-meter").getAttribute("aria-label")) === "Overall level: High", risk.slice(0, 200));
-  check("risk: disclaimer under the result", risk.includes("Informational only. Not a substitute for advice from your doctor or pharmacist."));
+  check("risk: one disclaimer on the page, in the footer", (await page.getByText("Informational only. Not a substitute for advice from your doctor or pharmacist.").count()) === 1);
   check("risk: no Safe or Low level", !/\b(Safe|Low)\b/.test(risk.replace("does not mean the combination is safe", "")));
+  await page.getByText("Show the interaction graph").click();
   check("risk: interaction graph drawn", (await page.locator(".graph-svg").count()) === 1);
   check("risk: no words that belong to the research pages", !BANNED.test(await text(page, "main")));
   await page.locator(".add-bar .btn-primary").click();
@@ -129,7 +130,7 @@ try {
   await pickMedicine(page, "Mox 500", "Mox 500mg Capsule");
   await waitDetails(page);
   await waitRisk(page);
-  const critical = await page.locator("section[aria-labelledby=risk-h] .risk-panel.lv-critical").first().innerText();
+  const critical = await page.locator("main .overall .risk-panel.lv-critical").first().innerText();
   check("critical: panel with the serious-risk wording", critical === "This may be a serious risk. Talk to your doctor or pharmacist before taking this medicine.", critical);
   check("critical: Add is disabled until the warning is acknowledged", await page.locator(".add-bar .btn-primary").isDisabled());
   await page.locator(".add-bar input[type=checkbox]").click();
@@ -149,6 +150,49 @@ try {
   check("alternatives: price chart drawn", (await page.locator(".price-chart").count()) > 0);
   await page.waitForSelector("#su-h", { timeout: 30000 }).catch(() => {});
   check("similar uses: section shown", (await page.locator("#su-h").count()) === 1);
+
+  // 7b. the overall level and its instruction, and Critical/High findings, are visible at 390 px
+  //     without opening any details: one account per level (the allergy severity sets the level)
+  const OVERALL = {
+    mild: ["Medium", "A possible interaction or allergy match was found."],
+    moderate: ["High", "Ask your pharmacist about this combination."],
+    severe: ["Critical", "This may be a serious risk. Talk to your doctor or pharmacist before taking this medicine."],
+  };
+  for (const [severity, [level, line]] of Object.entries(OVERALL)) {
+    const mctx = await newContext(browser, base, { name: "390", width: 390, height: 844 }, "light");
+    const m = await mctx.newPage();
+    const memail = `e2e-${severity}-${RUN}@example.com`;
+    await mctx.request.post("/api/auth/login", { data: { email: memail, password: PASSWORD } });
+    for (const a of await (await mctx.request.get("/api/allergies")).json()) await mctx.request.delete(`/api/allergies/${a.id}`);
+    await mctx.request.post("/api/allergies", { data: { allergen: "Amoxycillin", severity } });
+    await m.goto("/add");
+    await pickMedicine(m, "Mox 500", "Mox 500mg Capsule");
+    await waitDetails(m);
+    await waitRisk(m);
+    const open = await m.locator("details[open]").count();
+    const banner = m.locator(".overall");
+    const box = await banner.boundingBox();
+    check(`${level}: overall level and instruction above the fold at 390 px, no details open`,
+      open === 0 && (await banner.isVisible()) && box !== null && box.y + box.height <= 844 &&
+        (await banner.innerText()).includes(`Overall level: ${level}`) && (await banner.innerText()).includes(line),
+      `open=${open} box=${JSON.stringify(box)}`);
+    if (level !== "Medium") {
+      const f = m.locator(`.finding.lv-${level.toLowerCase()}`).first();
+      check(`${level}: the warning itself is visible with every details closed`, (await f.isVisible()) && (await f.innerText()).includes("Amoxycillin"));
+    }
+    await mctx.request.delete("/api/account");
+    await mctx.close();
+  }
+
+  // 7c. checker: a High pair shows its sentence and the doctor/pharmacist line with every details closed
+  await page.goto("/checker");
+  for (const [term, want] of [["Ecosprin 75", "Ecosprin 75 Tablet"], ["Warf 5", "Warf 5 Tablet"]]) await pickMedicine(page, term, want);
+  await page.getByRole("button", { name: "Check", exact: true }).click();
+  await page.waitForSelector(".pair-high, .pair-critical", { timeout: 30000 });
+  const pair = page.locator(".pair-high, .pair-critical").first();
+  check("checker: High pair and the doctor/pharmacist line are visible with every details closed",
+    (await page.locator("details[open]").count()) === 0 && (await pair.isVisible()) && /Talk to your doctor or pharmacist/.test(await pair.innerText()));
+  check("checker: one disclaimer on the page", (await page.getByText("Informational only. Not a substitute for advice from your doctor or pharmacist.").count()) === 1);
 
   // 8. no uncaught errors, then log out
   check("no uncaught page or console errors", consoleErrors.length === 0, consoleErrors.slice(0, 3).join(" ; "));

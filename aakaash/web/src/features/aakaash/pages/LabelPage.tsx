@@ -5,6 +5,7 @@ import { api } from "../api";
 import type { AlternativesResponse } from "../api";
 import { LabelTabs, Skeleton } from "../components/LabelTabs";
 import { KeyValues, NotReadyBox, ErrorBox } from "../components/Panel";
+import { Disclosure } from "../components/Disclosure";
 import { Sticker } from "../components/Sticker";
 import { useApi } from "../useApi";
 
@@ -73,17 +74,23 @@ export function LabelPage() {
         <section className="card" aria-label="Medicine summary">
           <KeyValues
             items={[
-              ["Generic name", m.generic_names.join(", ") || "not stated on the label"],
               ["Manufacturer", m.manufacturer ?? "not stated on the label"],
               ["Dosage form and route", m.form ?? "not stated on the label"],
-              ["Ingredients (as written on the label)", m.ingredients.join(", ") || "none recorded"],
-              ["Active ingredient (used for matching)", m.active_moieties.join(", ") || "none recorded"],
-              ...(m.products.length > 1 ? ([["Other product names", m.products.slice(1).join(", ")]] as [string, ReactNode][]) : []),
             ]}
           />
-          <p className="small muted">
-            <Sticker>Label id</Sticker> <code>{m.set_id}</code>
-          </p>
+          <Disclosure title="Technical details">
+            <KeyValues
+              items={[
+                ["Generic name", m.generic_names.join(", ") || "not stated on the label"],
+                ["Ingredients (as written on the label)", m.ingredients.join(", ") || "none recorded"],
+                ["Active ingredient (used for matching)", m.active_moieties.join(", ") || "none recorded"],
+                ...(m.products.length > 1 ? ([["Other product names", m.products.slice(1).join(", ")]] as [string, ReactNode][]) : []),
+              ]}
+            />
+            <p className="small muted">
+              <Sticker>Label id</Sticker> <code>{m.set_id}</code>
+            </p>
+          </Disclosure>
         </section>
       </>
     );

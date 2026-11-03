@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { Warning, X } from "@phosphor-icons/react";
+import { X } from "@phosphor-icons/react";
 import { api, ApiError, errorText } from "../api";
 import { Field, FormError } from "../components/Form";
 import { MedicineDetailsCard } from "../components/MedicineDetailsCard";
 import { MedicineSearch, type Recent } from "../components/MedicineSearch";
-import { RiskAnalysis, type Analysis } from "../components/RiskAnalysis";
+import { Disclosure } from "../components/Disclosure";
+import { OverallBanner, RiskAnalysis, type Analysis } from "../components/RiskAnalysis";
 import { ScanPrescription } from "../components/ScanPrescription";
 import { Sticker } from "../components/Sticker";
 import { CourseBar, longestCourse } from "../components/viz/CourseBars";
@@ -85,7 +86,9 @@ function ToAddCard({ it, onChange, onRemove }: { it: ToAddItem; onChange: (p: Pa
         </button>
         {editing && <CourseFields it={it} onChange={onChange} />}
       </div>
-      <MedicineDetailsCard it={it} onEditCourse={edit} />
+      <Disclosure title="Why it is taken, dose and instructions">
+        <MedicineDetailsCard it={it} onEditCourse={edit} />
+      </Disclosure>
     </div>
   );
 }
@@ -165,7 +168,7 @@ export function AddMedicine() {
   return (
     <>
       <h1>Add new medicine</h1>
-      <p className="lead">Add medicines one by one, or scan a printed prescription. Each one is checked against the medicines you take now and your allergies before you add it.</p>
+      <p className="lead">Add a medicine. It is checked against your current medicines and allergies first.</p>
       <div className="tabs" role="tablist" aria-label="How to add">
         {TABS.map((t, i) => (
           <button
@@ -214,26 +217,7 @@ export function AddMedicine() {
 
       <section aria-labelledby="to-add-h">
         <h2 id="to-add-h">To add {items.length > 0 && <span className="small muted">({items.length})</span>}</h2>
-        {critical && (
-          <div className="risk-panel lv-critical">
-            <Warning size={22} weight="fill" aria-hidden="true" />
-            <p>
-              {analysis.data.overall_text} <a href="#risk-h">See why</a>
-            </p>
-          </div>
-        )}
-        {analysis.state === "ok" && analysis.data.status === "ready" && !critical && (
-          <p className="small">
-            {analysis.data.overall ? (
-              <>
-                Risk analysis: <span className={`badge lv-badge lv-${analysis.data.overall.toLowerCase()}`}>{analysis.data.overall}</span>{" "}
-              </>
-            ) : (
-              "Risk analysis: no known interaction found in our rules. "
-            )}
-            <a href="#risk-h">Go to the risk analysis</a>
-          </p>
-        )}
+        <OverallBanner result={analysis} />
         {items.length === 0 ? (
           <div className="empty-illustrated"><NoMedicinesArt /><p className="muted">No medicines yet. Pick one above.</p></div>
         ) : (

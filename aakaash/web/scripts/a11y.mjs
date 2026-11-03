@@ -128,6 +128,13 @@ for (const vp of VIEWPORTS) {
     await waitRisk(page);
     await tabTo("Add to my medicines", "document.activeElement?.classList.contains('btn-primary') && !!document.activeElement.closest('.add-bar')", 120);
   });
+  await step("a details block opens with Enter and closes with Space", async () => {
+    await page.locator("summary", { hasText: "What was checked" }).focus();
+    await page.keyboard.press("Enter");
+    if (!(await page.locator("details.checked").evaluate((d) => d.open))) throw new Error("Enter did not open it");
+    await page.keyboard.press("Space");
+    if (await page.locator("details.checked").evaluate((d) => d.open)) throw new Error("Space did not close it");
+  });
   await step("the interaction graph findings are focusable and Enter jumps to the card", async () => {
     await ctx.request.post("/api/medicine-records", { data: { display_name: "Warf 5 Tablet", start_date: iso(-10) } });
     // a medicine record with no catalogue id is not analysed; reload the page and add a second to-add item instead

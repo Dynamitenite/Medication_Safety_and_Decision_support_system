@@ -387,7 +387,7 @@ export function Profile() {
           <div className={`summary-tile summary-risk${overview.data.highest_risk ? ` lv-${overview.data.highest_risk.toLowerCase()}` : ""}`}>
             <LevelGlyph level={overview.data.highest_risk} size={20} />
             <strong>{overview.data.highest_risk ?? (overview.data.risk_status === "none_found" ? "No finding" : "Not enough data")}</strong>
-            <span>Highest current-medicine pair</span>
+            <span>Highest risk among your medicines</span>
             {overview.data.risk_note && <span className="small muted">{overview.data.risk_note}</span>}
           </div>
         </> : <div className="summary-loading" aria-busy="true">Loading profile summary…</div>}

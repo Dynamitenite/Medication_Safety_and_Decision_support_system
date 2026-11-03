@@ -4,7 +4,7 @@ import { Warning } from "@phosphor-icons/react";
 import type { AllergyFinding, AnalyzeResponse, CheckerMedicine, PairFinding, RiskLevel } from "../api";
 import { SEVERITY_LABEL } from "../format";
 import { ExplainFinding, type FindingInput } from "./AiAnswer";
-import { Disclaimer } from "./Disclaimer";
+import { Disclosure } from "./Disclosure";
 import { InteractionType } from "./InteractionType";
 import { ErrorBox, NotReadyBox } from "./Panel";
 import { Sticker } from "./Sticker";
@@ -29,11 +29,6 @@ export function RiskMeter({ level }: { level: RiskLevel | null }) {
           </span>
         ))}
       </div>
-      {level && (
-        <p className="risk-meter-text">
-          Overall level: <strong className={`lv-text ${lvClass(level)}`}>{level}</strong>
-        </p>
-      )}
     </div>
   );
 }
@@ -61,6 +56,14 @@ function pairInput(p: PairFinding): FindingInput | null {
   };
 }
 
+/** One plain sentence for a pair: the rule's own wording, else what the label text says. */
+function pairSummary(p: PairFinding): string {
+  if (p.hits.length > 0) return p.hits[0].explanation;
+  if (p.text_match.matches_total > 0) return "The US label for one of these medicines names an ingredient of the other.";
+  if (p.shared_ingredients.length > 0) return `Both contain ${p.shared_ingredients.join(", ")}.`;
+  return "No rule or label sentence matched this pair.";
+}
+
 function PairCard({ p }: { p: PairFinding }) {
   const n = p.text_match.matches_total;
   const explain = pairInput(p);
@@ -71,60 +74,68 @@ function PairCard({ p }: { p: PairFinding }) {
           {p.a.name} <span className="small muted">({role(p.a_role)})</span> <span className="muted">+</span> {p.b.name}{" "}
           <span className="small muted">({role(p.b_role)})</span>
         </span>
-        {p.level ? <LevelBadge level={p.level} /> : <Sticker>No level from our rules</Sticker>}
+        {p.level && <LevelBadge level={p.level} />}
       </div>
-      <p className="small muted">
-        Ingredients: {ings(p.a)} · {ings(p.b)}
-      </p>
-      {p.hits.length > 0 && (
-        <section aria-label={`Interaction rules: ${p.a.name} and ${p.b.name}`}>
-          <h4>Reason (interaction rules)</h4>
-          <ul className="evidence">
-            {p.hits.map((h, i) => (
-              <li key={i}>
-                <p>
-                  <LevelBadge level={h.level} /> {h.explanation}
-                </p>
-                <p className="small muted">
-                  Ingredients involved: {h.a_ingredient} and {h.b_ingredient}.
-                  {h.rule_tier === "moderate" && " The rules call this tier “Moderate”; it is shown here as Medium."}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <p>{pairSummary(p)}</p>
       {p.shared_ingredients.length > 0 && (
         <p className="small">
           <Warning size={14} aria-hidden="true" /> Both contain {p.shared_ingredients.join(", ")}. Taking both may double the dose of that
           ingredient.
         </p>
       )}
-      {n > 0 && (
-        <div>
-          <h4>Label text (supporting evidence, does not change the level)</h4>
-          <p className="small muted">{p.text_match.source_label}</p>
-          <ul className="evidence">
-            {p.text_match.matches.map((m, i) => (
-              <li key={i}>
-                <blockquote>{m.sentence}</blockquote>
-                {m.source_term && <InteractionType sentence={m.sentence} drug1={m.source_term} drug2={m.matched_term} disclosure />}
-                <p className="small muted">
-                  From the US label for <strong>{m.source_ingredient}</strong> (<Link to={`/label/${m.in_label_set_id}`}>{m.in_label_name}</Link>),
-                  section “{m.section}”. Names <strong>{m.named_ingredient}</strong>, in {m.names_drug}.
-                </p>
-              </li>
-            ))}
-          </ul>
-          {n > p.text_match.matches.length && <p className="small muted">Showing {p.text_match.matches.length} of {n} sentences.</p>}
-        </div>
-      )}
-      {p.notes.map((t) => (
-        <p key={t} className="small">
-          <Sticker wrap>Check</Sticker> {t}
-        </p>
-      ))}
       {explain && <ExplainFinding input={explain} />}
+      <Disclosure title="Why this warning">
+        <p className="small muted">
+          Ingredients: {ings(p.a)} · {ings(p.b)}
+        </p>
+        {!p.level && (
+          <p className="small">
+            <Sticker>No level from our rules</Sticker>
+          </p>
+        )}
+        {p.hits.length > 0 && (
+          <section aria-label={`Interaction rules: ${p.a.name} and ${p.b.name}`}>
+            <h4>Interaction rules</h4>
+            <ul className="evidence">
+              {p.hits.map((h, i) => (
+                <li key={i}>
+                  <p>
+                    <LevelBadge level={h.level} /> {h.explanation}
+                  </p>
+                  <p className="small muted">
+                    Ingredients involved: {h.a_ingredient} and {h.b_ingredient}.
+                    {h.rule_tier === "moderate" && " The rules call this tier “Moderate”; it is shown here as Medium."}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+        {n > 0 && (
+          <div>
+            <h4>Label text (supporting evidence, does not change the level)</h4>
+            <p className="small muted">{p.text_match.source_label}</p>
+            <ul className="evidence">
+              {p.text_match.matches.map((m, i) => (
+                <li key={i}>
+                  <blockquote>{m.sentence}</blockquote>
+                  {m.source_term && <InteractionType sentence={m.sentence} drug1={m.source_term} drug2={m.matched_term} disclosure />}
+                  <p className="small muted">
+                    From the US label for <strong>{m.source_ingredient}</strong> (<Link to={`/label/${m.in_label_set_id}`}>{m.in_label_name}</Link>),
+                    section “{m.section}”. Names <strong>{m.named_ingredient}</strong>, in {m.names_drug}.
+                  </p>
+                </li>
+              ))}
+            </ul>
+            {n > p.text_match.matches.length && <p className="small muted">Showing {p.text_match.matches.length} of {n} sentences.</p>}
+          </div>
+        )}
+        {p.notes.map((t) => (
+          <p key={t} className="small">
+            <Sticker wrap>Check</Sticker> {t}
+          </p>
+        ))}
+      </Disclosure>
     </li>
   );
 }
@@ -138,24 +149,46 @@ function AllergyCard({ f }: { f: AllergyFinding }) {
         </span>
         <LevelBadge level={f.level} />
       </div>
-      <h4>Reason (your allergies)</h4>
       <p>
         You recorded an allergy to <strong>{f.allergen}</strong>
         {f.reaction ? ` (reaction: ${f.reaction})` : ""}, severity: <SeverityGlyph severity={f.severity} size={14} /> {SEVERITY_LABEL[f.severity].toLowerCase()}. {f.medicine.name} contains{" "}
         <strong>{f.ingredients.join(", ")}</strong>.
       </p>
-      <p className="small muted">
-        Ingredients: {ings(f.medicine)}. {f.note}
-      </p>
-      {f.notes.map((t) => (
-        <p key={t} className="small">
-          <Sticker wrap>Check</Sticker> {t}
-        </p>
-      ))}
       {f.ingredients.length > 0 && (
         <ExplainFinding input={{ kind: "allergy", a: f.allergen, b: f.ingredients[0], level: f.level, explanation: null, sentences: [] }} />
       )}
+      <Disclosure title="Why this warning">
+        <p className="small muted">
+          Ingredients: {ings(f.medicine)}. {f.note}
+        </p>
+        {f.notes.map((t) => (
+          <p key={t} className="small">
+            <Sticker wrap>Check</Sticker> {t}
+          </p>
+        ))}
+      </Disclosure>
     </li>
+  );
+}
+
+/** The overall level and its one-line instruction. Shown above the "To add" list; never collapsed. */
+export function OverallBanner({ result }: { result: Analysis }) {
+  if (result.state !== "ok" || result.data.status !== "ready") return null;
+  const d = result.data;
+  if (!d.overall) return <p className="risk-note">{d.overall_text}</p>;
+  return (
+    <div className="overall">
+      <p className="overall-level">
+        Overall level: <strong className={`lv-text ${lvClass(d.overall)}`}>{d.overall}</strong>
+      </p>
+      <div className={`risk-panel ${lvClass(d.overall)}`} role={d.overall === "Critical" ? "alert" : "status"}>
+        <Warning size={22} weight="fill" aria-hidden="true" />
+        <p>{d.overall_text}</p>
+      </div>
+      <p className="small">
+        <a href="#risk-h">See why</a>
+      </p>
+    </div>
   );
 }
 
@@ -179,23 +212,18 @@ export function RiskAnalysis({ result, onRetry, graph }: { result: Analysis; onR
   ].sort((x, y) => rank(y.level) - rank(x.level));
   return (
     <>
-      {d.overall === "Critical" && (
-        <div className="risk-panel lv-critical" role="alert">
-          <Warning size={22} weight="fill" aria-hidden="true" />
-          <p>{d.overall_text}</p>
-        </div>
-      )}
       <RiskMeter level={d.overall ?? null} />
-      {d.overall === "High" && <p className="notice risk-note lv-high">{d.overall_text}</p>}
-      {d.overall === "Medium" && <p className="risk-note">{d.overall_text}</p>}
-      {!d.overall && <p className="risk-note">{d.overall_text}</p>}
       {d.rules.status === "not_ready" && <NotReadyBox reason={d.rules.reason} fix={d.rules.fix} title={d.rules.source_label} />}
 
-      <details className="checked">
-        <summary>
-          What was checked: {d.medicines.length - current.length} to add, {current.length} current{" "}
-          {current.length === 1 ? "medicine" : "medicines"}, {d.allergies_checked} {d.allergies_checked === 1 ? "allergy" : "allergies"}
-        </summary>
+      <Disclosure
+        className="checked"
+        title={
+          <>
+            What was checked: {d.medicines.length - current.length} to add, {current.length} current{" "}
+            {current.length === 1 ? "medicine" : "medicines"}, {d.allergies_checked} {d.allergies_checked === 1 ? "allergy" : "allergies"}
+          </>
+        }
+      >
         <p className="small">
           Each medicine to add is compared with every current medicine and with the other medicines to add, by their ingredients. Current
           medicines are the ones in your history that you take now, and the ones whose dates were not entered (they are included).
@@ -219,9 +247,9 @@ export function RiskAnalysis({ result, onRetry, graph }: { result: Analysis; onR
         <p className="small muted">
           {d.level_rule} <Link to="/about/data">How levels are set</Link>
         </p>
-      </details>
+      </Disclosure>
 
-      {graph}
+      {graph && <Disclosure title="Show the interaction graph">{graph}</Disclosure>}
 
       {findings.length > 0 && <ul className="finding-list">{findings.map((f) => f.el)}</ul>}
       {findings.length === 0 && d.pairs_checked > 0 && (
@@ -230,7 +258,6 @@ export function RiskAnalysis({ result, onRetry, graph }: { result: Analysis; onR
           ingredient.
         </p>
       )}
-      <Disclaimer />
     </>
   );
 }

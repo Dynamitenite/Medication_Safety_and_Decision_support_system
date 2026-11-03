@@ -132,6 +132,10 @@ for (const vp of VIEWPORTS) {
     await waitDetails(page);
     await waitRisk(page);
     await inspect(page, tag, "add-risk");
+    // every closed Disclosure opened: the long evidence must not overflow either
+    await page.evaluate(() => document.querySelectorAll("details").forEach((d) => (d.open = true)));
+    await page.waitForTimeout(600);
+    await inspect(page, tag, "add-risk-open");
     const graph = page.locator(".chart-frame", { hasText: "Interaction graph" }).first();
     check(`${tag} add: interaction graph drawn`, (await graph.count()) > 0);
     if (await graph.count()) {
@@ -144,6 +148,9 @@ for (const vp of VIEWPORTS) {
     await page.waitForSelector("#alt-h");
     await page.waitForFunction(() => !document.querySelector("section[aria-labelledby=alt-h][aria-busy=true]"));
     await inspect(page, tag, "alternatives");
+    await page.evaluate(() => document.querySelector(".alt-more")?.setAttribute("open", ""));
+    await page.waitForSelector(".price-chart", { timeout: 15000 }).catch(() => {});
+    await inspect(page, tag, "alternatives-open");
     await go("/about/data");
     await page.waitForTimeout(1500);
     await inspect(page, tag, "about-data");

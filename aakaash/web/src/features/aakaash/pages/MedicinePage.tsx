@@ -4,12 +4,11 @@ import { api } from "../api";
 import type { BrandResponse, IngredientDetail } from "../api";
 import { AskMedicine } from "../components/AiAnswer";
 import { Alternatives, rupees } from "../components/AlternativesView";
-import { Disclaimer } from "../components/Disclaimer";
+import { Disclosure } from "../components/Disclosure";
 import { LabelSearch } from "../components/LabelSearch";
 import { LabelTabs, Skeleton } from "../components/LabelTabs";
 import { ErrorBox, KeyValues, NotReadyBox } from "../components/Panel";
 import { Sticker } from "../components/Sticker";
-import { FormTag } from "../components/viz/icons";
 import { LabelSectionStrip } from "../components/viz/LabelSections";
 import { useApi } from "../useApi";
 
@@ -43,6 +42,7 @@ function LabelSection({ ing, choice, onChoose, rule, note, formNote, formUnknown
   return (
     <section className="card" aria-labelledby="label-h">
       <h2 id="label-h">Label text (US FDA) for {ing.name}</h2>
+      <Disclosure title="Show label text">
       <p className="small">{note}</p>
       {!chosen ? (
         <p>
@@ -97,6 +97,7 @@ function LabelSection({ ing, choice, onChoose, rule, note, formNote, formUnknown
           )}
         </>
       )}
+      </Disclosure>
     </section>
   );
 }
@@ -106,6 +107,7 @@ function Secondary({ data }: { data: BrandResponse }) {
   return (
     <section className="card" aria-labelledby="sec-h">
       <h2 id="sec-h">Interactions listed with this product</h2>
+      <Disclosure title={`Show the ${data.secondary_interactions.length} listed`}>
       <p className="small muted">{data.secondary_source_label} Shown as listed.</p>
       <div className="table-wrap">
         <table>
@@ -125,6 +127,7 @@ function Secondary({ data }: { data: BrandResponse }) {
           </tbody>
         </table>
       </div>
+      </Disclosure>
     </section>
   );
 }
@@ -174,16 +177,18 @@ function BrandPage({ id }: { id: string }) {
         {b.discontinued && <Sticker>Discontinued</Sticker>}
       </div>
       <section className="card" aria-label="Medicine summary">
-        <div className="medicine-tags"><FormTag family={b.form_family} /><Sticker>{b.type || "Type not stated"}</Sticker><Sticker>{rupees(b.price)} per pack</Sticker></div>
         <KeyValues
           items={[
             ["Manufacturer", b.manufacturer ?? "not stated"],
             ["Pack size", b.pack_size || "not stated"],
+            ["Price", <>{rupees(b.price)} per pack</>],
             ["Dosage form", b.form_family === "unknown" ? "not stated" : b.form_family],
-            ["Price", <>{rupees(b.price)} per pack <span className="small muted">· {d.price_note}</span></>],
-            ["Type", b.type || "not stated"],
           ]}
         />
+        <Disclosure title="Show details">
+          <KeyValues items={[["Type", b.type || "not stated"]]} />
+          <p className="small muted">{d.price_note}</p>
+        </Disclosure>
         <h2 className="small muted">Composition</h2>
         <IngredientChips items={d.ingredient_details} />
         {b.composition_incomplete && !b.composition_unclear && (
@@ -236,7 +241,6 @@ function BrandPage({ id }: { id: string }) {
         {alt.data?.status === "ready" && (
           <Alternatives id={id} data={alt.data} showDisc={showDisc} setShowDisc={(v) => set({ disc: v ? "1" : "" })} selected={b} />
         )}
-        <Disclaimer />
       </section>
 
       <Secondary data={d} />

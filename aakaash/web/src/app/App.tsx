@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
-import { Gear, List, SignIn, SignOut, X } from "@phosphor-icons/react";
+import { Gear, Info, List, SignIn, SignOut, X } from "@phosphor-icons/react";
 import { MENU_ICONS } from "../features/aakaash/pages/MenuIcons";
 import { useScrollRegions } from "./useScrollRegions";
 import { AuthProvider, RequireAuth, useAuth } from "../features/aakaash/auth/AuthContext";
@@ -95,6 +95,10 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
             </button>
           </div>
         )}
+        <NavLink to="/about/data" className={plainLink}>
+          <Info size={18} aria-hidden="true" />
+          How it works
+        </NavLink>
         <ThemeToggle />
       </div>
     </aside>
@@ -161,7 +165,7 @@ function Shell() {
           </main>
           <footer className="app-foot">
             <Disclaimer />
-            <Link to="/about/data">Data &amp; methods</Link>
+            <Link to="/about/data">How it works</Link>
           </footer>
         </div>
       </div>

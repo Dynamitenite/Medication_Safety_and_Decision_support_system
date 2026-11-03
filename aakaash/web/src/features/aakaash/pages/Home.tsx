@@ -11,10 +11,7 @@ export function Home() {
     <>
       <section className="hero">
         <h1>Find a medicine</h1>
-        <p className="lead">
-          Search medicines sold in India by brand name or ingredient. Each medicine page shows its composition, price, cheaper
-          brands with the same composition, and the US label text for each ingredient. Nothing is generated.
-        </p>
+        <p className="lead">Search by brand name or ingredient to see its price, cheaper brands and label text.</p>
         <MedicineSearch
           large
           autoFocus

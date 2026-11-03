@@ -308,7 +308,9 @@ export function DataMethods() {
   const catalogue = useApi(api.catalogueSummary);
   return (
     <>
-      <h1>Data &amp; methods</h1>
+      <h1>How it works</h1>
+      <p className="lead">In short: warnings come from a fixed set of interaction rules and from the text of US medicine labels. The app does not guess a level, and it is not medical advice.</p>
+      <p className="small muted">The rest of this page is for researchers and uses the project's own wording.</p>
       <p className="lead">
         Where the information in this app comes from, how far it reaches, and what it cannot tell you. This page uses the project's
         research wording; the rest of the app does not. The component-by-component record of what is taken from papers is on the{" "}
