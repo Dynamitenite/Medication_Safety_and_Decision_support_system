@@ -22,6 +22,12 @@ export type IngredientDetail = S["IngredientDetail"];
 export type LabelRef = S["LabelRef"];
 export type BrandAlternativesResponse = S["BrandAlternativesResponse"];
 export type AlternativeBrand = S["AlternativeBrand"];
+export type SearchLabelsRequest = S["SearchLabelsRequest"];
+export type SearchLabelsResponse = S["SearchLabelsResponse"];
+export type SearchResult = S["SearchResult"];
+export type SimilarUseResponse = S["SimilarUseResponse"];
+export type SimilarUseSuggestion = S["SimilarUseSuggestion"];
+export type IndexSummaryResponse = S["IndexSummaryResponse"];
 export type CatalogueSummaryResponse = S["CatalogueSummaryResponse"];
 export type MedicineResponse = S["MedicineResponse"];
 export type AlternativesResponse = S["AlternativesResponse"];
@@ -155,6 +161,11 @@ export const api = {
     get<BrandAlternativesResponse>(
       `/api/medicine/${encodeURIComponent(id)}/alternatives?${new URLSearchParams({ include_discontinued: String(includeDiscontinued) })}`,
     ),
+  similarUse: (id: string, limit = 10) =>
+    get<SimilarUseResponse>(`/api/medicine/${encodeURIComponent(id)}/similar-use?limit=${limit}`),
+  searchLabels: (body: Pick<SearchLabelsRequest, "query" | "medicine_id" | "k" | "scope">) =>
+    send<SearchLabelsResponse>("POST", "/api/search/labels", body),
+  indexSummary: () => get<IndexSummaryResponse>("/api/index/summary"),
   catalogueSummary: () => get<CatalogueSummaryResponse>("/api/catalogue/summary"),
   catalogueForms: () => get<CatalogueFormsResponse>("/api/catalogue/forms"),
   label: (setId: string) => get<MedicineResponse>(`/api/label/${encodeURIComponent(setId)}`),

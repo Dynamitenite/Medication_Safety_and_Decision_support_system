@@ -988,3 +988,116 @@ class DDIMetricsResponse(Readiness):
     runs: list[DDIRun] = Field(default_factory=list)
     search: list[DDISearchRow] = Field(default_factory=list)
     search_smoke_test: bool = False
+
+
+# ---- label search and similar uses ---------------------------------------------------------------
+class SearchLabelsRequest(ApiModel):
+    query: str = Field(min_length=1, max_length=300)
+    medicine_id: str | None = None   # limit to the US labels linked to this medicine's ingredients
+    set_ids: list[str] | None = Field(default=None, max_length=50)  # or to these labels
+    k: int = Field(5, ge=1, le=20)
+    scope: Literal["default", "all"] = "default"  # with medicine_id: the default label only, or every linked label
+
+    @field_validator("query")
+    @classmethod
+    def _strip(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("query must not be empty")
+        return v
+
+
+class SearchResult(ApiModel):
+    chunk_id: str
+    score: float  # cosine similarity between the query and this passage
+    section: str
+    section_label: str
+    set_id: str
+    product: str
+    manufacturer: str | None
+    form: str | None
+    route: str | None
+    form_family: str
+    is_default_label: bool
+    text: str  # verbatim label text; empty when withheld
+    match_terms: list[str]  # words of the query that appear in the text (for highlighting only)
+    withheld: bool = False
+    withheld_note: str | None = None
+    mismatch_note: str | None = None  # why this label may not fit the selected medicine
+
+
+class SearchLabelsResponse(Readiness):
+    encoder: str = ""
+    encoder_label: str = ""
+    is_deep_learning: bool = False
+    restricted_to: str = ""
+    labels_searched: int = 0
+    elapsed_ms: float = 0
+    note: str = ""
+    results: list[SearchResult] = Field(default_factory=list)
+
+
+class SimilarBrand(AlternativeBrand):
+    ingredient_count: int
+
+
+class SimilarLabelRef(ApiModel):
+    set_id: str
+    name: str
+    manufacturer: str | None
+    form: str | None
+    route: str | None
+
+
+class SimilarUseSuggestion(ApiModel):
+    ingredient: str
+    us_name: str | None
+    similarity: float  # best cosine between an Indications passage of the selected ingredient and one of this ingredient
+    supporting_chunks: int | None  # passages at or above the minimum similarity; None until a minimum is set
+    supporting_sentence: str  # verbatim from the US label
+    supporting_label: SimilarLabelRef
+    matched_query_sentence: str  # the sentence of the selected ingredient's label it was compared with
+    flags: list[str] = Field(default_factory=list)
+    brands_total: int
+    brands: list[SimilarBrand]
+    brands_note: str | None = None
+
+
+class SimilarUseGroup(ApiModel):
+    ingredient: str
+    query_labels: int
+    query_passages: int
+    from_combination_label: bool = False
+    note: str | None = None
+    suggestions: list[SimilarUseSuggestion] = Field(default_factory=list)
+
+
+class SimilarUseResponse(Readiness):
+    id: str = ""
+    name: str = ""
+    encoder: str = ""
+    is_deep_learning: bool = False
+    min_similarity: float | None = None
+    heading: str = ""
+    note: str = ""
+    combination_note: str | None = None
+    groups: list[SimilarUseGroup] = Field(default_factory=list)
+
+
+class IndexSummaryResponse(Readiness):
+    labels: int = 0
+    chunks: int = 0
+    chunks_per_section: dict[str, int] = Field(default_factory=dict)
+    parts_loaded: list[str] = Field(default_factory=list)
+    chunk_size: int = 0
+    chunk_overlap: int = 0
+    chunk_unit: str = ""
+    is_sample: bool = False
+    encoders_built: list[str] = Field(default_factory=list)
+    active_encoder: str = ""
+    active_encoder_label: str = ""
+    is_deep_learning: bool = False
+    dimension: int | None = None
+    vectors: int | None = None
+    vector_bytes: int | None = None
+    build_seconds: float | None = None

@@ -86,7 +86,7 @@ def test_health(client):
 
 def test_all_routes_under_api_prefix():
     paths = list(app.openapi()["paths"])
-    assert len(paths) == 36 and all(p.startswith("/api/") for p in paths)
+    assert len(paths) == 39 and all(p.startswith("/api/") for p in paths)
 
 
 def test_status_empty_data_is_not_ready_with_reasons(client):
@@ -128,7 +128,11 @@ def test_status_ddi_ready_when_files_exist(client, dirs):
 def test_status_index_and_model_follow_files(client, dirs):
     art = dirs[1]
     (art / "index").mkdir()
-    (art / "index" / "manifest.json").write_text(json.dumps({"encoder": "tfidf", "chunks": 3}))
+    (art / "index" / "manifest.json").write_text(json.dumps({"chunks": 3}))
+    comps = {c["id"]: c for c in client.get("/api/status").json()["components"]}
+    assert comps["index"]["status"] == "ready" and comps["encoder"]["status"] == "not_ready"  # tfidf not built
+    (art / "index" / "tfidf").mkdir()
+    (art / "index" / "tfidf" / "manifest.json").write_text(json.dumps({"encoder": "tfidf", "chunks": 3}))
     comps = {c["id"]: c for c in client.get("/api/status").json()["components"]}
     assert comps["index"]["status"] == comps["encoder"]["status"] == "ready"
     assert comps["ddi_model"]["status"] == "not_ready"  # no checkpoint in artifacts/models/ddi_focal

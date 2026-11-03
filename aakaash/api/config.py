@@ -21,6 +21,11 @@ class Settings:
     classifier_name: str
     ddi_model_dir_override: Path | None = None    # MEDSAFE_DDI_MODEL_DIR
     ddi_metrics_dir_override: Path | None = None  # MEDSAFE_DDI_METRICS_DIR
+    similar_use_min: float | None = None          # SIMILAR_USE_MIN: set only after the score distribution is reviewed
+
+    @property
+    def index_dir(self) -> Path:
+        return self.artifacts_dir / "index"
 
     @property
     def ddi_model_dir(self) -> Path:
@@ -58,14 +63,15 @@ class Settings:
 
 def get_settings() -> Settings:
     """FastAPI dependency. Override with MEDSAFE_DATA_DIR, MEDSAFE_ARTIFACTS_DIR,
-    MEDSAFE_ENCODER, MEDSAFE_DDI_CLASSIFIER, MEDSAFE_DDI_MODEL_DIR, MEDSAFE_DDI_METRICS_DIR."""
+    ENCODER (or MEDSAFE_ENCODER), SIMILAR_USE_MIN, MEDSAFE_DDI_CLASSIFIER, MEDSAFE_DDI_MODEL_DIR, MEDSAFE_DDI_METRICS_DIR."""
     opt = lambda k: Path(os.environ[k]) if os.environ.get(k) else None
     return Settings(
         data_dir=Path(os.environ.get("MEDSAFE_DATA_DIR", REPO_ROOT / "data")),
         artifacts_dir=Path(os.environ.get("MEDSAFE_ARTIFACTS_DIR", AAKAASH_DIR / "artifacts")),
         trace_path=AAKAASH_DIR / "PAPER_TRACE.md",
-        encoder_name=os.environ.get("MEDSAFE_ENCODER", "tfidf"),
+        encoder_name=(os.environ.get("ENCODER") or os.environ.get("MEDSAFE_ENCODER") or "tfidf").strip().lower(),
         classifier_name=os.environ.get("MEDSAFE_DDI_CLASSIFIER", "focal"),
         ddi_model_dir_override=opt("MEDSAFE_DDI_MODEL_DIR"),
         ddi_metrics_dir_override=opt("MEDSAFE_DDI_METRICS_DIR"),
+        similar_use_min=float(os.environ["SIMILAR_USE_MIN"]) if os.environ.get("SIMILAR_USE_MIN") else None,
     )

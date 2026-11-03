@@ -561,6 +561,27 @@ class Catalogue:
                 "short_composition": self.short_composition.get(self.ids[i]),
                 "secondary_interactions": [{"drug": d, "effect": e} for d, e in self.secondary.get(self.ids[i], [])]}
 
+    # ---- brands of another ingredient (similar-use suggestions) ---------------------------
+    def brands_for_ingredient(self, ing: int, family: str, limit: int = 5) -> tuple[int, list[dict]]:
+        """(total, brands) that contain catalogue ingredient `ing`: same dosage-form family as the
+        selected product, not discontinued, composition not unclear. Single-ingredient products first,
+        then cheapest first (price not stated last). Identical name, maker, pack and composition are
+        listed once. An unknown family gives none: the form cannot be matched."""
+        if family == UNKNOWN:
+            return 0, []
+        seen, rows = set(), []
+        for i in self._ing_rows[ing]:
+            if self.disc[i] or self.unclear(i) or self.family(i) != family:
+                continue
+            look = self._look(i) + (self.pack_ix[i],)
+            if look in seen:
+                continue
+            seen.add(look)
+            rows.append(i)
+        n_ing = lambda i: len({it[0] for it in self.comps[self.comp[i]]["items"]})
+        rows.sort(key=lambda i: (n_ing(i) != 1, self.price[i] is None, self.price[i] or 0, self._alpha[i]))
+        return len(rows), [{**self.row(i), "ingredient_count": n_ing(i)} for i in rows[:limit]]
+
     # ---- alternatives -------------------------------------------------------------------
     def _alt_row(self, i: int, sel: int) -> dict:
         p, ps = self.price[i], self.price[sel]

@@ -66,20 +66,19 @@ def _index(s: Settings) -> ComponentStatus:
         return ComponentStatus(
             status="not_ready", **base,
             reason=f"The retrieval index has not been built yet ({s.display(s.artifacts_dir / INDEX_MANIFEST)} is missing).",
-            fix="Build the index from the DailyMed labels. The build step is not written yet.")
+            fix="Run scripts/build_index.py from the aakaash folder.")
     return ComponentStatus(status="ready", **base, detail={
         k: v for k, v in manifest.items() if isinstance(v, (str, int, float))})
 
 
 def _encoder(s: Settings) -> ComponentStatus:
     base = dict(id="encoder", label=f"Encoder (configured: {s.encoder_name})")
-    manifest = _read_json(s.artifacts_dir / INDEX_MANIFEST)
+    manifest = _read_json(s.artifacts_dir / "index" / s.encoder_name / "manifest.json")
     if manifest is None or "encoder" not in manifest:
         return ComponentStatus(
             status="not_ready", **base,
-            reason="No encoder is loaded. The encoder is recorded when the retrieval index is built, "
-                   "and there is no index yet.",
-            fix="Build the retrieval index. The build step is not written yet.")
+            reason=f"The {s.encoder_name} index has not been built.",
+            fix="Run scripts/build_index.py from the aakaash folder (set ENCODER=sbert for the sentence-transformers index).")
     return ComponentStatus(status="ready", **base, detail={"encoder": str(manifest["encoder"])})
 
 

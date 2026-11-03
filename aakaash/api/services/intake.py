@@ -74,6 +74,21 @@ def _same_ingredients(label_moieties: list[str], brand_keys: list[set[str]]) -> 
             and all(any(lk & bk for lk in label_keys) for bk in brand_keys))
 
 
+def label_mismatch(form_match: str, combination_label: bool, label_moieties: list[str],
+                   brand_keys: list[set[str]]) -> str | None:
+    """Why a US label may not be used for dosage text of this medicine (a key of MISMATCH_NOTE), or
+    None. One rule for the details card and for label search."""
+    if form_match == "none":
+        return "wrong_form"
+    if combination_label and not _same_ingredients(label_moieties, brand_keys):
+        return "combination_label"
+    if not combination_label and len(brand_keys) > 1:
+        return "single_for_combination"  # the dose of a combination can differ from either part alone
+    if form_match == "brand_form_unknown":
+        return "form_unknown"
+    return None
+
+
 def details(settings: Settings, cid: str) -> MedicineDetailsResponse:
     cat = catalogue.get_catalogue(settings)
     if cat is None:
@@ -100,14 +115,7 @@ def details(settings: Settings, cid: str) -> MedicineDetailsResponse:
         base["label"] = DetailLabel(set_id=ref["set_id"], name=ref["product"] or ref["title"] or ref["set_id"],
                                     manufacturer=ref["manufacturer"], form=ref["form"], route=ref["route"],
                                     form_family=ref["form_family"])
-        if x["form_match"] == "none":
-            base["mismatch"] = "wrong_form"
-        elif base["combination_label"] and not _same_ingredients(lab_rec.get("moieties", []), brand_keys):
-            base["mismatch"] = "combination_label"
-        elif not base["combination_label"] and len(brand_keys) > 1:
-            base["mismatch"] = "single_for_combination"  # the dose of a combination can differ from either part alone
-        elif x["form_match"] == "brand_form_unknown":
-            base["mismatch"] = "form_unknown"
+        base["mismatch"] = label_mismatch(x["form_match"], base["combination_label"], lab_rec.get("moieties", []), brand_keys)
         if base["mismatch"]:
             base["mismatch_note"] = MISMATCH_NOTE[base["mismatch"]]
         if idx is None:

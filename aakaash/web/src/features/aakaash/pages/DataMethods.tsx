@@ -8,6 +8,7 @@ import { DdiExamplesPanel, DdiStatsPanel } from "../components/DdiPanels";
 import { DdiModelSection } from "../components/DdiModelSection";
 import { DailyMedPanel, TacPanel } from "../components/LabelStatsPanels";
 import { ErrorBox, fmt, LoadingBox } from "../components/Panel";
+import { RetrievalSection } from "../components/RetrievalSection";
 import { PatientPicker } from "../components/PatientPicker";
 import { RulesSection } from "../components/RulesSection";
 import { StatusTable } from "../components/StatusTable";
@@ -296,6 +297,7 @@ export function DataMethods() {
       <DoesNot />
       <AddingMedicines />
       <DailyMedPanel />
+      <RetrievalSection />
       <Rules />
       <DdiModelSection />
       <DdiStatsPanel query={ddi} />

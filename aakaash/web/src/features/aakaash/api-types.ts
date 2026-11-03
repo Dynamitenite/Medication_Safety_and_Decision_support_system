@@ -232,6 +232,64 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/medicine/{catalogue_id}/similar-use": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Medicine Similar Use
+         * @description Other ingredients whose US-label Indications text is closest (cosine) to this medicine's. Not a
+         *     list of substitutes. not_ready without the label index.
+         */
+        get: operations["medicine_similar_use_api_medicine__catalogue_id__similar_use_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/search/labels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search Labels
+         * @description Top-k label passages by cosine similarity, optionally limited to one medicine's linked US labels.
+         */
+        post: operations["search_labels_api_search_labels_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/index/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Index Summary */
+        get: operations["index_summary_api_index_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/catalogue/summary": {
         parameters: {
             query?: never;
@@ -2096,6 +2154,79 @@ export interface components {
              */
             status: "ok";
         };
+        /** IndexSummaryResponse */
+        IndexSummaryResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /**
+             * Labels
+             * @default 0
+             */
+            labels: number;
+            /**
+             * Chunks
+             * @default 0
+             */
+            chunks: number;
+            /** Chunks Per Section */
+            chunks_per_section: {
+                [key: string]: number;
+            };
+            /** Parts Loaded */
+            parts_loaded: string[];
+            /**
+             * Chunk Size
+             * @default 0
+             */
+            chunk_size: number;
+            /**
+             * Chunk Overlap
+             * @default 0
+             */
+            chunk_overlap: number;
+            /**
+             * Chunk Unit
+             * @default
+             */
+            chunk_unit: string;
+            /**
+             * Is Sample
+             * @default false
+             */
+            is_sample: boolean;
+            /** Encoders Built */
+            encoders_built: string[];
+            /**
+             * Active Encoder
+             * @default
+             */
+            active_encoder: string;
+            /**
+             * Active Encoder Label
+             * @default
+             */
+            active_encoder_label: string;
+            /**
+             * Is Deep Learning
+             * @default false
+             */
+            is_deep_learning: boolean;
+            /** Dimension */
+            dimension: number | null;
+            /** Vectors */
+            vectors: number | null;
+            /** Vector Bytes */
+            vector_bytes: number | null;
+            /** Build Seconds */
+            build_seconds: number | null;
+        };
         /** IngredientDetail */
         IngredientDetail: {
             /** Name */
@@ -2517,6 +2648,113 @@ export interface components {
             /** Explanation */
             explanation: string;
         };
+        /** SearchLabelsRequest */
+        SearchLabelsRequest: {
+            /** Query */
+            query: string;
+            /** Medicine Id */
+            medicine_id?: string | null;
+            /** Set Ids */
+            set_ids?: string[] | null;
+            /**
+             * K
+             * @default 5
+             */
+            k: number;
+            /**
+             * Scope
+             * @default default
+             * @enum {string}
+             */
+            scope: "default" | "all";
+        };
+        /** SearchLabelsResponse */
+        SearchLabelsResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /**
+             * Encoder
+             * @default
+             */
+            encoder: string;
+            /**
+             * Encoder Label
+             * @default
+             */
+            encoder_label: string;
+            /**
+             * Is Deep Learning
+             * @default false
+             */
+            is_deep_learning: boolean;
+            /**
+             * Restricted To
+             * @default
+             */
+            restricted_to: string;
+            /**
+             * Labels Searched
+             * @default 0
+             */
+            labels_searched: number;
+            /**
+             * Elapsed Ms
+             * @default 0
+             */
+            elapsed_ms: number;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Results */
+            results: components["schemas"]["SearchResult"][];
+        };
+        /** SearchResult */
+        SearchResult: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Score */
+            score: number;
+            /** Section */
+            section: string;
+            /** Section Label */
+            section_label: string;
+            /** Set Id */
+            set_id: string;
+            /** Product */
+            product: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Form */
+            form: string | null;
+            /** Route */
+            route: string | null;
+            /** Form Family */
+            form_family: string;
+            /** Is Default Label */
+            is_default_label: boolean;
+            /** Text */
+            text: string;
+            /** Match Terms */
+            match_terms: string[];
+            /**
+             * Withheld
+             * @default false
+             */
+            withheld: boolean;
+            /** Withheld Note */
+            withheld_note: string | null;
+            /** Mismatch Note */
+            mismatch_note: string | null;
+        };
         /** SecondaryHit */
         SecondaryHit: {
             /** In Product */
@@ -2541,6 +2779,144 @@ export interface components {
             source_label: string;
             /** Hits */
             hits: components["schemas"]["SecondaryHit"][];
+        };
+        /** SimilarBrand */
+        SimilarBrand: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Type */
+            type: string;
+            /** Pack Size */
+            pack_size: string;
+            /** Price */
+            price: number | null;
+            /** Discontinued */
+            discontinued: boolean;
+            /** Composition */
+            composition: string;
+            /** Ingredients */
+            ingredients: string[];
+            /** Composition Incomplete */
+            composition_incomplete: boolean;
+            /** Composition Conflict */
+            composition_conflict: boolean;
+            /** Composition Unclear */
+            composition_unclear: boolean;
+            /** Form Family */
+            form_family: string;
+            /** Price Difference */
+            price_difference: number | null;
+            /** Different Pack Size */
+            different_pack_size: boolean;
+            /** Ingredient Count */
+            ingredient_count: number;
+        };
+        /** SimilarLabelRef */
+        SimilarLabelRef: {
+            /** Set Id */
+            set_id: string;
+            /** Name */
+            name: string;
+            /** Manufacturer */
+            manufacturer: string | null;
+            /** Form */
+            form: string | null;
+            /** Route */
+            route: string | null;
+        };
+        /** SimilarUseGroup */
+        SimilarUseGroup: {
+            /** Ingredient */
+            ingredient: string;
+            /** Query Labels */
+            query_labels: number;
+            /** Query Passages */
+            query_passages: number;
+            /**
+             * From Combination Label
+             * @default false
+             */
+            from_combination_label: boolean;
+            /** Note */
+            note: string | null;
+            /** Suggestions */
+            suggestions: components["schemas"]["SimilarUseSuggestion"][];
+        };
+        /** SimilarUseResponse */
+        SimilarUseResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /**
+             * Id
+             * @default
+             */
+            id: string;
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /**
+             * Encoder
+             * @default
+             */
+            encoder: string;
+            /**
+             * Is Deep Learning
+             * @default false
+             */
+            is_deep_learning: boolean;
+            /** Min Similarity */
+            min_similarity: number | null;
+            /**
+             * Heading
+             * @default
+             */
+            heading: string;
+            /**
+             * Note
+             * @default
+             */
+            note: string;
+            /** Combination Note */
+            combination_note: string | null;
+            /** Groups */
+            groups: components["schemas"]["SimilarUseGroup"][];
+        };
+        /** SimilarUseSuggestion */
+        SimilarUseSuggestion: {
+            /** Ingredient */
+            ingredient: string;
+            /** Us Name */
+            us_name: string | null;
+            /** Similarity */
+            similarity: number;
+            /** Supporting Chunks */
+            supporting_chunks: number | null;
+            /** Supporting Sentence */
+            supporting_sentence: string;
+            supporting_label: components["schemas"]["SimilarLabelRef"];
+            /** Matched Query Sentence */
+            matched_query_sentence: string;
+            /** Flags */
+            flags: string[];
+            /** Brands Total */
+            brands_total: number;
+            /** Brands */
+            brands: components["schemas"]["SimilarBrand"][];
+            /** Brands Note */
+            brands_note: string | null;
         };
         /** StageInfo */
         StageInfo: {
@@ -3105,6 +3481,92 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    medicine_similar_use_api_medicine__catalogue_id__similar_use_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                catalogue_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimilarUseResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_labels_api_search_labels_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchLabelsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchLabelsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    index_summary_api_index_summary_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IndexSummaryResponse"];
                 };
             };
         };

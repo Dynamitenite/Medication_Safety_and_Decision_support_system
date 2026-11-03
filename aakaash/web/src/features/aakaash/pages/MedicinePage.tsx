@@ -4,6 +4,7 @@ import { api } from "../api";
 import type { BrandResponse, IngredientDetail } from "../api";
 import { Alternatives, rupees } from "../components/AlternativesView";
 import { Disclaimer } from "../components/Disclaimer";
+import { LabelSearch } from "../components/LabelSearch";
 import { LabelTabs, Skeleton } from "../components/LabelTabs";
 import { ErrorBox, KeyValues, NotReadyBox } from "../components/Panel";
 import { Sticker } from "../components/Sticker";
@@ -217,6 +218,7 @@ function BrandPage({ id }: { id: string }) {
           )}
           <LabelSection ing={ing} choice={params.get("label")} onChoose={(v) => set({ label: v, tab: "" })}
             rule={d.default_label_rule} note={d.label_note} formNote={d.form_note} formUnknownNote={d.form_unknown_note} />
+          <LabelSearch medicineId={id} medicineName={b.name} />
         </>
       ) : (
         <section className="card">

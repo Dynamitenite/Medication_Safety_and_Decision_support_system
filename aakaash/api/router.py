@@ -18,8 +18,9 @@ from .schemas import (AddMedicinesRequest, AddMedicinesResponse, AnalyzeRequest,
                       MedicineRecordOut, MedicineResponse, ProfileIn, ProfileOut, ProfileOverview,
                       SuggestResponse, DDIExamplesResponse, DDILabel, DDIStatsResponse, DailyMedStatsResponse,
                       Health, StatusResponse, TacStatsResponse, TraceResponse, DDIClassifyRequest,
-                      DDIClassifyResponse, DDIMetricsResponse)
-from .services import accounts, appms, catalogue, datasets, ddi, intake, medicines, status, trace
+                      DDIClassifyResponse, DDIMetricsResponse, IndexSummaryResponse, SearchLabelsRequest,
+                      SearchLabelsResponse, SimilarUseResponse)
+from .services import accounts, appms, catalogue, datasets, ddi, intake, medicines, retrieval, similar_use, status, trace
 
 router = APIRouter(prefix="/api")
 
@@ -97,6 +98,25 @@ def medicine_alternatives(catalogue_id: str, include_discontinued: bool = False,
                           limit: int = Query(100, ge=1, le=1000),
                           settings: Settings = Depends(get_settings)) -> BrandAlternativesResponse:
     return catalogue.alternatives(settings, catalogue_id, include_discontinued, limit)
+
+
+@router.get("/medicine/{catalogue_id}/similar-use", response_model=SimilarUseResponse)
+def medicine_similar_use(catalogue_id: str, limit: int = Query(10, ge=1, le=25),
+                         settings: Settings = Depends(get_settings)) -> SimilarUseResponse:
+    """Other ingredients whose US-label Indications text is closest (cosine) to this medicine's. Not a
+    list of substitutes. not_ready without the label index."""
+    return similar_use.similar_use(settings, catalogue_id, limit)
+
+
+@router.post("/search/labels", response_model=SearchLabelsResponse)
+def search_labels(body: SearchLabelsRequest, settings: Settings = Depends(get_settings)) -> SearchLabelsResponse:
+    """Top-k label passages by cosine similarity, optionally limited to one medicine's linked US labels."""
+    return retrieval.search_labels(settings, body)
+
+
+@router.get("/index/summary", response_model=IndexSummaryResponse)
+def index_summary(settings: Settings = Depends(get_settings)) -> IndexSummaryResponse:
+    return retrieval.summary(settings)
 
 
 @router.get("/catalogue/summary", response_model=CatalogueSummaryResponse)

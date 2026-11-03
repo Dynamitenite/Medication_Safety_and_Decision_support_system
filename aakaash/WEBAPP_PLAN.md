@@ -294,3 +294,13 @@ Use `api.auth.current_user` as the dependency for any new personal endpoint and 
 - New files: `medsafe/ddi_model.py`, `medsafe/ddi_text.py`, `medsafe/explain.py`, `api/services/ddi.py`, `scripts/train_ddi.py`, `scripts/check_encoder.py`, `scripts/bench_ddi.py`, `scripts/measure_ddi_markable.py`, `notebooks/train_ddi.ipynb`, `requirements-train.txt`, `web/src/features/aakaash/components/{InteractionType,DdiModelSection}.tsx`, `web/scripts/ddi-flow.mjs`, `tests/test_ddi_*.py`, `tests/ddi_fixture.py`. Edited: `api/{config,router,schemas,modules}.py`, `api/services/{catalogue,status}.py`, `pages/{Checker,DataMethods}.tsx`, `components/RiskAnalysis.tsx`, `api.ts`, `styles.css`, `.gitignore` (`*.safetensors`).
 - Training is on a free GPU (see the notebook). Nothing trained exists yet: until it does, the app shows no interaction-type line and /about/data shows the not_ready text.
 - Dependencies: no new local packages (torch, transformers, captum were already installed); training pins are in `requirements-train.txt`.
+
+---
+
+## 11. Update 2026-11-03: label search and "Medicines with similar uses"
+
+- RAN on real data (DailyMed part6 only, 4,293 labels, 77,348 chunks over 12 section types): `scripts/build_index.py` with the TF-IDF encoder, `POST /api/search/labels`, `GET /api/medicine/{id}/similar-use`, `GET /api/index/summary`, the "Search this label" card, the similar-uses section, the `/about/data` section, `scripts/eval_retrieval.py` (proxy only) and `scripts/eval_similar_use.py`.
+- NOT RUN: the sbert (BAAI/bge-small-en-v1.5) index. A full CPU build is about 6 hours here (300-chunk probe: 72 s encoding; a build reached 4,096 of 77,348 chunks in about 1,100 s of running time before it was stopped). Resume with `set ENCODER=sbert` and `python scripts/build_index.py` (finished 256-chunk shards are kept). No TF-IDF versus sbert comparison exists yet.
+- No minimum similarity and no "generic wording" flag are active; both wait for review of the printed distributions.
+- No relevance judgements exist. Only a proxy check ran. `data/eval/similar_use_pairs.jsonl` holds three EXAMPLE lines.
+

@@ -6,6 +6,7 @@ import { Disclaimer } from "../components/Disclaimer";
 import { Skeleton } from "../components/LabelTabs";
 import { MedicineSearch } from "../components/MedicineSearch";
 import { ErrorBox, NotReadyBox } from "../components/Panel";
+import { SimilarUse } from "../components/SimilarUse";
 import { Sticker } from "../components/Sticker";
 import { useApi } from "../useApi";
 
@@ -44,6 +45,7 @@ function Selected({ id, showDisc, setShowDisc }: { id: string; showDisc: boolean
         {alt.data?.status === "ready" && <AlternativesView id={id} data={alt.data} showDisc={showDisc} setShowDisc={setShowDisc} selected={b} />}
         <Disclaimer />
       </section>
+      <SimilarUse id={id} />
     </>
   );
 }
