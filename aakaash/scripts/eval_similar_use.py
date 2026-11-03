@@ -76,7 +76,7 @@ def top5(settings, encoders: list[str]) -> None:
             g = r.groups[0]
             print(f"\n{name} (compared on {g.query_passages} Indications passages of {g.query_labels} US labels)")
             for k, x in enumerate(g.suggestions, 1):
-                print(f"  {k}. {x.ingredient:<28} {x.similarity:.3f}  \"{x.supporting_sentence[:110]}\"")
+                print(f"  {k}. {x.ingredient:<28} {x.similarity:.3f}  \"{x.supporting_sentence[:110]}\"{'  [FLAG: generic wording]' if x.flags else ''}")
 
 
 def distribution(settings, encoders: list[str], n: int = 20, seed: int = 13) -> None:
@@ -172,6 +172,7 @@ def main() -> None:
     ap.add_argument("--hubs", action="store_true")
     ap.add_argument("--encoders", default="tfidf")
     a = ap.parse_args()
+    sys.stdout.reconfigure(encoding="utf-8")  # label text has characters outside cp1252
     s = get_settings()
     encs = [e.strip() for e in a.encoders.split(",")]
     if a.top5:

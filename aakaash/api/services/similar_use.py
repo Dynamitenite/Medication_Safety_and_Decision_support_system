@@ -4,7 +4,9 @@
 """GET /api/medicine/{id}/similar-use. Missing index or catalogue gives status="not_ready"."""
 from __future__ import annotations
 
+import re
 import threading
+from collections import defaultdict
 
 import numpy as np
 
@@ -18,6 +20,9 @@ HEADING = "Medicines with similar uses"
 NOTE = ("Found by comparing the uses listed on US labels. Similar uses do not mean the medicines are interchangeable, "
         "and this is not advice to switch. Ask your doctor or pharmacist.")
 COMBINATION_NOTE = "This medicine has {n} ingredients. Each one is compared on its own."
+GENERIC_MIN_INGREDIENTS = 5  # approved: flag a supporting sentence carried by this many ingredients or more (flag only, never hides)
+GENERIC_NOTE = ("Generic wording: this sentence appears in the uses listed for {n} ingredients, so the match may reflect "
+                "shared wording rather than a shared use.")
 MAX_SENTENCE_WORDS = 60  # a longer run (label lists lose their line breaks in the chunks) is cut and marked with an ellipsis
 MIN_SENTENCE_WORDS = 5  # shorter lines (headings such as "1 INDICATIONS AND USAGE") are not shown as the supporting sentence
 NO_BRANDS_NOTE = "No brand of the same dosage form is listed in the catalogue."
@@ -25,6 +30,15 @@ UNKNOWN_FORM_NOTE = "The dosage form of the selected medicine is not known, so n
 
 _lock = threading.Lock()
 _pool: dict = {}
+
+
+def _norm(sentence: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", sentence.lower()).strip()
+
+
+def carrier_count(sentence: str) -> int:
+    """How many ingredients' Indications text contains this sentence (call after _candidates)."""
+    return _pool.get("carriers", {}).get(_norm(sentence), 0)
 
 
 def _candidates(cat, idx: Index):
@@ -48,8 +62,15 @@ def _candidates(cat, idx: Index):
                 ings.append(j)
                 chunks += cs
                 bounds.append(len(chunks))
+        arr = np.asarray(chunks, dtype=np.int64)
+        carriers: dict[str, set[int]] = defaultdict(set)
+        for n, j in enumerate(ings):
+            for c in arr[bounds[n]:bounds[n + 1]]:
+                for sent in split_sentences(idx.text(int(c))):
+                    if len(sent.split()) >= MIN_SENTENCE_WORDS:
+                        carriers[_norm(sent)].add(j)
         _pool.clear()
-        _pool.update(key=key, val=(ings, np.asarray(chunks, dtype=np.int64), np.asarray(bounds)))
+        _pool.update(key=key, val=(ings, arr, np.asarray(bounds)), carriers={k: len(v) for k, v in carriers.items()})
         return _pool["val"]
 
 
@@ -61,14 +82,15 @@ def _query_chunks(cat, idx: Index, ing: int) -> tuple[np.ndarray, int, bool]:
     return cs, len(ids), bool(ln["combination_only"])
 
 
-def _best_sentence(idx: Index, text: str, reference: str) -> tuple[str, int]:
+def _best_sentence(idx: Index, text: str, reference: str) -> tuple[str, str]:
+    """(sentence as shown, full sentence). The shown one is cut at MAX_SENTENCE_WORDS."""
     sents = [s for s in split_sentences(text) if len(s.split()) >= MIN_SENTENCE_WORDS] or split_sentences(text)
     if not sents:
-        return text[:300], 0
+        return text[:300], text
     cos = idx.text_cosines(reference, sents)
     k = int(np.argmax(cos))
     words = sents[k].split()
-    return (" ".join(words[:MAX_SENTENCE_WORDS]) + " …" if len(words) > MAX_SENTENCE_WORDS else sents[k]), k
+    return (" ".join(words[:MAX_SENTENCE_WORDS]) + " …" if len(words) > MAX_SENTENCE_WORDS else sents[k]), sents[k]
 
 
 def rank(S: np.ndarray, bounds: np.ndarray, excluded: set[int], ings: list[int], moieties: dict[int, frozenset],
@@ -131,7 +153,9 @@ def similar_use(settings: Settings, cid: str, limit: int) -> SimilarUseResponse:
         for r in ranked:
             c_chunk, q_chunk = int(chunks[r["col"]]), int(q[r["row"]])
             rec_c, rec_q = idx.record(c_chunk), idx.record(q_chunk)
-            sentence, _ = _best_sentence(idx, rec_c["text"], rec_q["text"])
+            sentence, full = _best_sentence(idx, rec_c["text"], rec_q["text"])
+            n_carry = carrier_count(full)
+            flags = [GENERIC_NOTE.format(n=n_carry)] if n_carry >= GENERIC_MIN_INGREDIENTS else []
             q_sentence, _ = _best_sentence(idx, rec_q["text"], sentence)
             lab = idx.label(c_chunk)
             y = cat.ingredients[r["ing"]]
@@ -141,7 +165,7 @@ def similar_use(settings: Settings, cid: str, limit: int) -> SimilarUseResponse:
                 supporting_chunks=r["support"], supporting_sentence=sentence,
                 supporting_label=SimilarLabelRef(set_id=lab["set_id"], name=lab["product"], manufacturer=lab["manufacturer"],
                                                  form=", ".join(lab["forms"]) or None, route=", ".join(lab["routes"]) or None),
-                matched_query_sentence=q_sentence, brands_total=total,
+                matched_query_sentence=q_sentence, flags=flags, brands_total=total,
                 brands=[SimilarBrand(**b, price_difference=None, different_pack_size=False) for b in brands],
                 brands_note=UNKNOWN_FORM_NOTE if fam == "unknown" else (NO_BRANDS_NOTE if not brands else None)))
         groups.append(SimilarUseGroup(

@@ -225,3 +225,21 @@ def test_similar_use_suggestion_carries_brands_of_same_form(env):
     assert metf["brands"][0]["name"] == "Metfo 500 Tablet" and metf["brands"][0]["price"] == 15.0
     assert all(b["form_family"] == "oral solid" and not b["discontinued"] for b in metf["brands"])
     assert metf["brands_total"] >= len(metf["brands"]) and len(metf["brands"]) <= 5
+
+
+def test_generic_wording_flag_marks_but_never_hides(env, monkeypatch):
+    base = similar("Dolotest 650 Tablet")
+    n_default = len(base["groups"][0]["suggestions"])
+    assert all(s["flags"] == [] for s in base["groups"][0]["suggestions"])  # nothing here is carried by 5 ingredients
+    monkeypatch.setattr(similar_use, "GENERIC_MIN_INGREDIENTS", 1)
+    r = similar("Dolotest 650 Tablet")
+    sug = r["groups"][0]["suggestions"]
+    assert len(sug) == n_default and all(s["flags"] and "Generic wording" in s["flags"][0] for s in sug)
+    assert [s["ingredient"] for s in sug] == [s["ingredient"] for s in base["groups"][0]["suggestions"]]  # same results, same order
+
+
+def test_carrier_count_normalises_the_sentence(env):
+    cat = catalogue_service.get_catalogue(env)
+    similar_use._candidates(cat, retrieval.get_index(env)[0])
+    assert similar_use.carrier_count("Management of MILD to moderate pain, and reduction of fever") >= 0
+    assert similar_use.carrier_count("a sentence that no label contains at all here") == 0

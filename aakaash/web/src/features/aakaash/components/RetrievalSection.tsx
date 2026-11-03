@@ -22,9 +22,10 @@ export function RetrievalSection() {
           names come from the label's own LOINC section codes.
         </li>
         <li>
-          <strong>Encoder.</strong> Each chunk becomes a vector. The baseline is TF-IDF (word overlap, <em>not deep learning</em>). The
-          deep-learning option is a sentence-transformers model (BAAI/bge-small-en-v1.5); a chunk longer than the model's limit is cut into
-          overlapping windows and scores as its best window.
+          <strong>Encoder.</strong> Each chunk becomes a vector. The working encoder is TF-IDF (word overlap, <em>not deep learning</em>). A
+          sentence-transformers option (BAAI/bge-small-en-v1.5, set ENCODER=sbert) is written but <strong>not built</strong>: a CPU build takes
+          about 6 hours, so no sbert index exists and nothing has been measured for it. A chunk longer than that model's limit would be cut into
+          overlapping windows and score as its best window.
         </li>
         <li>
           <strong>Cosine similarity.</strong> Vectors are length-normalised, so the dot product between a query and a chunk is their cosine
@@ -85,8 +86,9 @@ export function RetrievalSection() {
       <ul>
         <li>Similar uses do not mean the medicines are interchangeable. The screen says so and never calls one a substitute.</li>
         <li>
-          A very generic or boilerplate indication (for example text about reducing drug-resistant bacteria) can match many medicines, so a
-          high score can reflect shared wording rather than a shared use. No minimum score is set until the score distribution has been reviewed.
+          A very generic or boilerplate indication (for example the blood-pressure paragraph shared by many antihypertensive labels) can match many
+          medicines, so a high score can reflect shared wording rather than a shared use. When the supporting sentence is carried by 5 or more
+          ingredients the result is marked "Generic wording"; it is flagged, not hidden. No minimum similarity is set.
         </li>
         <li>Only the loaded release files are searched, so a medicine whose US label is not loaded cannot be suggested.</li>
         <li>Line breaks are lost when a section is chunked, so a "sentence" can run on; it is cut at 60 words with an ellipsis.</li>

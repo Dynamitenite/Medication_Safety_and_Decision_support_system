@@ -5,7 +5,7 @@
 
 From the aakaash folder:
     .venv\\Scripts\\python.exe scripts\\build_index.py                # chunks + TF-IDF (default ENCODER)
-    set ENCODER=sbert & .venv\\Scripts\\python.exe scripts\\build_index.py   # sbert (downloads the model)
+    set ENCODER=sbert & .venv\\Scripts\\python.exe scripts\\build_index.py   # sbert: OPTIONAL, NOT BUILT (about 6 h on this CPU; downloads the model)
     ... --probe 500            # time 500 chunks with the sbert encoder and stop (no index written)
 Chunks are written once (pass 1, label by label, in batches); each encoder then reads chunks.jsonl."""
 from __future__ import annotations

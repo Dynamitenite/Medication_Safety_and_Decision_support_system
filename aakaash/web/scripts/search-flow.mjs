@@ -65,7 +65,7 @@ for (const spec of cases) {
       await ev(`localStorage.setItem("medsafe.theme", "${theme}")`);
       // sign in through the API (an email with no account gets one), so the protected pages open
       await ev(`fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: "searchflow@example.com", password: "Search-flow-pass-1" }) }).then(r => r.status)`);
-      await send("Page.navigate", { url: base + (kind === "search" ? `/medicine/${mid}` : `/alternatives?id=${mid}`) });
+      await send("Page.navigate", { url: base + (kind === "search" ? `/medicine/${mid}` : kind === "about" ? "/about/data" : `/alternatives?id=${mid}`) });
       let info;
       if (kind === "search") {
         await sleep(3500);
@@ -83,6 +83,12 @@ for (const spec of cases) {
             text: c.querySelector('.evidence-text')?.innerText.slice(0, 110) })),
           overflowX: document.documentElement.scrollWidth - window.innerWidth, height: document.documentElement.scrollHeight }; })()`);
         // scroll the search card to the top so the screenshot shows it
+      } else if (kind === "about") {
+        await sleep(5000);
+        info = await ev(`(() => { const sec = document.querySelector('#ret-h')?.closest('section'); return {
+          present: !!sec, h3: [...(sec?.querySelectorAll('h3') ?? [])].map(h => h.innerText), text: sec?.innerText.slice(0, 400),
+          mentionsNotBuilt: sec?.innerText.includes('not built'), flagText: sec?.innerText.includes('Generic wording'),
+          overflowX: document.documentElement.scrollWidth - window.innerWidth, height: document.documentElement.scrollHeight }; })()`);
       } else {
         await sleep(6500);
         info = await ev(`(() => { const sec = document.querySelector('#su-h')?.closest('section'); return {
@@ -92,11 +98,11 @@ for (const spec of cases) {
               quote: i.querySelector('blockquote')?.innerText.slice(0, 120), brands: [...i.querySelectorAll('tbody th a')].map(a => a.innerText).slice(0, 3) })).slice(0, 6) })),
           overflowX: document.documentElement.scrollWidth - window.innerWidth, height: document.documentElement.scrollHeight }; })()`);
       }
-      const top = await ev(`(() => { const t = document.querySelector(${kind === "search" ? "'#ls-h'" : "'#su-h'"}); const y = t ? t.getBoundingClientRect().top + scrollY - 12 : 0; return y; })()`);
+      const top = await ev(`(() => { const t = document.querySelector(${kind === "search" ? "'#ls-h'" : kind === "about" ? "'#ret-h'" : "'#su-h'"}); const y = t ? t.getBoundingClientRect().top + scrollY - 12 : 0; return y; })()`);
       const full = Math.min(info.height, 6000);
       await send("Emulation.setDeviceMetricsOverride", { width: w, height: full, deviceScaleFactor: 1, mobile });
       await sleep(300);
-      const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { x: 0, y: Math.max(0, Math.min(top, info.height - 200)), width: w, height: Math.min(full, 2600), scale: 1 } });
+      const shot = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: true, clip: { x: 0, y: Math.max(0, Math.min(top, info.height - 200)), width: w, height: Math.min(full, kind === "about" ? 3200 : 2600), scale: 1 } });
       const file = join(outDir, `${kind}-${name}-${w}-${theme}.png`);
       writeFileSync(file, Buffer.from(shot.data, "base64"));
       summary[`${kind}-${name}-${w}-${theme}`] = { ...info, console: [...logs], file };

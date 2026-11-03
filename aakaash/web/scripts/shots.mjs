@@ -61,6 +61,8 @@ for (const spec of pages) {
       await send("Page.navigate", { url: base + "/" });
       await sleep(600);
       await evalJs(`localStorage.setItem("medsafe.theme", "${theme}")`);
+      if (process.env.SHOTS_LOGIN) // sign in through the API so protected pages open; "email:password"
+        await evalJs(`fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: ${JSON.stringify(process.env.SHOTS_LOGIN.split(":")[0])}, password: ${JSON.stringify(process.env.SHOTS_LOGIN.split(":")[1])} }) }).then(r => r.status)`);
       await send("Page.navigate", { url: base + path });
       await sleep(4500); // client-side fetches (brand, label text, alternatives)
       const info = await evalJs(`(() => ({
