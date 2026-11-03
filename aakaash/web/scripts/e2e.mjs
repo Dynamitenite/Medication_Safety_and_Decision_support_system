@@ -145,6 +145,7 @@ try {
   await page.waitForFunction(() => !document.querySelector("section[aria-labelledby=alt-h][aria-busy=true]"));
   const alt = await text(page, "main");
   check("alternatives: same-ingredient wording, price and pack size", alt.includes("Same ingredients, strength and form. Not necessarily interchangeable. Confirm with a pharmacist.") && /₹/.test(alt) && /strip of/i.test(alt));
+  await page.waitForSelector(".price-chart", { timeout: 15000 }).catch(() => {}); // the chart is a lazy chunk
   check("alternatives: price chart drawn", (await page.locator(".price-chart").count()) > 0);
   await page.waitForSelector("#su-h", { timeout: 30000 }).catch(() => {});
   check("similar uses: section shown", (await page.locator("#su-h").count()) === 1);

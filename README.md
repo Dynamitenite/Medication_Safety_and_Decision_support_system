@@ -125,7 +125,7 @@ cd aakaash\web
 npm run gen:types      # writes src/features/aakaash/api-types.ts from the FastAPI OpenAPI schema
 ```
 
-Test results on this machine: with the packages in `requirements.txt` only (no `torch`), `pytest` gives 248 passed and 5 skipped (the classifier tests skip), in about 93 s in a fresh clone. With `torch`, `transformers` and `captum` installed (the main working copy) it gives 279 passed, in about 73 s. Training the classifier on a GPU (`notebooks/train_ddi.ipynb`) was not tested on Colab or Kaggle after the last tokenizer fix: not tested.
+Test results on this machine: with the packages in `requirements.txt` only (no `torch`), `pytest` gives 248 passed and 5 skipped (the classifier tests skip), in about 93 s in a fresh clone. With `torch`, `transformers` and `captum` installed (the main working copy) it gives 279 passed (73 s on one run, 310 s on a later, busier run). Training the classifier on a GPU (`notebooks/train_ddi.ipynb`) was not tested on Colab or Kaggle after the last tokenizer fix: not tested.
 
 ## 7. Data
 
