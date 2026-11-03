@@ -135,7 +135,7 @@ def dailymed_stats(settings: Settings) -> DailyMedStatsResponse:
             status="not_ready", zip_files=infos,
             reason=f"{len(zips)} zip file(s) are present, but no label statistics have been "
                    f"computed yet ({settings.display(summary)} is missing).",
-            fix="From the aakaash folder run: .venv\Scripts\python.exe scripts\dailymed_stats.py "
+            fix=r"From the aakaash folder run: .venv\Scripts\python.exe scripts\dailymed_stats.py "
                 "--max-labels-per-part 200 (sample) or without the cap (full).")
     try:
         raw = json.loads(summary.read_text(encoding="utf-8"))

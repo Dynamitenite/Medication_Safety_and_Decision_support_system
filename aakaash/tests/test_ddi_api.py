@@ -7,6 +7,8 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+pytest.importorskip("torch")  # the tiny test checkpoint is a torch model; without torch these tests are skipped
+
 from api.app import app
 from api.config import Settings, get_settings
 from api.services import appms as appms_service, catalogue as catalogue_service, ddi as ddi_service, medicines
