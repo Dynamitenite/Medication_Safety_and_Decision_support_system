@@ -71,7 +71,7 @@ Python packages are pinned in [aakaash/requirements.txt](aakaash/requirements.tx
 
 ## 6. Setup and run
 
-Commands are for PowerShell on Windows, run from the repository root unless a `cd` is shown.
+Commands are for PowerShell on Windows, run from the repository root unless a `cd` is shown. Clone into a folder with a short path: `python -m venv` failed with "ensurepip returned non-zero exit status 1" when the clone was about 230 characters deep (Windows path-length limit), and worked at `C:\Users\<name>\AppData\Local\Temp\rmfresh`.
 
 Backend:
 
@@ -91,7 +91,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://localhost:5173>. The dev server forwards `/api` to <http://127.0.0.1:8000>; to use another API address set `MEDSAFE_API` before `npm run dev` (for example `$env:MEDSAFE_API = "http://127.0.0.1:8001"`). The API documentation is at <http://127.0.0.1:8000/docs>.
+Open <http://localhost:5173> (if that port is busy, Vite prints the one it picked). The dev server forwards `/api` to <http://127.0.0.1:8000>; to use another API address set `MEDSAFE_API` before `npm run dev` (for example `$env:MEDSAFE_API = "http://127.0.0.1:8001"`). The API documentation is at <http://127.0.0.1:8000/docs>.
 
 Production build and preview (the preview also forwards `/api`):
 
@@ -125,7 +125,7 @@ cd aakaash\web
 npm run gen:types      # writes src/features/aakaash/api-types.ts from the FastAPI OpenAPI schema
 ```
 
-The full `pytest` run needs `torch` and the packages in `requirements-train.txt` for the classifier tests; without them those tests fail at import. Training the classifier on a GPU (`notebooks/train_ddi.ipynb`) was not tested on Colab or Kaggle after the last tokenizer fix: not tested.
+Test results on this machine: with the packages in `requirements.txt` only (no `torch`), `pytest` gives 248 passed and 5 skipped (the classifier tests skip), in about 93 s in a fresh clone. With `torch`, `transformers` and `captum` installed (the main working copy) it gives 279 passed, in about 73 s. Training the classifier on a GPU (`notebooks/train_ddi.ipynb`) was not tested on Colab or Kaggle after the last tokenizer fix: not tested.
 
 ## 7. Data
 
@@ -147,13 +147,13 @@ Build the indexes (all outputs go to `aakaash/artifacts/`, which is not in git).
 .venv\Scripts\python.exe scripts\build_index.py        # label retrieval index (TF-IDF): artifacts\index\
 ```
 
-Measured on this machine with the part 6 zip (4,293 labels) and 253,973 catalogue rows:
+Measured on this machine with the part 6 zip (4,293 labels) and 253,973 catalogue rows. Two runs each: the first in the main working copy with the files already in the disk cache, the second in a fresh clone with cold files.
 
-| Step | Time | Output size | Source of the number |
+| Step | Time (main copy / fresh clone) | Output size | Source of the number |
 |---|---|---|---|
-| `build_names.py` | 34.5 s | 4.02 MB | printed by the script |
-| `build_catalogue.py` | 13.9 s | 18.71 MB | printed by the script |
-| `build_index.py` | 58.0 s total, peak RAM 355.6 MB | 266.6 MB | printed by the script |
+| `build_names.py` | 34.5 s / 55.8 s | 4.02 MB | printed by the script |
+| `build_catalogue.py` | 13.9 s / 19.0 s | 18.71 MB | printed by the script |
+| `build_index.py` | 58.0 s / 104.1 s, peak RAM 355.6 MB / 311.0 MB | 266.6 MB | printed by the script |
 
 Build `names.json` and then `catalogue.json` again after any change to `medsafe/spl.py`. The API also needs the folders `data/appms` and `data/indian_meds`; without the catalogue it reports "not ready" on the affected pages. The database `artifacts/app.db` is created on first start. `python data_report.py` rewrites `aakaash/DATASET_REPORT.md` from the real files (59 s here).
 

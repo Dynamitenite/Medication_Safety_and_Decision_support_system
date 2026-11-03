@@ -47,6 +47,7 @@ try {
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await page.waitForSelector("text=BMI");
   check("profile: saved details show a BMI", /24\.2|BMI/.test(await text(page, "main")));
+  await page.waitForSelector(".summary-tile", { timeout: 15000 });
   check("profile: summary tiles shown", (await page.locator(".summary-tile").count()) >= 3);
 
   // 3. history: two current medicines, then the timeline view
