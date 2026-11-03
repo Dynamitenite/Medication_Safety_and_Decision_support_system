@@ -102,12 +102,12 @@ function DoesNot() {
 }
 
 /** Label sections used by the medicine details card. Shares were printed by scripts/build_names.py
- *  on 2026-11-02 over the 4,293 labels of dm_spl_release_human_rx_part6.zip (the only release file loaded). */
+ *  on 2026-11-04 over the 4,293 labels of dm_spl_release_human_rx_part6.zip (the only release file loaded). */
 const DETAIL_SECTIONS: [string, string, string][] = [
   ["Indications and usage", "34067-9", "98.4%"],
   ["Boxed warning", "34066-1", "36.7%"],
   ["Dosage and administration", "34068-7", "98.4%"],
-  ["Patient counselling information", "34076-0, 88436-1", "84.9%"],
+  ["Patient counselling information", "34076-0, 88436-1", "84.8%"],
   ["Patient information (Medication Guide, patient package insert, Patient Medication Information)", "42231-1, 42230-3, 68498-5", "50.3%"],
   ["Instructions for use", "59845-8", "5.9%"],
 ];

@@ -1,5 +1,15 @@
 # Claude Code prompt: Group 4 medication safety project (Aakaash's subareas)
 
+## Current state (2026-11-04)
+
+The text below is the original task prompt. Its rules (paper traceability, no invented numbers, no data in git) still apply. What exists now:
+
+- The phases are done as far as the data allows. Phase 1 (parsers, chunking, dataset report) and Phase 4 (API) are built; the API is `api/router.py`, one `APIRouter` with prefix `/api`, with the routes listed in the root `README.md` (not the three routes named in Phase 4). The web app (`web/`) is a React app on that API.
+- Phase 2 is built with a TF-IDF encoder (a word-overlap baseline, not deep learning). The sentence-embedding encoder (`ENCODER=sbert`) was started and not finished. There is no LLM step.
+- Phase 3: the Focal Loss classifier, the Integrated Gradients explanation and the faithfulness check exist as code and tests. **No valid training run exists**, so no metric may be quoted for them. The personalised alert is rule-based (interaction rules, allergies), not model-based.
+- Where to look: `README.md` (setup, data, environment), `WEBAPP_PLAN.md` section 12 (final state), `PAPER_TRACE.md` (source of every component), `DATASET_REPORT.md` (counts from the real files, regenerated 2026-11-04 by `data_report.py`), `web/DESIGN.md` (the Cluster theme).
+- Checks: `pytest` in `aakaash`; `npm test`, `npm run typecheck`, `npm run build`, `npm run e2e`, `npm run visual`, `npm run a11y` in `aakaash/web`.
+
 ## PDF file mapping (read this first)
 
 The PDFs in `aakaash/papers/` are named 1.pdf to 10.pdf in a different order than the P1-P10 labels below. Use the P-numbers in PAPER_TRACE.md, never the file numbers.
@@ -86,7 +96,7 @@ Inspect the repo, the data and the hardware. Propose the file layout and ask me 
 - **Personalized alert**: a deterministic template (no LLM) that combines the predicted interaction type, the highlighted evidence tokens, the retrieved Interactions and Warnings text for both drugs from Subarea A, and the patient profile fields (age, allergies, current medications, pregnancy). Severity tiers Critical/High/Advisory come from P10 (labels only). The rules for assigning a tier are NOT IN PAPERS.
 
 ### Phase 4: API skeleton (only if time remains)
-FastAPI with `POST /retrieve`, `POST /alternatives` and `POST /risk`, each returning JSON that includes the evidence. The checker stores nothing: its medicine list is sent in the request body. Accounts, profile and medical history live in the local SQLite file `artifacts/app.db` (see WEBAPP_PLAN.md section 7). Enable CORS for the React dev server.
+FastAPI (built; the route names differ from the first plan, see README.md section 10), each route returning JSON that includes the evidence. The checker stores nothing: its medicine list is sent in the request body. Accounts, profile and medical history live in the local SQLite file `artifacts/app.db` (see WEBAPP_PLAN.md section 7). Enable CORS for the React dev server.
 
 ## Paper facts (the only things you may cite as FROM PAPERS)
 

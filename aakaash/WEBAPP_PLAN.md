@@ -1,5 +1,7 @@
 # Web app plan (Phase 0)
 
+> Sections 1 to 5 are the original plan and are kept as written. Sections 6 to 11 record what was built, in order. Section 12 is the final state and overrides anything earlier that disagrees.
+
 Branch: `aakaash/webapp`, created from `aakaash/ai-components` at `8f824dc`. No app code has been written yet.
 Every fact in section 1 comes from a command run on 2026-10-16. Section 5 lists the questions that block later phases.
 
@@ -301,6 +303,18 @@ Use `api.auth.current_user` as the dependency for any new personal endpoint and 
 
 - RAN on real data (DailyMed part6 only, 4,293 labels, 77,348 chunks over 12 section types): `scripts/build_index.py` with the TF-IDF encoder, `POST /api/search/labels`, `GET /api/medicine/{id}/similar-use`, `GET /api/index/summary`, the "Search this label" card, the similar-uses section, the `/about/data` section, `scripts/eval_retrieval.py` (proxy only) and `scripts/eval_similar_use.py`.
 - NOT RUN: the sbert (BAAI/bge-small-en-v1.5) index. A full CPU build is about 6 hours here (300-chunk probe: 72 s encoding; a build reached 4,096 of 77,348 chunks in about 1,100 s of running time before it was stopped). Resume with `set ENCODER=sbert` and `python scripts/build_index.py` (finished 256-chunk shards are kept). No TF-IDF versus sbert comparison exists yet.
-- No minimum similarity and no "generic wording" flag are active; both wait for review of the printed distributions.
+- No minimum similarity is active (`SIMILAR_USE_MIN` unset). A "Generic wording" flag marks, and never hides, a suggestion whose supporting sentence appears in the uses of several ingredients (commit 18ebd8f).
 - No relevance judgements exist. Only a proxy check ran. `data/eval/similar_use_pairs.jsonl` holds three EXAMPLE lines.
+
+---
+
+## 12. Final state, 2026-11-04: cleanup, hardening, browser checks
+
+- **Routes.** Menu pages: `/profile`, `/history`, `/add`, `/alternatives`, plus `/account`. Also reachable by URL: `/search` (label and medicine search), `/checker`, `/medicine/:id`, `/label/:setId`, `/modules/:id` (placeholders for modules that are not built), `/about/data`, `/about/trace`; `/about`, `/dashboard` and `/trace` redirect. No front-end page was removed: every page and component was found imported or routed, and `/search` and `/checker` are still linked from the medicine and label pages.
+- **Removed.** `web/scripts/flow.mjs` (its checks were for the old `/search` page), replaced by `web/scripts/e2e.mjs`. `web/scripts/{add-flow,ddi-flow,search-flow,shots}.mjs` stay as recorded in PAPER_TRACE.md.
+- **Backend routes with no caller in the web app, left alone because a teammate may use them:** `GET /api/health` and `GET /api/appms/lookup` (the `appmsLookup` method in `api.ts` is defined and never called).
+- **Parser.** After the instruction sections were added, one Drug Interactions section nested in an instruction section and one with a wrong code were lost; both are restored (`CARVED_OUT`, `title_over_code` in `medsafe/spl.py`). The details are in PAPER_TRACE.md. `names.json` and `catalogue.json` were rebuilt; the retrieval index was not rebuilt, so it is one chunk (77,348 against 77,349) behind the parser. Rebuilding it with `--rechunk` would invalidate the partial sbert shards in `artifacts/index/sbert`, so that choice is left to the owner.
+- **Security.** Cookie: httpOnly, SameSite=Lax, 14 days, Secure on https or when `MEDSAFE_COOKIE_SECURE=1`. Argon2id with the library defaults. Login rate limit: 5 failures in 15 minutes per email and address, kept in memory, per process. Ownership: `tests/test_ownership.py`. Error bodies for rejected input no longer echo the value. No upload endpoint. CORS allows only the Vite dev server. Open points: a new email creates an account on the login form, so the form tells a new email from a known one; the delete-account route does not ask for the password again; there is no CSRF token (SameSite=Lax and JSON bodies are the only protection); the rate limit is not shared between processes.
+- **Browser checks.** `npm run e2e`, `npm run visual` and `npm run a11y` (Playwright with Chromium; screenshots go to `artifacts/screens/`).
+- **Docs.** `README.md` at the repository root is the entry point; this file, `CLAUDE.md` and `PAPER_TRACE.md` agree with it.
 
