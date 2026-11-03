@@ -12,6 +12,8 @@
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "gen:types": "node scripts/gen-types.mjs",
+    "e2e": "node scripts/e2e.mjs",
+    "visual": "node scripts/visual-check.mjs",
     "test": "node --test src/features/aakaash/ocr/*.test.ts src/features/aakaash/viz/*.test.ts"
   },
   "dependencies": {
