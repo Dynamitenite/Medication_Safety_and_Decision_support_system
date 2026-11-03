@@ -4,8 +4,10 @@ import logging
 import threading
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from . import auth, db
 from .config import get_settings
@@ -39,3 +41,21 @@ app.add_middleware(  # the Vite dev server
     CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_credentials=True, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["*"])
 app.include_router(router)
+
+
+@app.exception_handler(RequestValidationError)
+async def _validation_error(_request: Request, exc: RequestValidationError) -> JSONResponse:
+    """422 as FastAPI sends it, minus the `input` and `ctx` fields: `input` would echo what was sent,
+    which for the login form is the password."""
+    return JSONResponse({"detail": [{"type": e["type"], "loc": e["loc"], "msg": e["msg"]} for e in exc.errors()]},
+                        status_code=422)
+
+
+@app.middleware("http")
+async def _api_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/api/"):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "no-referrer")
+    return response

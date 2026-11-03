@@ -72,6 +72,10 @@ INSTRUCTION_SECTIONS = ("dosage_administration", "patient_counseling", "patient_
 # Legacy labels nest Pregnancy, Pediatric Use or Drug Interactions inside "Information for
 # Patients" (seen on 13 part6 labels), so that section is searched further too.
 DESCEND_INTO = frozenset({"precautions", "patient_counseling"})
+# Instruction sections are otherwise taken whole, but a Drug Interactions or Contraindications section
+# nested in one (a Dextrose and Sodium Chloride label has its "Drug Interactions" there) is still a
+# risk section: it is cut out of the instruction text and kept as its own.
+CARVED_OUT = frozenset({"drug_interactions", "contraindications"})
 _NEWLINE_AFTER = {"paragraph", "item", "tr", "br", "list", "caption", "title"}
 MAX_ZIP_DEPTH = 3
 # ingredient/@classCode values that are active ingredients. On part6 the other classes are
@@ -144,15 +148,28 @@ def _section_code_title(sec) -> tuple[str | None, str]:
             _text_of(title_el) if title_el is not None else "")
 
 
-def _classify(code: str | None, title: str) -> tuple[str | None, str | None]:
-    canon = SECTION_CODES.get(code or "")
-    if canon is not None:
-        return canon, "loinc_code"
+def _title_section(title: str) -> str | None:
     t = re.sub(r"\s+", " ", title).strip()
     if t:
         for rx, name in TITLE_FALLBACK:
             if rx.fullmatch(t):
-                return name, "title_fallback"
+                return name
+    return None
+
+
+def _classify(code: str | None, title: str) -> tuple[str | None, str | None]:
+    canon = SECTION_CODES.get(code or "")
+    if canon in INSTRUCTION_SECTIONS:
+        # A code for an instruction section on a section whose whole title names a risk section is a
+        # wrong code: one hydrocortisone label gives "Drug Interactions" the patient counselling code.
+        by_title = _title_section(title)
+        if by_title is not None and by_title not in INSTRUCTION_SECTIONS:
+            return by_title, "title_over_code"
+    if canon is not None:
+        return canon, "loinc_code"
+    by_title = _title_section(title)
+    if by_title is not None:
+        return by_title, "title_fallback"
     return None, None
 
 
@@ -178,9 +195,21 @@ def _collect_sections(el, out, methods, notes):
                         notes[canon + "_only_subsections"] += 1
                     _collect_sections(child, out, methods, notes)
                     continue
+                nested = []
+                if canon in INSTRUCTION_SECTIONS:
+                    inside = {s for s in child.iter() if s is not child and _ln(s) == "section"}
+                    nested = [s for s in inside
+                              if _classify(*_section_code_title(s))[0] in CARVED_OUT
+                              and not any(a in inside and _classify(*_section_code_title(a))[0] in CARVED_OUT
+                                          for a in s.iterancestors())]
                 out.setdefault(canon, []).append(
-                    {"code": code, "title": title, "text": _text_of(child), "method": how})
+                    {"code": code, "title": title, "text": _text_of(child, set(nested)), "method": how})
                 methods[how] += 1
+                for s in nested:
+                    c2, t2 = _section_code_title(s)
+                    canon2, how2 = _classify(c2, t2)
+                    out.setdefault(canon2, []).append({"code": c2, "title": t2, "text": _text_of(s), "method": how2})
+                    methods[how2] += 1
                 continue  # do not descend into a matched section
         _collect_sections(child, out, methods, notes)
 

@@ -150,3 +150,41 @@ class DosageFormTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+def _label(body: str) -> dict:
+    xml = (f'<document {NS}><id root="d"/><setId root="SET-FIX-3"/><title>T</title><component><structuredBody>'
+           f'{body}</structuredBody></component></document>').encode()
+    return spl.parse_label(xml)
+
+
+class InstructionSectionsKeepRiskSections(unittest.TestCase):
+    """After the instruction sections were added, two real Drug Interactions sections were lost on the
+    full part6 run: one with the patient counselling code, one nested inside Dosage and Administration."""
+
+    def test_drug_interactions_with_the_patient_counselling_code_is_still_drug_interactions(self):
+        rec = _label(section("34076-0", "Drug Interactions", "Phenytoin may increase clearance."))
+        self.assertEqual(len(rec["sections"]["drug_interactions"]), 1)
+        self.assertIn("Phenytoin may increase clearance.", rec["sections"]["drug_interactions"][0]["text"])
+        self.assertNotIn("patient_counseling", rec["sections"])
+
+    def test_patient_counselling_with_its_own_title_stays_patient_counselling(self):
+        rec = _label(section("34076-0", "Patient Counseling Information", "Advise patients."))
+        self.assertIn("patient_counseling", rec["sections"])
+        self.assertNotIn("drug_interactions", rec["sections"])
+
+    def test_drug_interactions_nested_in_dosage_is_kept_and_cut_out_of_the_dosing_text(self):
+        rec = _label(section("34068-7", "DOSAGE AND ADMINISTRATION", "Give slowly.",
+                             section("34073-7", "Drug Interactions", "Additives may be incompatible.")))
+        self.assertEqual(len(rec["sections"]["drug_interactions"]), 1)
+        self.assertIn("Additives may be incompatible.", rec["sections"]["drug_interactions"][0]["text"])
+        dosing = rec["sections"]["dosage_administration"][0]["text"]
+        self.assertIn("Give slowly.", dosing)
+        self.assertNotIn("Additives", dosing)
+
+    def test_contraindications_nested_in_dosage_is_kept_but_a_nested_pediatric_dosing_schedule_is_not_a_risk_section(self):
+        rec = _label(section("34068-7", "DOSAGE AND ADMINISTRATION", "Start low.",
+                             section("34070-3", "Contraindications", "Do not give with X.") +
+                             section("34081-0", "Pediatric Patients:", "Titrate weekly.")))
+        self.assertEqual(len(rec["sections"]["contraindications"]), 1)
+        self.assertNotIn("specific_populations", rec["sections"])
+        self.assertIn("Titrate weekly.", rec["sections"]["dosage_administration"][0]["text"])
