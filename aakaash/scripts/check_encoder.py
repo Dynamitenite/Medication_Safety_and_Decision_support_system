@@ -33,6 +33,16 @@ def main():
     bert, tok, info = t.make_encoder(args, rows, Path(a.work_dir))
     print("encoder:", info, f"({time.time() - t0:.1f}s)  vocab size {len(tok)}  markers",
           tok.convert_tokens_to_ids(dm.MARKER_TOKENS))
+    base = len(tok) - len(dm.MARKER_TOKENS)
+    rate = dm.unk_rate(tok, [r["marked_text"] for r in rows])
+    emb = bert.get_input_embeddings().weight.shape[0]
+    print(f"base vocabulary {base} + {len(dm.MARKER_TOKENS)} markers = {len(tok)}; embedding rows {emb}; [UNK] rate on 8 train sentences {rate:.4f}")
+    print("(vocab size 9 would mean the vocabulary file was NOT loaded: 5 specials + 4 markers)")
+    assert base > 1000 and emb == len(tok), f"tokenizer/encoder mismatch: base {base}, embedding rows {emb}"
+    assert rate < 0.05, f"[UNK] rate {rate:.3f}: the tokenizer is not reading the vocabulary"
+    assert len(set(tok.convert_tokens_to_ids(dm.MARKER_TOKENS))) == 4 and tok.unk_token_id not in tok.convert_tokens_to_ids(dm.MARKER_TOKENS)
+    if not a.smoke:
+        assert base == 28996, f"BioBERT cased vocabulary should have 28996 entries, got {base}"
     model_cls, loss_cls = dm.torch_classes()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model_cls(bert).to(device)

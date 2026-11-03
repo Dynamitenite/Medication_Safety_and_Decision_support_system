@@ -80,9 +80,25 @@ def build_tokenizer(vocab_file: str | Path):
     entity markers as single tokens."""
     from transformers import BertTokenizerFast
 
-    tok = BertTokenizerFast(vocab_file=str(vocab_file), do_lower_case=False)
+    # transformers 5 names this argument `vocab`; `vocab_file=` is swallowed by **kwargs and gives an
+    # almost empty vocabulary (every word [UNK]). The size check below makes that failure loud.
+    tok = BertTokenizerFast(vocab=str(vocab_file), do_lower_case=False)
     tok.add_special_tokens({"additional_special_tokens": MARKER_TOKENS})
+    n_vocab = sum(1 for line in Path(vocab_file).read_text(encoding="utf-8").splitlines() if line.strip())
+    if len(tok) != n_vocab + len(MARKER_TOKENS):
+        raise RuntimeError(f"Tokenizer has {len(tok)} entries but {Path(vocab_file).name} has {n_vocab} lines + "
+                           f"{len(MARKER_TOKENS)} markers: the vocabulary was not loaded.")
     return tok
+
+
+def unk_rate(tok, texts: list[str]) -> float:
+    """Share of word pieces that are [UNK] over `texts` (markers excluded from the count)."""
+    unk = total = 0
+    for t in texts:
+        ids = tok(t, add_special_tokens=False)["input_ids"]
+        unk += sum(i == tok.unk_token_id for i in ids)
+        total += len(ids)
+    return unk / max(total, 1)
 
 
 def encode_marked(tok, marked_text: str, max_len: int = MAX_LEN) -> dict:
@@ -131,6 +147,33 @@ def collate(encs: list[dict], pad_id: int):
         e1[i, e["e1"]] = 1
         e2[i, e["e2"]] = 1
     return {"input_ids": ids, "attention_mask": att, "e1_mask": e1, "e2_mask": e2}
+
+
+def iter_batches(encs: list[dict], labels: list[int], batch_size: int, order: list[int], pad_id: int):
+    """Yield (batch dict, y tensor, indices). The inputs and the labels come from the same index list,
+    so a shuffle cannot misalign them."""
+    import torch
+
+    for i in range(0, len(order), batch_size):
+        idx = order[i:i + batch_size]
+        yield collate([encs[j] for j in idx], pad_id), torch.tensor([labels[j] for j in idx]), idx
+
+
+def constant_output_warning(pred: list[str], gold: list[str] | None = None) -> str | None:
+    """A warning text when the predictions use one class only (the model is ignoring its input)."""
+    used = sorted(set(pred))
+    if len(pred) > 1 and len(used) == 1:
+        return f"predicts only one class: {used[0]}"
+    return None
+
+
+def baselines(gold: list[str]) -> dict:
+    """Metrics of constant predictors on `gold`: the majority class and the most frequent positive class."""
+    cnt = Counter(gold)
+    maj = max(LABELS, key=lambda l: cnt.get(l, 0))
+    pos = max(POSITIVE_CLASSES, key=lambda l: cnt.get(l, 0))
+    return {name: {"label": l, "micro_f1": metrics(gold, [l] * len(gold))["micro"]["f1"]}
+            for name, l in (("majority", maj), ("most_frequent_positive", pos))}
 
 
 # ---------------------------------------------------------------- torch classes (built on first use)
@@ -234,6 +277,8 @@ def load_checkpoint(model_dir: Path):
     tok = BertTokenizerFast.from_pretrained(str(d))
     model_cls, _ = torch_classes()
     bert = BertModel(BertConfig.from_dict(cfg["bert_config"]), add_pooling_layer=False)
+    if len(tok) != bert.config.vocab_size:
+        raise RuntimeError(f"Tokenizer size {len(tok)} differs from the encoder vocabulary {bert.config.vocab_size}.")
     model = model_cls(bert, cfg["lstm_hidden"], cfg["head_hidden"], cfg["dropout"])
     model.load_state_dict(load_file(str(d / MODEL_FILE)))
     return model.eval(), tok, cfg

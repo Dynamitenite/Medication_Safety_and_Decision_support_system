@@ -150,3 +150,32 @@ def test_checker_levels_identical_with_and_without_the_model(tmp_path, ckpt, mon
     app.dependency_overrides.clear()
     assert results[0] == results[1]
     assert results[0]["pairs"][0]["appms"]["severity"] == "high"
+
+
+def test_ungated_real_checkpoint_is_not_ready(make_client, tmp_path):
+    # A non-smoke checkpoint with no passed quality gate (e.g. trained before the tokenizer fix) is not served.
+    import shutil
+
+    d = tmp_path / "old_ckpt"
+    shutil.copytree(make_checkpoint(tmp_path / "src", smoke=False), d)
+    c, _ = make_client(model_dir=d)
+    b = post(c).json()
+    assert b["status"] == "not_ready" and b["predicted"] is None and b["probabilities"] is None
+    cfg = json.loads((d / "config.json").read_text())
+    cfg["quality_gate"] = {"passed": True}
+    (d / "config.json").write_text(json.dumps(cfg))
+    ddi_service.clear_cache()
+    assert post(c).json()["status"] == "ready"
+
+
+def test_ungated_real_metrics_are_not_listed(make_client, tmp_path):
+    m = tmp_path / "metrics"
+    m.mkdir()
+    (m / "ddi_focal.json").write_text(json.dumps(metrics_json("focal", smoke=False)))
+    c, _ = make_client(metrics_dir=m)
+    b = c.get("/api/ddi/metrics").json()
+    assert b["status"] == "not_ready" and b["runs"] == [] and "quality gate" in b["reason"]
+    j = metrics_json("focal", smoke=False)
+    j["quality_gate"] = {"passed": True}
+    (m / "ddi_focal.json").write_text(json.dumps(j))
+    assert c.get("/api/ddi/metrics").json()["status"] == "ready"

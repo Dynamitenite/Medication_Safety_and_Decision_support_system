@@ -31,13 +31,23 @@ def clear_cache() -> None:
         _cache.clear()
 
 
+def _gate_ok(j: dict) -> bool:
+    """Smoke-test files keep their own label. Anything else needs a recorded, passed quality gate."""
+    return bool(j.get("smoke_test")) or bool((j.get("quality_gate") or {}).get("passed"))
+
+
 def model_state(s: Settings) -> dict:
     """Readiness from the files only (no torch import): {"ready": bool, "reason", "cfg"}."""
     d = s.ddi_model_dir
     if not dm.checkpoint_present(d):
         return {"ready": False, "cfg": None,
                 "reason": f"No checkpoint in {s.display(d)} (model.safetensors and config.json)."}
-    return {"ready": True, "cfg": dm.read_config(d), "reason": None}
+    cfg = dm.read_config(d)
+    if cfg is not None and not _gate_ok(cfg):
+        return {"ready": False, "cfg": None,
+                "reason": f"The checkpoint in {s.display(d)} did not pass the quality gate (or was trained before the "
+                          "tokenizer fix), so no model estimate is shown."}
+    return {"ready": True, "cfg": cfg, "reason": None}
 
 
 def _info(cfg: dict) -> DDIModelInfo:
@@ -140,17 +150,28 @@ def _run(name: str, j: dict) -> DDIRun:
 
 def metrics(s: Settings) -> DDIMetricsResponse:
     d = s.ddi_metrics_dir
-    runs, problems = [], []
+    runs, problems, ungated = [], [], []
     for p in sorted(d.glob("ddi_*.json")) if d.is_dir() else []:
         if p.name == "ddi_search.json":
             continue
         try:
-            runs.append(_run(p.stem.removeprefix("ddi_"), _read(p)))
+            j = _read(p)
+            if j is None:
+                raise ValueError(p.name)
+            if not _gate_ok(j):
+                ungated.append(p.name)
+                continue
+            runs.append(_run(p.stem.removeprefix("ddi_"), j))
         except (TypeError, KeyError, ValueError):
             problems.append(p.name)
     if not runs:
-        reason = (f"No metrics files in {s.display(d)} (ddi_ce.json, ddi_focal.json)."
-                  if not problems else f"Metrics files could not be read: {', '.join(problems)}.")
+        if problems:
+            reason = f"Metrics files could not be read: {', '.join(problems)}."
+        elif ungated:
+            reason = (f"Metrics files in {s.display(d)} did not pass the quality gate or were made before the tokenizer "
+                      f"fix: {', '.join(ungated)}. They are not shown.")
+        else:
+            reason = f"No metrics files in {s.display(d)} (ddi_ce.json, ddi_focal.json)."
         return DDIMetricsResponse(status="not_ready", reason=reason,
                                   fix="Train on Colab and place the metrics JSON in artifacts/metrics")
     search, smoke = [], False

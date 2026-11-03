@@ -134,7 +134,11 @@ def test_status_index_and_model_follow_files(client, dirs):
     assert comps["ddi_model"]["status"] == "not_ready"  # no checkpoint in artifacts/models/ddi_focal
     (art / "models" / "ddi_focal").mkdir(parents=True)
     (art / "models" / "ddi_focal" / "model.safetensors").write_bytes(b"x")
-    (art / "models" / "ddi_focal" / "config.json").write_text(json.dumps({"version": "fixture", "loss": "focal"}))
+    cfgf = art / "models" / "ddi_focal" / "config.json"
+    cfgf.write_text(json.dumps({"version": "fixture", "loss": "focal"}))
+    comps = {c["id"]: c for c in client.get("/api/status").json()["components"]}
+    assert comps["ddi_model"]["status"] == "not_ready" and "quality gate" in comps["ddi_model"]["reason"]
+    cfgf.write_text(json.dumps({"version": "fixture", "loss": "focal", "quality_gate": {"passed": True}}))
     comps = {c["id"]: c for c in client.get("/api/status").json()["components"]}
     assert comps["ddi_model"]["status"] == "ready"
 
