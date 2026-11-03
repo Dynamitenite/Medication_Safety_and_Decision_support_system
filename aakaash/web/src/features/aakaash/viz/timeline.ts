@@ -33,9 +33,15 @@ export function dayNumber(iso: string): number | null {
 
 const dateOf = (day: number) => new Date(day * 86400000);
 
-function monthTicks(min: number, max: number): { day: number; label: string }[] {
-  const span = max - min;
-  const step = span <= 200 ? 1 : span <= 500 ? 3 : span <= 1100 ? 6 : 12; // months between ticks
+/** Ticks on month boundaries, spaced so that at most `maxTicks` fit: the step is the smallest of 1, 2, 3, 6, 12,
+ *  24 ... months that keeps the count within that. */
+function monthTicks(min: number, max: number, maxTicks: number): { day: number; label: string }[] {
+  const months = (max - min) / 30.44;
+  let step = 1;
+  for (const s of [1, 2, 3, 6, 12, 24, 60]) {
+    step = s;
+    if (months / s <= maxTicks) break;
+  }
   const start = dateOf(min);
   // month index counted from year 0, first tick at or after min and on a multiple of `step`
   let n = start.getUTCFullYear() * 12 + start.getUTCMonth() + 1;
@@ -51,7 +57,8 @@ function monthTicks(min: number, max: number): { day: number; label: string }[] 
   return out;
 }
 
-export function layoutTimeline(items: TimelineInput[], today: string): TimelineLayout {
+/** `maxTicks` is how many axis labels fit across the chart; the caller works it out from the width. */
+export function layoutTimeline(items: TimelineInput[], today: string, maxTicks = 6): TimelineLayout {
   const t = dayNumber(today) ?? 0;
   const undated: TimelineInput[] = [];
   const raw: (TimelineInput & { s: number; e: number | null })[] = [];
@@ -85,7 +92,7 @@ export function layoutTimeline(items: TimelineInput[], today: string): TimelineL
   });
   return {
     bars, undated, todayX: x(t),
-    ticks: monthTicks(min, max).map((k) => ({ x: x(k.day), label: k.label })),
+    ticks: monthTicks(min, max, Math.max(maxTicks, 2)).map((k) => ({ x: x(k.day), label: k.label })),
     minDay: min, maxDay: max,
   };
 }

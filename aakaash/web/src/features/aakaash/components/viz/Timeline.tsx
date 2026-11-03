@@ -51,20 +51,22 @@ export function barText(b: Bar, styles: Record<string, OutcomeStyle>): string {
   return `${b.label}: ${when}, ${fmtDuration(b.days)}${b.ongoing ? " so far" : ""}. ${o}${b.upcoming ? ". Starts in the future" : ""}.`;
 }
 
-const ROW = 46;
-const TOP = 30;
+const ROW = 54;
+const TOP = 46; // room above the first row for the "Today" label and the axis labels
+const MIN_BAR = 10; // px: a course of a few days is still a visible mark on a year-long axis
+const TICK_PX = 74; // room one axis label needs
 
 /** Horizontal Gantt-style bars, one row per item, with a "today" line. Items with no start date are
  *  listed under the chart. Each bar can be focused; its details show under the chart. */
 export function TimelineChart({ items, styles, today, noun }: { items: TimelineInput[]; styles: Record<string, OutcomeStyle>; today: string; noun: string }) {
   const [wrap, width] = useWidth<HTMLDivElement>();
   const pid = useId().replace(/:/g, "");
-  const layout = useMemo(() => layoutTimeline(items, today), [items, today]);
   const [sel, setSel] = useState<string | null>(null);
   const W = Math.max(width, 280);
-  const padL = 8;
-  const padR = 22; // room for the arrow of an ongoing bar
+  const padL = 12; // axis labels at the edges are anchored inward, so they never leave the chart
+  const padR = 24; // room for the arrow of an ongoing bar
   const inner = W - padL - padR;
+  const layout = useMemo(() => layoutTimeline(items, today, Math.floor(inner / TICK_PX)), [items, today, inner]);
   const xp = (f: number) => padL + f * inner;
   const H = TOP + layout.bars.length * ROW + 8;
   const used = [...new Set(layout.bars.map((b) => b.outcome))];
@@ -86,17 +88,22 @@ export function TimelineChart({ items, styles, today, noun }: { items: TimelineI
                 </pattern>
               ))}
             </defs>
-            {layout.ticks.map((k) => (
-              <g key={k.label} className="tl-tick">
-                <line x1={xp(k.x)} x2={xp(k.x)} y1={TOP - 6} y2={H - 4} />
-                <text x={xp(k.x)} y={TOP - 12} textAnchor="middle">
-                  {k.label}
-                </text>
-              </g>
-            ))}
+            {layout.ticks.map((k) => {
+              const half = (k.label.length * 6.6) / 2;
+              const x = xp(k.x);
+              const anchor = x - half < 2 ? "start" : x + half > W - 2 ? "end" : "middle";
+              return (
+                <g key={k.label} className="tl-tick">
+                  <line x1={x} x2={x} y1={TOP - 8} y2={H - 4} />
+                  <text x={anchor === "start" ? Math.max(x, 2) : anchor === "end" ? Math.min(x, W - 2) : x} y={TOP - 14} textAnchor={anchor}>
+                    {k.label}
+                  </text>
+                </g>
+              );
+            })}
             <g className="tl-today">
-              <line x1={xp(layout.todayX)} x2={xp(layout.todayX)} y1={TOP - 6} y2={H - 4} />
-              <text x={xp(layout.todayX)} y={10} textAnchor={layout.todayX > 0.9 ? "end" : layout.todayX < 0.08 ? "start" : "middle"}>
+              <line x1={xp(layout.todayX)} x2={xp(layout.todayX)} y1={14} y2={H - 4} />
+              <text x={xp(layout.todayX)} y={10} textAnchor={xp(layout.todayX) > W - 40 ? "end" : xp(layout.todayX) < 40 ? "start" : "middle"}>
                 Today
               </text>
             </g>
@@ -104,9 +111,10 @@ export function TimelineChart({ items, styles, today, noun }: { items: TimelineI
               const s = styles[b.outcome] ?? styles.unknown;
               const y = TOP + i * ROW;
               const x0 = xp(b.x0);
-              const x1 = xp(b.x1);
+              const barW = Math.max(xp(b.x1) - x0, MIN_BAR);
+              const x1 = x0 + barW;
               const h = 16;
-              const by = y + 20;
+              const by = y + 24;
               const label = barText(b, styles);
               const pick = () => setSel(b.id);
               return (
@@ -127,7 +135,8 @@ export function TimelineChart({ items, styles, today, noun }: { items: TimelineI
                     }
                   }}
                 >
-                  <text aria-hidden="true" className="tl-label" x={padL} y={y + 14}>
+                  <title>{label}</title>
+                  <text aria-hidden="true" className="tl-label" x={padL} y={y + 16}>
                     {clip(b.label, maxChars - 22)}
                     <tspan className="tl-sub" dx="8">
                       {s.label}
@@ -135,8 +144,8 @@ export function TimelineChart({ items, styles, today, noun }: { items: TimelineI
                       {b.days} {b.days === 1 ? "day" : "days"}
                     </tspan>
                   </text>
-                  <rect className="tl-hit" x={padL} y={y + 2} width={inner + padR} height={ROW - 4} />
-                  <rect className="tl-rect" x={x0} y={by} width={Math.max(x1 - x0, 4)} height={h} rx={3} {...paint(s, pid)} />
+                  <rect className="tl-hit" x={padL} y={y + 2} width={inner + padR - 4} height={ROW - 6} />
+                  <rect className="tl-rect" x={x0} y={by} width={barW} height={h} rx={3} {...paint(s, pid)} />
                   {b.ongoing && <path className="tl-arrow" d={`M${x1 + 2} ${by - 1} L${x1 + 12} ${by + h / 2} L${x1 + 2} ${by + h + 1} Z`} fill={`rgb(${TONE[s.tone]})`} />}
                 </g>
               );

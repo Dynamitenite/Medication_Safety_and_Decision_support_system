@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { bmiBand, bmiScale } from "./bmi.ts";
 import { layoutTimeline, type TimelineInput } from "./timeline.ts";
 import { selectPrices, type PriceInput } from "./priceChart.ts";
-import { layoutGraph, MAX_NODES, type GraphInput } from "./graph.ts";
+import { layoutGraph, MAX_NODES, pillWidth, wrapLabel, type GraphInput } from "./graph.ts";
 
 // ---- BMI -------------------------------------------------------------------------------------
 test("BMI band edges follow the WHO adult ranges", () => {
@@ -158,4 +158,48 @@ test("graph: an allergen shared by two medicines is one node; edges to unknown n
 test("graph: a single medicine with no findings still lays out", () => {
   const l = layoutGraph({ medicines: [med("only", "new")], pairs: [], allergies: [] });
   assert.ok(l.mode === "circular" && l.nodes.length === 1 && l.edges.length === 0);
+});
+
+test("graph: long names wrap to the room beside the node and end in an ellipsis when cut", () => {
+  assert.deepEqual(wrapLabel("Cofarin 5mg Tablet", 11), ["Cofarin 5mg", "Tablet"]);
+  assert.deepEqual(wrapLabel("Short", 11), ["Short"]);
+  const cut = wrapLabel("Vitamin D3 60000 IU weekly sachet long name test", 10);
+  assert.equal(cut.length, 3);
+  assert.ok(cut[2].endsWith("…") && cut.every((l) => l.length <= 10));
+  assert.ok(wrapLabel("Supercalifragilisticexpialidocious", 8).every((l) => l.length <= 8));
+});
+
+test("graph: every node name stays inside the square, and level labels do not cover each other", () => {
+  const size = 340; // about a 390 px phone
+  const input: GraphInput = {
+    medicines: ["Cofarin 5mg Tablet", "Ecosprin 75 Tablet", "Mox 500mg Capsule", "Dolo 650 Tablet", "Warf 5 Tablet", "Telma 40 Tablet"].map((n, i) => ({ key: `k${i}`, name: n, role: i < 3 ? "new" : "current" })),
+    pairs: [{ a: "k0", b: "k3", level: "High" }, { a: "k1", b: "k3", level: "Critical" }, { a: "k2", b: "k4", level: null }, { a: "k0", b: "k4", level: "Medium" }],
+    allergies: [{ medicineKey: "k2", allergyId: 1, allergen: "Amoxycillin", level: "Critical" }],
+  };
+  const l = layoutGraph(input, size, size / 2 - 88);
+  assert.equal(l.mode, "circular");
+  if (l.mode !== "circular") return;
+  for (const n of l.nodes) {
+    const w = Math.max(...n.lines.map((x) => x.length)) * 6.2;
+    const left = n.anchor === "middle" ? n.tx - w / 2 : n.anchor === "start" ? n.tx : n.tx - w;
+    assert.ok(left >= -1 && left + w <= size + 1, `${n.label} spans ${left}..${left + w}`);
+  }
+  for (let i = 0; i < l.edges.length; i++) {
+    for (let j = i + 1; j < l.edges.length; j++) {
+      const a = l.edges[i];
+      const b = l.edges[j];
+      const overlap = Math.abs(a.lx - b.lx) < (pillWidth(a.label) + pillWidth(b.label)) / 2 && Math.abs(a.ly - b.ly) < 22;
+      assert.ok(!overlap, `${a.label} and ${b.label} overlap`);
+    }
+  }
+});
+
+test("timeline: axis labels fit the width they are given", () => {
+  const items = [item("a", "2025-01-10", "2025-01-16"), item("b", "2026-02-01", null, true)];
+  const wide = layoutTimeline(items, "2026-03-01", 10);
+  const narrow = layoutTimeline(items, "2026-03-01", 3);
+  assert.ok(narrow.ticks.length <= 3 && narrow.ticks.length >= 1);
+  assert.ok(wide.ticks.length > narrow.ticks.length);
+  for (const k of narrow.ticks) assert.ok(k.x >= 0 && k.x <= 1);
+  assert.ok(wide.todayX > 0 && wide.todayX < 1);
 });
