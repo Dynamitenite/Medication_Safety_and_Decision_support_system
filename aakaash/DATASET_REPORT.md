@@ -1,10 +1,40 @@
 # Dataset report
 
-Generated 2026-10-15 23:27 by `aakaash/data_report.py` (default arguments). Every count below was produced by running the parsers on the real files; sections marked NOT RUN had no data present.
+Generated 2026-11-04 00:04 by `aakaash/data_report.py` (default arguments). Every count below was produced by running the parsers on the real files; sections marked NOT RUN had no data present.
 
 ## DailyMed Rx labels (Subarea A source)
 
-NOT RUN: no `.zip` files found in `C:\Users\aakaa\Documents\RM\Medication_Safety_and_Decision_support_system\data\dailymed_rx`.
+Parts loaded (no cap):
+
+| part zip | labels parsed | parse failures | other stats |
+|---|---|---|---|
+| dm_spl_release_human_rx_part6.zip | 4293 | 0 | {"other_member_.jpg": 29935, "note_precautions_only_subsections": 16, "note_patient_counseling_only_subsections": 9} |
+
+- Labels parsed: 4293
+- Distinct set ids: 4293
+- Distinct active ingredients (normalised strings): 1156
+- Labels with no ingredient found: 0
+- Labels with none of the 8 sections found: 58
+- Ingredient source counts: {'ACTIB': 3030, 'ACTIM': 1041, 'ACTIB+ACTIM': 91, 'ACTIB+ACTIR': 5, 'ACTIM+ACTIR': 14, 'ACTIR': 107, 'ACTIB+ACTIM+ACTIR': 5}
+- Section detection method counts: {'loinc_code': 39078, 'title_fallback': 308, 'title_over_code': 1}
+- Chunking: size=512, overlap=64, unit=whitespace words
+
+| section | labels with section | section blocks | median chars per label | chunks |
+|---|---|---|---|---|
+| indications | 4223 | 4226 | 957 | 4601 |
+| contraindications | 4205 | 4206 | 436 | 4207 |
+| warnings_precautions | 4126 | 4140 | 6526 | 12864 |
+| precautions | 1369 | 1514 | 3222 | 2500 |
+| boxed_warning | 1576 | 1582 | 1538 | 1725 |
+| adverse_reactions | 4217 | 4218 | 5332 | 11619 |
+| drug_interactions | 3602 | 3703 | 2386 | 5405 |
+| specific_populations | 3855 | 5301 | 5741 | 10816 |
+| dosage_administration | 4225 | 4243 | 3601 | 8610 |
+| patient_counseling | 3642 | 3683 | 2360 | 5073 |
+| patient_information | 2175 | 2197 | 10296 | 8662 |
+| instructions_for_use | 253 | 374 | 5817 | 1267 |
+
+Total chunks: 77349
 
 ## DailyMed mapping files
 

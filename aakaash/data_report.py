@@ -19,7 +19,9 @@ sys.path.insert(0, str(HERE))
 
 from medsafe import ddi2013, tac2017  # noqa: E402
 from medsafe.chunking import DEFAULT_OVERLAP, DEFAULT_SIZE, chunk_label  # noqa: E402
-from medsafe.spl import CANONICAL_SECTIONS, iter_parts  # noqa: E402
+from medsafe.spl import CANONICAL_SECTIONS, INSTRUCTION_SECTIONS, iter_parts  # noqa: E402
+
+ALL_SECTIONS = CANONICAL_SECTIONS + INSTRUCTION_SECTIONS  # risk sections first, then the instruction sections
 
 
 def md_table(headers, rows):
@@ -38,7 +40,7 @@ def report_dailymed(folder: Path, size, overlap, max_labels):
         return lines + [f"NOT RUN: no `.zip` files found in `{folder}`.", ""]
     by_part: dict = {}
     sec_label_counts, sec_part_counts = Counter(), Counter()
-    sec_chars: dict[str, list[int]] = {s: [] for s in CANONICAL_SECTIONS}
+    sec_chars: dict[str, list[int]] = {s: [] for s in ALL_SECTIONS}
     chunk_counts, methods = Counter(), Counter()
     ingredient_set, set_ids = set(), set()
     labels = no_ing = no_sections = 0
@@ -74,7 +76,7 @@ def report_dailymed(folder: Path, size, overlap, max_labels):
               f"- Section detection method counts: {dict(methods)}",
               f"- Chunking: size={size}, overlap={overlap}, unit=whitespace words", ""]
     rows = []
-    for s in CANONICAL_SECTIONS:
+    for s in ALL_SECTIONS:
         ch = sec_chars[s]
         rows.append([s, sec_label_counts[s], sec_part_counts[s],
                      int(statistics.median(ch)) if ch else "-", chunk_counts[s]])
