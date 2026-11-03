@@ -2,22 +2,20 @@ import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { api, errorText } from "../api";
 import type { AnswerSource, AnswerStatusResponse, AskResponse, ExplainFindingRequest, ExplainFindingResponse, SimplifyResponse } from "../api";
+import { createStatusCache } from "./answerStatusCache";
 import { Disclaimer } from "./Disclaimer";
 import { Field } from "./Form";
 import { cachedPrediction } from "./InteractionType";
 import { ErrorBox, NotReadyBox } from "./Panel";
 import { Sticker } from "./Sticker";
 
-/** One status request per page session. While it is unknown or not ready, no generated part is shown. */
-let statusPromise: Promise<AnswerStatusResponse> | null = null;
+/** One shared status request. While it is unknown or not ready, no generated part is shown; a not_ready answer is re-asked after a short wait. */
+const loadStatus = createStatusCache(() => api.answerStatus());
 export function useAnswerStatus(): AnswerStatusResponse | null {
   const [s, setS] = useState<AnswerStatusResponse | null>(null);
   useEffect(() => {
     let alive = true;
-    statusPromise ??= api.answerStatus();
-    statusPromise.then((r) => alive && setS(r), () => {
-      statusPromise = null;
-    });
+    loadStatus().then((r) => alive && setS(r), () => {});
     return () => {
       alive = false;
     };

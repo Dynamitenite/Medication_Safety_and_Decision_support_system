@@ -15,7 +15,7 @@
     "e2e": "node scripts/e2e.mjs",
     "visual": "node scripts/visual-check.mjs",
     "a11y": "node scripts/a11y.mjs",
-    "test": "node --test src/features/aakaash/ocr/*.test.ts src/features/aakaash/viz/*.test.ts"
+    "test": "node --test src/features/aakaash/ocr/*.test.ts src/features/aakaash/viz/*.test.ts src/features/aakaash/components/*.test.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
