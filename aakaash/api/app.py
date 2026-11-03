@@ -10,11 +10,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from . import auth, db
-from .config import get_settings
+from .config import get_settings, load_env_file
 from .router import router
 from .services import datasets
 
 log = logging.getLogger("uvicorn.error")
+
+load_env_file()  # once, at server startup, before anything reads the environment
 
 
 def _warm_ddi_cache() -> None:

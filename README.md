@@ -159,7 +159,7 @@ Build `names.json` and then `catalogue.json` again after any change to `medsafe/
 
 ## 8. Environment variables
 
-The app reads the process environment only; it does not load a `.env` file. [aakaash/.env.example](aakaash/.env.example) lists the names to set. Never commit values.
+At startup the API server loads `aakaash/.env` if it exists (python-dotenv). Variables already set in the real environment win over the file; a missing file is ignored. Copy [aakaash/.env.example](aakaash/.env.example) to `aakaash/.env` and fill in values. `.env` is gitignored; never commit values.
 
 | Name | Purpose | Required |
 |---|---|---|

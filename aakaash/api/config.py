@@ -8,8 +8,17 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 AAKAASH_DIR = Path(__file__).resolve().parents[1]
 REPO_ROOT = AAKAASH_DIR.parent
+
+
+def load_env_file(path: Path | None = None) -> bool:
+    """Load aakaash/.env into os.environ. Variables already set in the real environment win
+    (override=False). A missing file is not an error. Returns whether a file was read."""
+    path = path or AAKAASH_DIR / ".env"
+    return path.is_file() and load_dotenv(path, override=False)
 
 
 @dataclass(frozen=True)
