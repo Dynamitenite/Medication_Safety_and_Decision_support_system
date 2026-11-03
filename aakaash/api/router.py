@@ -19,8 +19,9 @@ from .schemas import (AddMedicinesRequest, AddMedicinesResponse, AnalyzeRequest,
                       SuggestResponse, DDIExamplesResponse, DDILabel, DDIStatsResponse, DailyMedStatsResponse,
                       Health, StatusResponse, TacStatsResponse, TraceResponse, DDIClassifyRequest,
                       DDIClassifyResponse, DDIMetricsResponse, IndexSummaryResponse, SearchLabelsRequest,
-                      SearchLabelsResponse, SimilarUseResponse)
-from .services import accounts, appms, catalogue, datasets, ddi, intake, medicines, retrieval, similar_use, status, trace
+                      SearchLabelsResponse, SimilarUseResponse, AnswerStatusResponse, AskRequest, AskResponse,
+                      ExplainFindingRequest, ExplainFindingResponse, SimplifyRequest, SimplifyResponse)
+from .services import accounts, answer, appms, catalogue, datasets, ddi, intake, medicines, retrieval, similar_use, status, trace
 
 router = APIRouter(prefix="/api")
 
@@ -112,6 +113,32 @@ def medicine_similar_use(catalogue_id: str, limit: int = Query(10, ge=1, le=25),
 def search_labels(body: SearchLabelsRequest, settings: Settings = Depends(get_settings)) -> SearchLabelsResponse:
     """Top-k label passages by cosine similarity, optionally limited to one medicine's linked US labels."""
     return retrieval.search_labels(settings, body)
+
+
+@router.get("/answer/status", response_model=AnswerStatusResponse)
+def answer_status() -> AnswerStatusResponse:
+    """Provider, model and whether the hosted LLM is set up. Never includes the key."""
+    return answer.status()
+
+
+@router.post("/answer/ask", response_model=AskResponse)
+def answer_ask(body: AskRequest, user: User = Depends(auth.current_user),
+               settings: Settings = Depends(get_settings)) -> AskResponse:
+    """A plain-language answer from this medicine's label passages only, with [chunk_id] citations."""
+    return answer.ask(settings, body)
+
+
+@router.post("/answer/simplify", response_model=SimplifyResponse)
+def answer_simplify(body: SimplifyRequest, user: User = Depends(auth.current_user),
+                    settings: Settings = Depends(get_settings)) -> SimplifyResponse:
+    """One verbatim details section rewritten in plain words. The original is returned beside it."""
+    return answer.simplify(settings, body)
+
+
+@router.post("/answer/explain-finding", response_model=ExplainFindingResponse)
+def answer_explain_finding(body: ExplainFindingRequest, user: User = Depends(auth.current_user)) -> ExplainFindingResponse:
+    """Plain-language reading of one finding from its rule text and label sentences. Never changes the level."""
+    return answer.explain_finding(body)
 
 
 @router.get("/index/summary", response_model=IndexSummaryResponse)

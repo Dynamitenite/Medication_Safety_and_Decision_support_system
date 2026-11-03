@@ -72,6 +72,36 @@ function Sources() {
   );
 }
 
+function AiWriting() {
+  return (
+    <section className="card" aria-labelledby="ai-h">
+      <h2 id="ai-h">AI-written answers: what they do and do not do</h2>
+      <p>
+        When the server has a key for a hosted language model, three buttons write short plain-language text. It is always marked “AI-written from
+        label text”, the original label text stays on the page, and it can be switched off by removing the key: the rest of the app does not change.
+      </p>
+      <ul>
+        <li><strong>Ask about this medicine:</strong> the passages of the US labels linked to the medicine that best match your question (the same search as “Search this label”) are sent with the question. The answer must cite them; a sentence that cites a passage that was not sent is removed. If the passages do not contain the answer, the reply is “Not found in the retrieved label text.” Labels of another form or product are not used for dosage questions.</li>
+        <li><strong>Explain in simple words:</strong> one verbatim label section (why it is taken, or an instruction section) is rewritten. Numbers and units in the rewrite are compared with the original; any that are not in the original are flagged. Boxed warnings are not rewritten.</li>
+        <li><strong>Explain this finding:</strong> the two ingredient names (or the allergen and the ingredient), the rule's own explanation, up to three supporting label sentences and, if you already opened it, the interaction-type model estimate are sent. The model does not see or change the level, and Critical and High findings always end with “Talk to your doctor or pharmacist”.</li>
+      </ul>
+      <h3>What is sent, and to whom</h3>
+      <p>
+        Only label text, ingredient names, the allergen name for an allergy finding, and the question you type. Never your name, age, date of
+        birth, allergies (other than the allergen name above), conditions, medicine list or any other profile field. Free-tier prompts may be used
+        by the provider to improve its products, so do not type personal details in the question box. The provider is set by the server (default: Google Gemini API, free tier; the model name is shown by the status endpoint). The key stays on the server and is never sent to the browser. Nothing you ask is stored by this app.
+      </p>
+      <h3>What it does not do</h3>
+      <p>
+        It does not set or change a risk level, does not say a combination is safe, does not give dosing advice beyond the label text, does not
+        diagnose, and is not used for alternatives or similar uses (those stay deterministic). The checks above are mechanical; they cannot prove
+        that a rewrite is faithful, so read the original. If the key is missing, the free quota is used up or the service is down, the AI part is hidden
+        and the label text stays. Informational only. Not a substitute for advice from your doctor or pharmacist.
+      </p>
+    </section>
+  );
+}
+
 function DoesNot() {
   return (
     <section className="card" aria-labelledby="not-h">
@@ -82,7 +112,7 @@ function DoesNot() {
         <li>It does not read handwriting, and it never uploads or stores a prescription picture.</li>
         <li>It does not store anything for the interaction checker: the medicine list is sent with the request only. It does store what a signed-in person enters in their profile and medical history, in a local SQLite database with hashed passwords, and deleting the account removes it all.</li>
         <li>It does not merge its two checks into one score. The interaction rules and the label text are shown separately.</li>
-        <li>Apart from reading a scanned prescription (the tesseract.js text-recognition model, run in the browser), it does not use a trained model for any result you see. The search is name matching; the checker and the risk analysis are rules plus sentences found in label text.</li>
+        <li>Apart from reading a scanned prescription (the tesseract.js text-recognition model, run in the browser) and the optional AI-written text described below, it does not use a trained model for any result you see. The search is name matching; the checker and the risk analysis are rules plus sentences found in label text.</li>
       </ul>
       <h2>Limitations</h2>
       <ul>
@@ -295,6 +325,7 @@ export function DataMethods() {
         </Suspense>
       </section>
       <DoesNot />
+      <AiWriting />
       <AddingMedicines />
       <DailyMedPanel />
       <RetrievalSection />

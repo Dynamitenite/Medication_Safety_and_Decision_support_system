@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Warning } from "@phosphor-icons/react";
 import type { AllergyFinding, AnalyzeResponse, CheckerMedicine, PairFinding, RiskLevel } from "../api";
 import { SEVERITY_LABEL } from "../format";
+import { ExplainFinding, type FindingInput } from "./AiAnswer";
 import { Disclaimer } from "./Disclaimer";
 import { InteractionType } from "./InteractionType";
 import { ErrorBox, NotReadyBox } from "./Panel";
@@ -44,8 +45,25 @@ function LevelBadge({ level }: { level: RiskLevel }) {
 const ings = (m: CheckerMedicine) => (m.kind === "generic" && m.ingredients.length === 1 && m.ingredients[0].name === m.name ? "ingredients not known" : m.ingredients.map((g) => g.name).join(" + ") || "ingredients not known");
 const role = (r: "new" | "current") => (r === "new" ? "to add" : "current");
 
+/** What "Explain this finding" may send for a pair: the rule's own text, its ingredient names, and up to three label sentences. */
+function pairInput(p: PairFinding): FindingInput | null {
+  const hit = p.hits[0];
+  const m = p.text_match.matches[0];
+  if (!p.level || (!hit && !m)) return null;
+  return {
+    kind: "pair",
+    a: hit ? hit.a_ingredient : m.source_ingredient,
+    b: hit ? hit.b_ingredient : m.named_ingredient,
+    level: p.level,
+    explanation: hit ? p.hits.map((h) => h.explanation).join(" ") : null,
+    sentences: p.text_match.matches.slice(0, 3).map((x) => x.sentence),
+    classify: m?.source_term ? { sentence: m.sentence, drug1: m.source_term, drug2: m.matched_term } : undefined,
+  };
+}
+
 function PairCard({ p }: { p: PairFinding }) {
   const n = p.text_match.matches_total;
+  const explain = pairInput(p);
   return (
     <li id={findingId("p", p.a.key, p.b.key)} tabIndex={-1} className={`finding${p.level ? ` ${lvClass(p.level)}` : ""}`}>
       <div className="finding-head">
@@ -59,7 +77,7 @@ function PairCard({ p }: { p: PairFinding }) {
         Ingredients: {ings(p.a)} · {ings(p.b)}
       </p>
       {p.hits.length > 0 && (
-        <section aria-label="Interaction rules">
+        <section aria-label={`Interaction rules: ${p.a.name} and ${p.b.name}`}>
           <h4>Reason (interaction rules)</h4>
           <ul className="evidence">
             {p.hits.map((h, i) => (
@@ -106,6 +124,7 @@ function PairCard({ p }: { p: PairFinding }) {
           <Sticker wrap>Check</Sticker> {t}
         </p>
       ))}
+      {explain && <ExplainFinding input={explain} />}
     </li>
   );
 }
@@ -133,6 +152,9 @@ function AllergyCard({ f }: { f: AllergyFinding }) {
           <Sticker wrap>Check</Sticker> {t}
         </p>
       ))}
+      {f.ingredients.length > 0 && (
+        <ExplainFinding input={{ kind: "allergy", a: f.allergen, b: f.ingredients[0], level: f.level, explanation: null, sentences: [] }} />
+      )}
     </li>
   );
 }

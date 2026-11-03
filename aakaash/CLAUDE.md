@@ -5,7 +5,7 @@
 The text below is the original task prompt. Its rules (paper traceability, no invented numbers, no data in git) still apply. What exists now:
 
 - The phases are done as far as the data allows. Phase 1 (parsers, chunking, dataset report) and Phase 4 (API) are built; the API is `api/router.py`, one `APIRouter` with prefix `/api`, with the routes listed in the root `README.md` (not the three routes named in Phase 4). The web app (`web/`) is a React app on that API.
-- Phase 2 is built with a TF-IDF encoder (a word-overlap baseline, not deep learning). The sentence-embedding encoder (`ENCODER=sbert`) was started and not finished. There is no LLM step.
+- Phase 2 is built with a TF-IDF encoder (a word-overlap baseline, not deep learning). The sentence-embedding encoder (`ENCODER=sbert`) was started and not finished. The LLM step is built (`medsafe/llm.py`, `medsafe/answer.py`, `/api/answer/*`; hosted Gemini free tier, key in `LLM_API_KEY`); it is UNTESTED against the live API.
 - Phase 3: the Focal Loss classifier, the Integrated Gradients explanation and the faithfulness check exist as code and tests. **No valid training run exists**, so no metric may be quoted for them. The personalised alert is rule-based (interaction rules, allergies), not model-based.
 - Where to look: `README.md` (setup, data, environment), `WEBAPP_PLAN.md` section 12 (final state), `PAPER_TRACE.md` (source of every component), `DATASET_REPORT.md` (counts from the real files, regenerated 2026-11-04 by `data_report.py`), `web/DESIGN.md` (the Cluster theme).
 - Checks: `pytest` in `aakaash`; `npm test`, `npm run typecheck`, `npm run build`, `npm run e2e`, `npm run visual`, `npm run a11y` in `aakaash/web`.

@@ -273,6 +273,86 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/answer/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Answer Status
+         * @description Provider, model and whether the hosted LLM is set up. Never includes the key.
+         */
+        get: operations["answer_status_api_answer_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/answer/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Ask
+         * @description A plain-language answer from this medicine's label passages only, with [chunk_id] citations.
+         */
+        post: operations["answer_ask_api_answer_ask_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/answer/simplify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Simplify
+         * @description One verbatim details section rewritten in plain words. The original is returned beside it.
+         */
+        post: operations["answer_simplify_api_answer_simplify_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/answer/explain-finding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Answer Explain Finding
+         * @description Plain-language reading of one finding from its rule text and label sentences. Never changes the level.
+         */
+        post: operations["answer_explain_finding_api_answer_explain_finding_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/index/summary": {
         parameters: {
             query?: never;
@@ -938,6 +1018,56 @@ export interface components {
              */
             checked_by_name_only: boolean;
         };
+        /** AnswerSource */
+        AnswerSource: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Section Label */
+            section_label: string;
+            /** Product */
+            product: string;
+            /** Set Id */
+            set_id: string;
+            /** Text */
+            text: string;
+            /** Cited */
+            cited: boolean;
+        };
+        /** AnswerStatusResponse */
+        AnswerStatusResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+            /** Retry After */
+            retry_after: number | null;
+            /**
+             * Ai Label
+             * @default AI-written from label text
+             */
+            ai_label: string;
+            /**
+             * Disclaimer
+             * @default Informational only. Not a substitute for advice from your doctor or pharmacist.
+             */
+            disclaimer: string;
+            /** Requests Per Minute */
+            requests_per_minute: number | null;
+            /**
+             * Note
+             * @default Free-tier prompts may be used by the provider to improve its products. Only label text, ingredient names and your question are sent; no profile data.
+             */
+            note: string;
+        };
         /** AppmsLabelRef */
         AppmsLabelRef: {
             /** Set Id */
@@ -1204,6 +1334,70 @@ export interface components {
             drug_name: string;
             /** Rows */
             rows: number;
+        };
+        /** AskRequest */
+        AskRequest: {
+            /** Medicine Id */
+            medicine_id: string;
+            /** Question */
+            question: string;
+            /**
+             * Scope
+             * @default default
+             * @enum {string}
+             */
+            scope: "default" | "all";
+        };
+        /** AskResponse */
+        AskResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+            /** Retry After */
+            retry_after: number | null;
+            /**
+             * Ai Label
+             * @default AI-written from label text
+             */
+            ai_label: string;
+            /**
+             * Disclaimer
+             * @default Informational only. Not a substitute for advice from your doctor or pharmacist.
+             */
+            disclaimer: string;
+            /** Answer */
+            answer: string | null;
+            /**
+             * Not Found
+             * @default false
+             */
+            not_found: boolean;
+            /** Note */
+            note: string | null;
+            /** Citations */
+            citations: string[];
+            /** Sources */
+            sources: components["schemas"]["AnswerSource"][];
+            /**
+             * Dropped Sentences
+             * @default 0
+             */
+            dropped_sentences: number;
+            /**
+             * Uncited Sentences
+             * @default 0
+             */
+            uncited_sentences: number;
         };
         /** BrandAlternativesResponse */
         BrandAlternativesResponse: {
@@ -2133,6 +2327,68 @@ export interface components {
             /** Text */
             text: string;
         };
+        /** ExplainFindingRequest */
+        ExplainFindingRequest: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pair" | "allergy";
+            /** A */
+            a: string;
+            /** B */
+            b: string;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "Medium" | "High" | "Critical";
+            /** Explanation */
+            explanation?: string | null;
+            /** Sentences */
+            sentences?: string[];
+            /** Predicted Class */
+            predicted_class?: string | null;
+        };
+        /** ExplainFindingResponse */
+        ExplainFindingResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+            /** Retry After */
+            retry_after: number | null;
+            /**
+             * Ai Label
+             * @default AI-written from label text
+             */
+            ai_label: string;
+            /**
+             * Disclaimer
+             * @default Informational only. Not a substitute for advice from your doctor or pharmacist.
+             */
+            disclaimer: string;
+            /** Level */
+            level: ("Medium" | "High" | "Critical") | null;
+            /** Text */
+            text: string | null;
+            /**
+             * Flagged
+             * @default false
+             */
+            flagged: boolean;
+            /** Unmatched */
+            unmatched: string[];
+        };
         /** FormFamilyCount */
         FormFamilyCount: {
             /** Family */
@@ -2918,6 +3174,56 @@ export interface components {
             /** Brands Note */
             brands_note: string | null;
         };
+        /** SimplifyRequest */
+        SimplifyRequest: {
+            /** Medicine Id */
+            medicine_id: string;
+            /** Ingredient Index */
+            ingredient_index: number;
+            /** Section Key */
+            section_key: string;
+        };
+        /** SimplifyResponse */
+        SimplifyResponse: {
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "ready" | "not_ready";
+            /** Reason */
+            reason: string | null;
+            /** Fix */
+            fix: string | null;
+            /** Provider */
+            provider: string | null;
+            /** Model */
+            model: string | null;
+            /** Retry After */
+            retry_after: number | null;
+            /**
+             * Ai Label
+             * @default AI-written from label text
+             */
+            ai_label: string;
+            /**
+             * Disclaimer
+             * @default Informational only. Not a substitute for advice from your doctor or pharmacist.
+             */
+            disclaimer: string;
+            /** Section Label */
+            section_label: string | null;
+            /** Original */
+            original: string | null;
+            /** Simplified */
+            simplified: string | null;
+            /**
+             * Flagged
+             * @default false
+             */
+            flagged: boolean;
+            /** Unmatched */
+            unmatched: string[];
+        };
         /** StageInfo */
         StageInfo: {
             /** Number */
@@ -3538,6 +3844,125 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchLabelsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_status_api_answer_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnswerStatusResponse"];
+                };
+            };
+        };
+    };
+    answer_ask_api_answer_ask_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AskResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_simplify_api_answer_simplify_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SimplifyRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimplifyResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_explain_finding_api_answer_explain_finding_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExplainFindingRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExplainFindingResponse"];
                 };
             };
             /** @description Validation Error */

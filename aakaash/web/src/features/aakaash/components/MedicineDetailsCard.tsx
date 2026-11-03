@@ -6,6 +6,7 @@ import { fmtDate, fmtDuration } from "../format";
 import { addDays, durationOf, todayIso, type ToAddItem } from "../toAdd";
 import { useApi } from "../useApi";
 import { Skeleton } from "./LabelTabs";
+import { SimplifyButton } from "./AiAnswer";
 import { ErrorBox, KeyValues, NotReadyBox } from "./Panel";
 import { Sticker } from "./Sticker";
 
@@ -71,11 +72,12 @@ function Mismatch({ g }: { g: IngredientDetails }) {
   );
 }
 
-function Section({ s }: { s: DetailSection }) {
+function Section({ s, medicineId, ingredientIndex, simplify = true }: { s: DetailSection; medicineId: string; ingredientIndex: number; simplify?: boolean }) {
   return (
     <div className="detail-section">
       <h5>{s.label}</h5>
       <Excerpt text={s.text} />
+      {simplify && <SimplifyButton medicineId={medicineId} ingredientIndex={ingredientIndex} sectionKey={s.key} />}
     </div>
   );
 }
@@ -133,7 +135,15 @@ export function MedicineDetailsCard({ it, onEditCourse }: { it: ToAddItem; onEdi
                 <>
                   <LabelTitle g={g} />
                   <Mismatch g={g} />
-                  {g.indications ? <Excerpt text={g.indications.text} /> : <p className="muted">This label has no Indications section.</p>}
+                  {g.indications ? (
+                    <>
+                      <Excerpt text={g.indications.text} />
+                      {/* a label of another form or product is shown with a notice; a rewrite would drop it */}
+                      {!g.mismatch && <SimplifyButton medicineId={it.id} ingredientIndex={d.ingredients.indexOf(g)} sectionKey="indications" />}
+                    </>
+                  ) : (
+                    <p className="muted">This label has no Indications section.</p>
+                  )}
                 </>
               )}
             </div>
@@ -162,11 +172,11 @@ export function MedicineDetailsCard({ it, onEditCourse }: { it: ToAddItem; onEdi
           .map((g) => (
             <div key={g.name} className="detail-block">
               <LabelTitle g={g} />
-              {g.boxed_warning && <Section s={g.boxed_warning} />}
+              {g.boxed_warning && <Section s={g.boxed_warning} medicineId={it.id} ingredientIndex={0} simplify={false} />}
               {g.withheld_note ? (
                 <p className="notice">{g.withheld_note}</p>
               ) : (
-                g.instructions.map((s) => <Section key={s.key} s={s} />)
+                g.instructions.map((s) => <Section key={s.key} s={s} medicineId={it.id} ingredientIndex={d.ingredients.indexOf(g)} />)
               )}
               {g.missing.filter((m) => m !== "Indications and usage").map((m) => (
                 <p key={m} className="small muted">

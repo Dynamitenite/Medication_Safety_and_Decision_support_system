@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import type { BrandResponse, IngredientDetail } from "../api";
+import { AskMedicine } from "../components/AiAnswer";
 import { Alternatives, rupees } from "../components/AlternativesView";
 import { Disclaimer } from "../components/Disclaimer";
 import { LabelSearch } from "../components/LabelSearch";
@@ -219,6 +220,7 @@ function BrandPage({ id }: { id: string }) {
           <LabelSection ing={ing} choice={params.get("label")} onChoose={(v) => set({ label: v, tab: "" })}
             rule={d.default_label_rule} note={d.label_note} formNote={d.form_note} formUnknownNote={d.form_unknown_note} />
           <LabelSearch medicineId={id} medicineName={b.name} />
+          <AskMedicine medicineId={id} medicineName={b.name} />
         </>
       ) : (
         <section className="card">

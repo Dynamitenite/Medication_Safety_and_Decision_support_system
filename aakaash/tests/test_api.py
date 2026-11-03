@@ -86,7 +86,7 @@ def test_health(client):
 
 def test_all_routes_under_api_prefix():
     paths = list(app.openapi()["paths"])
-    assert len(paths) == 39 and all(p.startswith("/api/") for p in paths)
+    assert len(paths) == 43 and all(p.startswith("/api/") for p in paths)
 
 
 def test_status_empty_data_is_not_ready_with_reasons(client):

@@ -13,7 +13,7 @@ The Status column describes the code in this repository, not the plan.
 | Member | Area | Status | What exists |
 |---|---|---|---|
 | Aakaash Pavangat | AI-based medication safety risk and personalized alert generation (Focal Loss with explainability) | Partly built | Built: risk levels from interaction rules and allergies, personalised to the signed-in user's medicines and allergies. Code built but **not trained**: the Focal Loss interaction-type classifier (BioBERT, BiLSTM) and its Integrated Gradients explanation. No valid training run exists, so the app shows "not ready" for it. |
-| Aakaash Pavangat | AI-based medicine information retrieval and generic alternative recommendation using an LLM (cosine-similarity semantic retrieval) | Partly built | Built: same-ingredient alternatives with prices, label search and "similar uses" by cosine similarity over US label text with a TF-IDF encoder (word overlap, not deep learning). Not built: the sentence-embedding encoder (optional, `ENCODER=sbert`), and the LLM step (no LLM code exists). |
+| Aakaash Pavangat | AI-based medicine information retrieval and generic alternative recommendation using an LLM (cosine-similarity semantic retrieval) | Partly built | Built: same-ingredient alternatives with prices, label search and "similar uses" by cosine similarity over US label text with a TF-IDF encoder (word overlap, not deep learning). Not built: the sentence-embedding encoder (optional, `ENCODER=sbert`), and live use of the LLM step (code and tests exist; it runs only with `LLM_API_KEY` set, and no live call has been run). |
 | Loganathan T | Drug-drug interaction and drug-disease interaction | Partly built | Built: drug-drug rule matching and the interaction checker, from a small synthetic rule set. Not built: drug-disease interaction (the module shows "coming soon"). |
 | Milan Johnson | AI-based clinical and economic impact assessment of the medication safety system | Not built | Only the price column of the alternatives list exists; there is no impact assessment. |
 | Milan Johnson | Personalized medication risk detection with explainable clinical decision support | Partly built | Built: each finding shows its level and the reason it was given (rule text or label text). No model-based risk detection. |
@@ -50,11 +50,11 @@ flowchart LR
   A --> L["DailyMed label index, TF-IDF (built)"]
   A --> R["Interaction rules, synthetic seed rules (built)"]
   A --> K["Focal Loss classifier (code built, not trained)"]
-  A --> M["LLM step (not built)"]
+  A --> M["LLM step, hosted API (built; live calls not run)"]
   L -. optional .-> S["Sentence-embedding encoder (not built)"]
 ```
 
-Status of each box: React app, FastAPI app, SQLite, catalogue, label index and rules are built and tested on this machine. The classifier has code and tests but no valid training run. The sentence-embedding encoder and the LLM step are not built.
+Status of each box: React app, FastAPI app, SQLite, catalogue, label index and rules are built and tested on this machine. The classifier has code and tests but no valid training run. The sentence-embedding encoder is not built. The LLM step is built and tested with a fake provider; no live call to the hosted model has been run.
 
 ## 5. Requirements
 
@@ -173,7 +173,10 @@ The app reads the process environment only; it does not load a `.env` file. [aak
 | `MEDSAFE_DDI_MODEL_DIR`, `MEDSAFE_DDI_METRICS_DIR` | Override where the classifier checkpoint and metrics are read | No |
 | `MEDSAFE_DDI_IG_STEPS` | Integrated Gradients steps for explanations (default 50) | No |
 | `SIMILAR_USE_MIN` | Minimum similarity for "similar uses"; unset means no minimum | No |
-| `LLM_PROVIDER`, `LLM_API_KEY`, `LLM_MODEL` | Reserved for the LLM step. **Not read by any code: the LLM step is not built** | No |
+| `LLM_API_KEY` | Key for the hosted LLM (a Google AI Studio key). Server-side only; never sent to the browser, logged or committed. Unset: the AI-written answers are hidden and the rest of the app works | No |
+| `LLM_PROVIDER` | Which provider class to use. Default `gemini` | No |
+| `LLM_MODEL` | Model name. Default `gemini-3.5-flash-lite` (listed Stable on Google's models page, checked 2026-11-04) | No |
+| `LLM_RPM` | Requests per minute the server allows itself. Default 5. Free-tier limits per model are shown only in Google AI Studio; check yours before raising it | No |
 
 ## 9. Project layout
 

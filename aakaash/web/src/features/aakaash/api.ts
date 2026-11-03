@@ -68,6 +68,12 @@ export type DDIWord = S["DDIWord"];
 export type DDIMetricsResponse = S["DDIMetricsResponse"];
 export type DDIRun = S["DDIRun"];
 export type DDISplitMetrics = S["DDISplitMetrics"];
+export type AnswerStatusResponse = S["AnswerStatusResponse"];
+export type AskResponse = S["AskResponse"];
+export type AnswerSource = S["AnswerSource"];
+export type SimplifyResponse = S["SimplifyResponse"];
+export type ExplainFindingRequest = S["ExplainFindingRequest"];
+export type ExplainFindingResponse = S["ExplainFindingResponse"];
 export type Readiness = { status: "ready" | "not_ready"; reason?: string | null; fix?: string | null };
 
 const BASE: string = import.meta.env.VITE_API_BASE ?? "";
@@ -165,6 +171,12 @@ export const api = {
     get<SimilarUseResponse>(`/api/medicine/${encodeURIComponent(id)}/similar-use?limit=${limit}`),
   searchLabels: (body: Pick<SearchLabelsRequest, "query" | "medicine_id" | "k" | "scope">) =>
     send<SearchLabelsResponse>("POST", "/api/search/labels", body),
+  answerStatus: () => get<AnswerStatusResponse>("/api/answer/status"),
+  answerAsk: (medicine_id: string, question: string, scope: "default" | "all") =>
+    send<AskResponse>("POST", "/api/answer/ask", { medicine_id, question, scope }),
+  answerSimplify: (medicine_id: string, ingredient_index: number, section_key: string) =>
+    send<SimplifyResponse>("POST", "/api/answer/simplify", { medicine_id, ingredient_index, section_key }),
+  answerExplainFinding: (body: ExplainFindingRequest) => send<ExplainFindingResponse>("POST", "/api/answer/explain-finding", body),
   indexSummary: () => get<IndexSummaryResponse>("/api/index/summary"),
   catalogueSummary: () => get<CatalogueSummaryResponse>("/api/catalogue/summary"),
   catalogueForms: () => get<CatalogueFormsResponse>("/api/catalogue/forms"),

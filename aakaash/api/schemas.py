@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -1101,3 +1101,83 @@ class IndexSummaryResponse(Readiness):
     vectors: int | None = None
     vector_bytes: int | None = None
     build_seconds: float | None = None
+
+
+# ---- grounded answers (hosted LLM). Every response is a not_ready box when the key, the quota or the provider
+# is missing; the generated part of the page is then hidden and the verbatim label text stays.
+class AnswerBase(Readiness):
+    provider: str | None = None
+    model: str | None = None
+    retry_after: int | None = None  # seconds, when rate limited
+    ai_label: str = "AI-written from label text"
+    disclaimer: str = "Informational only. Not a substitute for advice from your doctor or pharmacist."
+
+
+class AnswerStatusResponse(AnswerBase):
+    requests_per_minute: int | None = None
+    note: str = ("Free-tier prompts may be used by the provider to improve its products. Only label text, ingredient names "
+                 "and your question are sent; no profile data.")
+
+
+class AskRequest(ApiModel):
+    medicine_id: str = Field(min_length=1, max_length=40)
+    question: str = Field(min_length=1, max_length=300)
+    scope: Literal["default", "all"] = "default"
+
+    @field_validator("question")
+    @classmethod
+    def _strip_q(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("question must not be empty")
+        return v
+
+
+class AnswerSource(ApiModel):
+    chunk_id: str
+    section_label: str
+    product: str
+    set_id: str
+    text: str  # verbatim label passage that was sent to the model
+    cited: bool
+
+
+class AskResponse(AnswerBase):
+    answer: str | None = None
+    not_found: bool = False
+    note: str | None = None
+    citations: list[str] = Field(default_factory=list)
+    sources: list[AnswerSource] = Field(default_factory=list)
+    dropped_sentences: int = 0   # sentences removed because they cited an id that was not supplied
+    uncited_sentences: int = 0   # kept sentences with no citation
+
+
+class SimplifyRequest(ApiModel):
+    medicine_id: str = Field(min_length=1, max_length=40)
+    ingredient_index: int = Field(ge=0, le=20)  # position in the details response
+    section_key: str = Field(min_length=1, max_length=40)
+
+
+class SimplifyResponse(AnswerBase):
+    section_label: str | None = None
+    original: str | None = None   # the verbatim section that was sent
+    simplified: str | None = None
+    flagged: bool = False         # numbers or units in the rewrite that are not in the original
+    unmatched: list[str] = Field(default_factory=list)
+
+
+class ExplainFindingRequest(ApiModel):
+    kind: Literal["pair", "allergy"]
+    a: str = Field(min_length=1, max_length=100)  # pair: first ingredient. allergy: the allergen
+    b: str = Field(min_length=1, max_length=100)  # pair: second ingredient. allergy: the ingredient
+    level: RiskLevel                              # from the rules; echoed back unchanged, never sent to the model
+    explanation: str | None = Field(None, max_length=1500)
+    sentences: list[Annotated[str, Field(max_length=600)]] = Field(default_factory=list, max_length=3)
+    predicted_class: str | None = Field(None, max_length=40)
+
+
+class ExplainFindingResponse(AnswerBase):
+    level: RiskLevel | None = None
+    text: str | None = None
+    flagged: bool = False
+    unmatched: list[str] = Field(default_factory=list)

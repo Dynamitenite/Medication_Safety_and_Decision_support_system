@@ -26,6 +26,18 @@ function classify(sentence: string, d1: string, d2: string, explain: boolean) {
   return p;
 }
 
+/** The class the model already predicted for this sentence in this page session, or null. Never starts a request. */
+export async function cachedPrediction(sentence: string, d1: string, d2: string): Promise<string | null> {
+  const p = cache.get(`false|${d1}|${d2}|${sentence}`);
+  if (!p) return null;
+  try {
+    const r = await p;
+    return r.status === "ready" ? r.predicted ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The sentence with each word shaded by its Integrated Gradients score for the predicted class.
  *  Shade strength = |score| / largest |score|. Pushing toward the class: filled. Against: dotted underline. */
 export function AttributedSentence({ text, words }: { text: string; words: DDIWord[] }) {

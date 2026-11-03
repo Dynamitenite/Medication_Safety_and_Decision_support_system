@@ -318,3 +318,13 @@ Use `api.auth.current_user` as the dependency for any new personal endpoint and 
 - **Browser checks.** `npm run e2e`, `npm run visual` and `npm run a11y` (Playwright with Chromium; screenshots go to `artifacts/screens/`).
 - **Docs.** `README.md` at the repository root is the entry point; this file, `CLAUDE.md` and `PAPER_TRACE.md` agree with it.
 
+
+## 13. Update 2026-11-04: LLM step (hosted, free tier)
+
+- **What.** Three buttons write plain-language text from label text only: "Ask about this medicine" (medicine page), "Explain in simple words" (medicine details sections) and "Explain this finding" (risk analysis cards). Endpoints: `POST /api/answer/ask`, `/simplify`, `/explain-finding` (sign-in required) and `GET /api/answer/status` (no key value).
+- **Provider.** Google Gemini API, free tier, REST through httpx. `LLM_PROVIDER` (default `gemini`), `LLM_MODEL` (default `gemini-3.5-flash-lite`), `LLM_API_KEY` (server-side only), `LLM_RPM` (default 5). A second provider is one more class in `medsafe/llm.py`.
+- **Not ready.** No key, bad key, rate limit (with "try again in N seconds"), provider error or timeout give the usual `status="not_ready"`, `reason`, `fix`. The page hides the generated part; the verbatim label text and everything else keep working.
+- **Privacy.** Only label text, ingredient names (or allergen and ingredient) and the typed question are sent; the prompt builders accept no profile field. Free-tier prompts may be used by Google to improve its products. Nothing asked is stored.
+- **Checks in code.** Citations must be ids that were supplied; numbers and units in a rewrite must be in the original; the level is never sent or changed; Critical and High end with the doctor line; claims of safety are dropped.
+- **Not used for.** Alternatives and similar uses (deterministic).
+- **Status.** Built and tested with a fake provider and a mocked HTTP transport. Live calls: see PAPER_TRACE.md (UNTESTED unless a later note says otherwise).
