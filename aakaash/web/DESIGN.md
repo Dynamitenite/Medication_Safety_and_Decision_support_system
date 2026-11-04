@@ -43,7 +43,7 @@ Also taken: Inter (variable, via `@fontsource-variable/inter`) for body and head
 
 ```
 +--------+------------------------------------------------------------+
-| Medication Safety Support | Research prototype. Decision support only. Not medical advice. |
+| Medopic | Research prototype. Decision support only. Not medical advice. |
 | Subareas A and B          +------------------------------------------------------------+
 |        | Dashboard                                                  |
 | [Dash] | Datasets and system status. Every figure ...               |

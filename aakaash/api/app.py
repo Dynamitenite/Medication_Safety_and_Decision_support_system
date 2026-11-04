@@ -65,7 +65,7 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="Medication safety: subareas A and B",
+app = FastAPI(title="Medopic",
               description="Decision support only. Not medical advice.",
               lifespan=lifespan)
 app.add_middleware(  # the Vite dev server

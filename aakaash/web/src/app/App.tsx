@@ -47,7 +47,7 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
     <aside className={open ? "sidebar open" : "sidebar"} id="navigation" aria-label="Navigation">
       <div className="sidebar-head">
         <div>
-          <Link to="/" className="sidebar-title">Medication Safety Support</Link>
+          <Link to="/" className="sidebar-title">Medopic</Link>
         </div>
         <button ref={closeRef} type="button" className="btn btn-plain btn-icon btn-sm mobile-only" aria-label="Close menu" onClick={onClose}>
           <X size={18} />
@@ -137,7 +137,7 @@ function Shell() {
             <button type="button" className="btn btn-secondary btn-icon btn-sm" aria-label="Open menu" aria-expanded={drawer} aria-controls="navigation" onClick={() => setDrawer(true)}>
               <List size={18} />
             </button>
-            <strong>Medication Safety Support</strong>
+            <strong>Medopic</strong>
           </header>
           <main className={WIDE_PATHS.has(pathname) ? "content wide" : "content"} id="main" tabIndex={-1}>
             <Suspense fallback={<p className="muted" role="status">Loading page…</p>}>

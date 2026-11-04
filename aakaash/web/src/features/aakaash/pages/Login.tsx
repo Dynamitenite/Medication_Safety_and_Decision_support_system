@@ -38,7 +38,7 @@ export function Login() {
   return (
     <div className="login-wrap">
       <main className="login-card card" id="main">
-        <h1>Medication Safety Support</h1>
+        <h1>Medopic</h1>
         <p className="lead">A place to review your medicines and health history.</p>
         <ul className="login-points">
           <li><Scales size={18} aria-hidden="true" />Check a new medicine against your current ones</li>
