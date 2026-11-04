@@ -1,24 +1,12 @@
-# AI-Powered Personalized Medication Safety and Decision Support System
+# Medopic: AI-Powered Personalized Medication Safety and Decision Support System
 
 ## 1. Project
 
 Course 24RM604, Group 4. Partner: Selvam Medicals. Guide: Dr. T. Senthil Kumar.
 
-The app helps a person keep track of their medicines and check a new one before taking it. A user signs in, enters a profile (age, height, weight), allergies, conditions and the medicines they take now or took before, and sees them as lists and timelines. To add a medicine they type its name or scan a printed prescription. The app then checks the new medicine against the current ones and the recorded allergies, shows a level (Medium, High or Critical) with the reason, asks for an acknowledgement when the level is Critical, and lists other brands with the same ingredients and their prices. Every result is informational. See the [disclaimer](#13-disclaimer).
+The app helps a person keep track of their medicines and check a new one before taking it. A user signs in, enters a profile (age, height, weight), allergies, conditions and the medicines they take now or took before, and sees them as lists and timelines. To add a medicine they type its name or scan a printed prescription. The app then checks the new medicine against the current ones and the recorded allergies, shows a level (Medium, High or Critical) with the reason, asks for an acknowledgement when the level is Critical, and lists other brands with the same ingredients and their prices. A user can also search the US label text of a medicine and ask a question about it; the answer is written from the label passages and shows its sources, and questions about price or alternatives are answered from the same-ingredient list. An interaction-type estimate (from a trained classifier) with a word-level explanation is shown as supporting evidence and never changes a level. Every result is informational. See the [disclaimer](#11-disclaimer).
 
-## 2. Team and ownership
-
-The Status column describes the code in this repository, not the plan.
-
-| Member | Area | Status | What exists |
-|---|---|---|---|
-| Aakaash Pavangat | AI-based medication safety risk and personalized alert generation (Focal Loss with explainability) | Partly built | Built: risk levels from interaction rules and allergies, personalised to the signed-in user's medicines and allergies. Code built but **not trained**: the Focal Loss interaction-type classifier (BioBERT, BiLSTM) and its Integrated Gradients explanation. No valid training run exists, so the app shows "not ready" for it. |
-| Aakaash Pavangat | AI-based medicine information retrieval and generic alternative recommendation using an LLM (cosine-similarity semantic retrieval) | Partly built | Built: same-ingredient alternatives with prices, label search and "similar uses" by cosine similarity over US label text with a TF-IDF encoder (word overlap, not deep learning). Not built: the sentence-embedding encoder (optional, `ENCODER=sbert`), and live use of the LLM step (code and tests exist; it runs only with `LLM_API_KEY` set, and no live call has been run). |
-| Loganathan T | Drug-drug interaction and drug-disease interaction | Partly built | Built: drug-drug rule matching and the interaction checker, from a small synthetic rule set. Not built: drug-disease interaction (the module shows "coming soon"). |
-| Milan Johnson | AI-based clinical and economic impact assessment of the medication safety system | Not built | Only the price column of the alternatives list exists; there is no impact assessment. |
-| Milan Johnson | Personalized medication risk detection with explainable clinical decision support | Partly built | Built: each finding shows its level and the reason it was given (rule text or label text). No model-based risk detection. |
-
-## 3. Features
+## 2. Features
 
 | What a user can do | Page | API route |
 |---|---|---|
@@ -38,25 +26,25 @@ The Status column describes the code in this repository, not the plan.
 | Delete the account and all its data | `/account` | `DELETE /api/account` |
 | Read what data and methods the app uses | `/about/data`, `/about/trace` | `/api/datasets/*`, `/api/catalogue/*`, `/api/appms/*`, `/api/index/summary`, `/api/ddi/metrics`, `/api/status`, `/api/trace` |
 
-## 4. Architecture
+## 3. Architecture
 
-A React app (Vite) talks to a FastAPI app that lives under `/api`. Accounts, profiles and medical history are stored in a local SQLite file. Medicine names, prices and compositions come from an Indian medicine catalogue; label text for ingredients comes from DailyMed. Risk levels come from interaction rules and allergy matching; a trained classifier would only add an interaction-type estimate and never changes a level.
+A React app (Vite) talks to a FastAPI app that lives under `/api`. Accounts, profiles and medical history are stored in a local SQLite file. Medicine names, prices and compositions come from an Indian medicine catalogue; label text for ingredients comes from DailyMed. Risk levels come from interaction rules and allergy matching; the trained classifier only adds an interaction-type estimate and never changes a level.
 
 ```mermaid
 flowchart LR
-  U["Browser: React app (built)"] -->|"/api (JSON, session cookie)"| A["FastAPI app, one APIRouter (built)"]
-  A --> DB[("SQLite app.db: accounts, profile, history (built)")]
-  A --> C["Indian medicine catalogue (built)"]
-  A --> L["DailyMed label index, TF-IDF (built)"]
-  A --> R["Interaction rules, synthetic seed rules (built)"]
-  A --> K["Focal Loss classifier (code built, not trained)"]
-  A --> M["LLM step, hosted API (built; live calls not run)"]
-  L -. optional .-> S["Sentence-embedding encoder (not built)"]
+  U["Browser: React app"] -->|"/api (JSON, session cookie)"| A["FastAPI app, one APIRouter"]
+  A --> DB[("SQLite app.db: accounts, profile, history")]
+  A --> C["Indian medicine catalogue"]
+  A --> L["DailyMed label index"]
+  A --> R["Interaction rules (synthetic seed rules)"]
+  A --> K["Focal Loss classifier + Integrated Gradients"]
+  A --> M["LLM step, hosted API (grounded answers)"]
+  L --> S["Sentence-embedding encoder (sbert) or TF-IDF"]
 ```
 
-Status of each box: React app, FastAPI app, SQLite, catalogue, label index and rules are built and tested on this machine. The classifier has code and tests but no valid training run. The sentence-embedding encoder is not built. The LLM step is built and tested with a fake provider; no live call to the hosted model has been run.
+The label index can use a sentence-embedding encoder (`ENCODER=sbert`) or the TF-IDF baseline. The classifier checkpoint and the label index are generated files and are not in git (section 6). The LLM step runs only when `LLM_API_KEY` is set and never sets a risk level or a price.
 
-## 5. Requirements
+## 4. Requirements
 
 Versions on the machine where everything below was run:
 
@@ -69,7 +57,7 @@ Versions on the machine where everything below was run:
 
 Python packages are pinned in [aakaash/requirements.txt](aakaash/requirements.txt). Training the classifier also needs `torch` and [aakaash/requirements-train.txt](aakaash/requirements-train.txt).
 
-## 6. Setup and run
+## 5. Setup and run
 
 Commands are for PowerShell on Windows, run from the repository root unless a `cd` is shown. Clone into a folder with a short path: `python -m venv` failed with "ensurepip returned non-zero exit status 1" when the clone was about 230 characters deep (Windows path-length limit), and worked at `C:\Users\<name>\AppData\Local\Temp\rmfresh`.
 
@@ -91,6 +79,8 @@ npm ci
 npm run dev
 ```
 
+`npm run dev` starts both the API (port 8000, using `aakaash\.venv`) and the Vite dev server, so the backend step above is only needed if you want to run the API alone. The API takes about 15 s to be ready when the sbert encoder is on.
+
 Open <http://localhost:5173> (if that port is busy, Vite prints the one it picked). The dev server forwards `/api` to <http://127.0.0.1:8000>; to use another API address set `MEDSAFE_API` before `npm run dev` (for example `$env:MEDSAFE_API = "http://127.0.0.1:8001"`). The API documentation is at <http://127.0.0.1:8000/docs>.
 
 Production build and preview (the preview also forwards `/api`):
@@ -101,7 +91,7 @@ npm run build
 npm run preview        # http://localhost:4173
 ```
 
-Tests and checks (the API must be running on port 8000 for the browser scripts, and the data and indexes from section 7 must exist):
+Tests and checks (the API must be running on port 8000 for the browser scripts, and the data and indexes from section 6 must exist):
 
 ```powershell
 cd aakaash
@@ -125,9 +115,9 @@ cd aakaash\web
 npm run gen:types      # writes src/features/aakaash/api-types.ts from the FastAPI OpenAPI schema
 ```
 
-Test results on this machine: with the packages in `requirements.txt` only (no `torch`), `pytest` gives 248 passed and 5 skipped (the classifier tests skip), in about 93 s in a fresh clone. With `torch`, `transformers` and `captum` installed (the main working copy) it gives 279 passed (73 s on one run, 310 s on a later, busier run). Training the classifier on a GPU (`notebooks/train_ddi.ipynb`) was not tested on Colab or Kaggle after the last tokenizer fix: not tested.
+Test results on this machine (main working copy, with `torch`, `transformers` and `captum` installed): `pytest` 371 passed, `npm test` 39 passed, typecheck and build clean, `npm run e2e` 38 passed. The classifier was trained on a Kaggle T4 GPU (`notebooks/train_ddi.ipynb`) and the sbert index was built on a Kaggle T4 (`notebooks/build_sbert_index.ipynb`).
 
-## 7. Data
+## 6. Data
 
 Nothing in `data/` is in git (`.gitignore` covers `data/`, `aakaash/artifacts/`, databases, model files, `.env` and key files). The folder `data/` sits at the repository root, next to `aakaash/` and `.git`.
 
@@ -157,7 +147,7 @@ Measured on this machine with the part 6 zip (4,293 labels) and 253,973 catalogu
 
 Build `names.json` and then `catalogue.json` again after any change to `medsafe/spl.py`. The API also needs the folders `data/appms` and `data/indian_meds`; without the catalogue it reports "not ready" on the affected pages. The database `artifacts/app.db` is created on first start. `python data_report.py` rewrites `aakaash/DATASET_REPORT.md` from the real files (59 s here).
 
-## 8. Environment variables
+## 7. Environment variables
 
 At startup the API server loads `aakaash/.env` if it exists (python-dotenv). Variables already set in the real environment win over the file; a missing file is ignored. Copy [aakaash/.env.example](aakaash/.env.example) to `aakaash/.env` and fill in values. `.env` is gitignored; never commit values.
 
@@ -179,7 +169,7 @@ At startup the API server loads `aakaash/.env` if it exists (python-dotenv). Var
 | `LLM_MODEL` | Model name. Default `gemini-3.5-flash-lite` (listed Stable on Google's models page, checked 2026-11-04) | No |
 | `LLM_RPM` | Requests per minute the server allows itself. Default 5. Free-tier limits per model are shown only in Google AI Studio; check yours before raising it | No |
 
-## 9. Project layout
+## 8. Project layout
 
 ```
 .gitignore
@@ -196,7 +186,7 @@ aakaash/
   CLAUDE.md, WEBAPP_PLAN.md, PAPER_TRACE.md, DATASET_REPORT.md   project notes
 ```
 
-## 10. API overview
+## 9. API overview
 
 All routes are under `/api`. Interactive documentation: <http://127.0.0.1:8000/docs>; schema: <http://127.0.0.1:8000/openapi.json>.
 
@@ -211,28 +201,20 @@ All routes are under `/api`. Interactive documentation: <http://127.0.0.1:8000/d
 | Interaction type (model estimate) | `POST /ddi/classify`, `/ddi/metrics` | no |
 | Data and methods | `/datasets/*`, `/catalogue/*`, `/status`, `/trace`, `/health` | no |
 
-## 11. Data and methods
+## 10. Data and methods
 
 This section uses research wording.
 
 - **Indian medicine catalogue.** A public GitHub dataset ("Indian-Medicine-Dataset"). The repository states an MIT licence and does not state the original source of the data, so its origin is unknown. 253,973 products, 7,905 marked discontinued (printed by `build_catalogue.py`). Price, pack size and composition are as listed there and may be out of date or incomplete.
 - **DailyMed labels.** Part 6 of the human prescription label release: 4,293 labels, 0 parse failures. Of these, 4,223 have an Indications section, 4,205 Contraindications and 3,602 Drug Interactions (`DATASET_REPORT.md`, regenerated by `data_report.py`). US labels are linked to catalogue ingredients by ingredient name or active moiety: 659 of 1,725 distinct catalogue ingredients (38.2%) link to at least one label, and 160,286 of 253,973 products (63.1%) have every listed ingredient linked. The other ingredients have no US label here, so the app shows no label text for them.
 - **Interaction rules.** `data/appms/ddi_seed_rules.csv` is a small synthetic rule catalogue shipped with a synthetic dataset. Its own README says it is not clinically validated and that "not flagged" means unknown, not safe. The risk levels shown for interactions come from these rules; they are not a clinical source. Allergy findings match by name only.
-- **Retrieval.** Cosine similarity over TF-IDF vectors of label chunks (512 words, overlap 64). This is a word-overlap baseline, not deep learning. A sentence-embedding encoder (BAAI/bge-small-en-v1.5, pretrained, not fine-tuned) is implemented behind `ENCODER=sbert`; its index is built on a free Kaggle GPU (`notebooks/build_sbert_index.ipynb`) and installed with `scripts/install_sbert.py`, but it has not been built yet, and TF-IDF stays the default. A proxy check on 100 random catalogue products (`scripts/eval_retrieval.py`; not a relevance judgement) asked whether a label of the right ingredient and section appears in the top 5 for "<ingredient> drug interactions": 19 of 82 counted products did (source: `aakaash/PAPER_TRACE.md`). No pharmacist-judged relevance set exists, so no precision or recall is reported.
-- **Focal Loss classifier.** BioBERT, a BiLSTM and a focal-loss objective on DDI Extraction 2013 (train 25,037, dev 2,754, test 5,715 sentence pairs). **Not trained yet.** The first run was invalid because of a tokenizer fault, and the app hides metrics that fail its quality gate. No accuracy, F1 or speed figure is claimed.
-- **Explainability.** Integrated Gradients over input words and a deletion-based faithfulness check are implemented and were run only on a tiny random model to test the code.
-- **Limitations.** Only one DailyMed part is loaded. Allergy matching does not cover drug classes. The rules are synthetic. The scan reads printed text only. Nothing here replaces a pharmacist's check.
+- **Retrieval.** Cosine similarity over L2-normalised vectors of label chunks. Two encoders: a TF-IDF word-overlap baseline (512-word chunks, overlap 64; 77,348 chunks) and a pretrained sentence-embedding encoder (BAAI/bge-small-en-v1.5, 384-d, 500-token windows, 132,058 windows; not fine-tuned) built on a free Kaggle GPU and installed with `scripts/install_sbert.py`. A proxy check on random catalogue products (`scripts/eval_retrieval.py`; not a relevance judgement) asks whether a label of the right ingredient and section appears in the top 5 for "<ingredient> drug interactions": TF-IDF 19 of 82, sbert 75 of 82. sbert needs a 203.9 MB index and about 1.5 GB of memory against 47.6 MB and about 0.5 GB for TF-IDF; "similar uses" is slower cold (p50 about 1.8 s) and 16 to 69 ms when repeated. No pharmacist-judged relevance set exists, so no precision or recall is reported.
+- **Focal Loss classifier.** BioBERT (dmis-lab/biobert-base-cased-v1.1), a BiLSTM and a focal-loss objective (gamma 3) on DDI Extraction 2013 (train 25,037, dev 2,754, test 5,715 sentence pairs), trained on a Kaggle T4 (run `ddi-focal-20261104`, seed 42). Micro precision, recall and F1 on the official test set: Focal 82.6 / 68.9 / 75.2; cross-entropy baseline 73.7 / 77.4 / 75.5. The app loads the checkpoint only if it passes a quality gate (dev F1 of at least 0.3 after epoch 2) and shows the type as a model estimate; it never changes a risk level.
+- **Explainability.** Integrated Gradients (50 steps) over the input tokens, shown as shaded words. A deletion-based faithfulness proxy on the test set: removing the top-k attributed words lowers the predicted-class probability by 0.030, 0.081 and 0.119 for k = 1, 3, 5, against 0.009, 0.020 and 0.028 for random words. This shows what the model used, not a clinical reason.
+- **Limitations.** Only one DailyMed part is loaded. Allergy matching is by name and does not cover drug classes. The rules are synthetic and not clinically validated. The interaction-type classifier scores lower than the best published systems on this corpus and is evidence only. The scan reads printed text only. Nothing here replaces a pharmacist's check.
 
 The paper trace (which design choice comes from which paper, and which is our own) is in [aakaash/PAPER_TRACE.md](aakaash/PAPER_TRACE.md) and is shown in the app at `/about/trace`.
 
-## 12. Contributing and merging
-
-- Branches: Aakaash's work is on `aakaash/<topic>` (existing: `aakaash/ai-components`, `aakaash/webapp`); each teammate uses their own prefix. The remote's default branch is `aakaash/ai-components`; the local `main` tracks `origin/main`. Do not push to another person's branch.
-- The backend is one `APIRouter` with prefix `/api` in `aakaash/api/router.py`. A teammate can mount it in their own app with `app.include_router(router)`; `aakaash/api/app.py` is the standalone app (CORS for the dev server, error and header handlers, startup).
-- To add a module: add the router functions in `aakaash/api/router.py` (or a new router file included there), the schemas in `schemas.py`, the logic in `api/services/`, tests in `aakaash/tests/`; add its React page under `aakaash/web/src/features/<you>/`, one line in `registry.ts` (`MODULE_COMPONENTS`), and run `npm run gen:types`. The module list and ids come from `api/modules.py`.
-- Reuse these instead of writing your own: sign-in and the `current_user` dependency (`api/auth.py`), the profile, allergies and conditions routes, `/medicine-records` and `/medicine-records/batch`, and `POST /analyze` for risk levels.
-- Rules: no secrets in git (names only in `.env.example`); no datasets, databases, indexes, checkpoints or models in git; run `pytest`, `npm test`, `npm run typecheck` and `npm run build` before you merge.
-
-## 13. Disclaimer
+## 11. Disclaimer
 
 Informational only. Not a substitute for advice from your doctor or pharmacist.
