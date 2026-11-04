@@ -93,6 +93,19 @@ def _best_sentence(idx: Index, text: str, reference: str) -> tuple[str, str]:
     return (" ".join(words[:MAX_SENTENCE_WORDS]) + " …" if len(words) > MAX_SENTENCE_WORDS else sents[k]), sents[k]
 
 
+def _prefetch(idx: Index, pairs: list[tuple[str, str]]) -> None:
+    """Encode every text _best_sentence is about to need, for all suggestions, in one batch call, so the
+    per-suggestion calls that follow are cache hits. Changes no result: it only fills the encoder's cache."""
+    if not idx.encoder.dense:
+        return
+    texts: list[str] = []
+    for cand, query in pairs:
+        texts.append(query)
+        texts += [s for s in split_sentences(cand) if len(s.split()) >= MIN_SENTENCE_WORDS] or split_sentences(cand)
+        texts += [s for s in split_sentences(query) if len(s.split()) >= MIN_SENTENCE_WORDS] or split_sentences(query)
+    idx.encode_texts(list(dict.fromkeys(texts)))
+
+
 def rank(S: np.ndarray, bounds: np.ndarray, excluded: set[int], ings: list[int], moieties: dict[int, frozenset],
          min_sim: float | None, limit: int) -> list[dict]:
     """Aggregate a (query chunks x candidate chunks) cosine matrix per ingredient. Pure numpy, tested
@@ -149,6 +162,7 @@ def similar_use(settings: Settings, cid: str, limit: int) -> SimilarUseResponse:
             continue
         S = idx.pair_similarity(q, chunks)
         ranked = rank(S, bounds, excluded, ings, moi, settings.similar_use_min, limit)
+        _prefetch(idx, [(idx.text(int(chunks[r["col"]])), idx.text(int(q[r["row"]]))) for r in ranked])
         sugg = []
         for r in ranked:
             c_chunk, q_chunk = int(chunks[r["col"]]), int(q[r["row"]])

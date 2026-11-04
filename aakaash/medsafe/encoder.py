@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import os
 import pickle
+import threading
+from collections import OrderedDict
 from pathlib import Path
 from typing import Iterable
 
@@ -84,6 +86,36 @@ class TfidfEncoder:
         return self.vectorizer.build_analyzer()
 
 
+VECTOR_CACHE_SIZE = 2000
+
+
+class VectorCache:
+    """Size-limited LRU of encoded texts, keyed by (encoder name, is_query, exact text). Vectors are
+    stored as encoded, so a hit returns exactly what encoding again would."""
+
+    def __init__(self, size: int = VECTOR_CACHE_SIZE):
+        self.size = size
+        self._d: OrderedDict = OrderedDict()
+        self._lock = threading.Lock()
+
+    def __len__(self) -> int:
+        return len(self._d)
+
+    def get(self, key):
+        with self._lock:
+            v = self._d.get(key)
+            if v is not None:
+                self._d.move_to_end(key)
+            return v
+
+    def put(self, key, vec) -> None:
+        with self._lock:
+            self._d[key] = vec
+            self._d.move_to_end(key)
+            while len(self._d) > self.size:
+                self._d.popitem(last=False)
+
+
 class SbertEncoder:
     """sentence-transformers model (default BAAI/bge-small-en-v1.5). A chunk longer than the model's
     token limit is cut into word windows that fit; the chunk's score is its best window."""
@@ -95,6 +127,7 @@ class SbertEncoder:
         self.model_name, self.revision = model_name, revision
         self.requested_device = device
         self._model = None
+        self.cache = VectorCache()
 
     @property
     def label(self) -> str:
@@ -137,6 +170,20 @@ class SbertEncoder:
             texts = [SBERT_QUERY_PREFIX + t for t in texts]
         return self.model.encode(texts, batch_size=batch_size, normalize_embeddings=True,
                                  convert_to_numpy=True, show_progress_bar=False).astype(np.float32)
+
+    def encode_cached(self, texts: list[str], is_query: bool = False) -> np.ndarray:
+        """Same vectors as encode(); texts seen before are not encoded again, and all the new ones go
+        through the model in one batch call."""
+        keys = [(self.name, is_query, t) for t in texts]
+        have = {k: self.cache.get(k) for k in dict.fromkeys(keys)}
+        todo = [k for k, v in have.items() if v is None]
+        if todo:
+            for k, v in zip(todo, self.encode([k[2] for k in todo], is_query=is_query)):
+                have[k] = v
+                self.cache.put(k, v)
+        if not keys:
+            return np.zeros((0, 0), dtype=np.float32)
+        return np.stack([have[k] for k in keys])
 
 
 def make_encoder(name: str | None = None, folder: Path | None = None):

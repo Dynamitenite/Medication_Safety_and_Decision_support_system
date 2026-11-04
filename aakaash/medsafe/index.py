@@ -99,6 +99,19 @@ class Index:
         return np.sort(np.concatenate(parts)) if parts else np.zeros(0, dtype=np.int64)
 
     # ---- search ---------------------------------------------------------------------------
+    def encode_texts(self, texts: list[str], is_query: bool = False):
+        """Encode with the encoder; dense (sbert) vectors of texts seen before come from its cache."""
+        if self.encoder.dense:
+            return self.encoder.encode_cached(texts, is_query=is_query)
+        return self.encoder.encode(texts, is_query=is_query)
+
+    def warm_up(self) -> None:
+        """Load the model, build the FAISS index and run one encode, so the first request is not the slow one.
+        Nothing to do for TF-IDF. Raises if the model cannot be loaded."""
+        if self.encoder.dense:
+            self.encoder.encode(["warm up"], is_query=True)
+            self._faiss_index()
+
     def _faiss_index(self):
         with self._lock:
             if self._faiss is None:
@@ -113,7 +126,7 @@ class Index:
         the search to those chunk indices (still an exact inner product)."""
         if allowed is not None and len(allowed) == 0:
             return []
-        q = self.encoder.encode([query], is_query=True)
+        q = self.encode_texts([query], is_query=True)
         if not self.encoder.dense:
             if allowed is None:
                 s = (self.X @ q.T).toarray().ravel()
@@ -169,8 +182,8 @@ class Index:
         """Cosine of each sentence with a reference text, under this encoder (no query prefix)."""
         if not sentences:
             return np.zeros(0)
-        r = self.encoder.encode([reference])
-        s = self.encoder.encode(sentences)
+        r = self.encode_texts([reference])
+        s = self.encode_texts(sentences)
         if self.encoder.dense:
             return (s @ r.T).ravel()
         return (s @ r.T).toarray().ravel()

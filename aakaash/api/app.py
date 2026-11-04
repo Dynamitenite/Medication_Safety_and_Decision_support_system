@@ -1,7 +1,9 @@
 # SOURCE: NOT IN PAPERS. Standalone app for local use; the team can instead include `router`.
 """Run from the aakaash folder:  python -m uvicorn api.app:app --port 8000"""
+import asyncio
 import logging
 import threading
+import time
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -12,7 +14,7 @@ from fastapi.responses import JSONResponse
 from . import auth, db
 from .config import get_settings, load_env_file
 from .router import router
-from .services import datasets
+from .services import datasets, ddi, retrieval
 
 log = logging.getLogger("uvicorn.error")
 
@@ -28,11 +30,38 @@ def _warm_ddi_cache() -> None:
         log.exception("DDI cache warm-up failed")
 
 
+def _load_models() -> None:
+    """Load the sbert model and the DDI classifier before the first request, in parallel. A failure is
+    logged and the app still starts: sbert falls back to TF-IDF (named in every answer), the classifier
+    reports its error on the first request as before."""
+    s = get_settings()
+
+    def sbert() -> None:
+        t = time.perf_counter()
+        used = retrieval.warm_up(s)
+        log.info("Label search encoder: %s (configured %s), ready in %.1f s", used, s.encoder_name, time.perf_counter() - t)
+
+    def classifier() -> None:
+        t = time.perf_counter()
+        try:
+            if ddi.preload(s):
+                log.info("DDI classifier loaded in %.1f s", time.perf_counter() - t)
+        except Exception:  # noqa: BLE001
+            log.exception("DDI classifier preload failed; the first request will try again")
+
+    workers = [threading.Thread(target=f) for f in (sbert, classifier)]
+    for w in workers:
+        w.start()
+    for w in workers:
+        w.join()
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     db.session_maker(get_settings())  # creates artifacts/app.db and its tables if they are missing
     auth.session_secret()  # warns once if SESSION_SECRET is not set
     threading.Thread(target=_warm_ddi_cache, daemon=True).start()
+    await asyncio.to_thread(_load_models)
     yield
 
 

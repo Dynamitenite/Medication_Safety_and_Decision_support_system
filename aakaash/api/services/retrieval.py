@@ -47,6 +47,25 @@ class FallbackInfo(NamedTuple):
         return f"{self.reason} {self.fix}"
 
 
+_model_error: str | None = None  # set by warm_up when the sbert model could not be loaded
+
+
+def warm_up(settings: Settings) -> str:
+    """Load the configured encoder once, at API start, so no request pays for it. Returns the encoder that
+    will answer. If the sbert model cannot be loaded, remember why and answer with TF-IDF from now on."""
+    global _model_error
+    _model_error = None
+    idx, _ = get_index(settings)
+    if idx is None:
+        return settings.encoder_name
+    try:
+        idx.warm_up()
+    except Exception as e:  # noqa: BLE001  (missing package, no network for the model, out of memory ...)
+        _model_error = settings.scrub(f"{type(e).__name__}: {e}")
+        return (get_index(settings)[0] or idx).enc_name
+    return idx.enc_name
+
+
 def sbert_fallback(settings: Settings) -> FallbackInfo | None:
     """Set when ENCODER=sbert is configured but its index cannot be used. Nothing is hidden: the answering
     encoder is reported on every response and this explains why it is not the configured one."""
@@ -54,6 +73,9 @@ def sbert_fallback(settings: Settings) -> FallbackInfo | None:
         return None
     if not (settings.index_dir / "manifest.json").is_file():
         return None
+    if _model_error:
+        return FallbackInfo("not_ready", f"The sbert model could not be loaded ({_model_error}), so TF-IDF answered instead.",
+                            SBERT_FIX)
     try:
         load_index(settings.index_dir, "sbert")
     except IndexError_ as e:
@@ -69,6 +91,8 @@ def get_index(settings: Settings) -> tuple[Index | None, str | None]:
     if not (settings.index_dir / "manifest.json").is_file():
         return None, f"The label index {settings.display(settings.index_dir)} has not been built."
     try:
+        if settings.encoder_name == "sbert" and _model_error:
+            return load_index(settings.index_dir, "tfidf"), None
         return load_index(settings.index_dir, settings.encoder_name), None
     except (IndexError_, ValueError) as e:
         if settings.encoder_name == "sbert":

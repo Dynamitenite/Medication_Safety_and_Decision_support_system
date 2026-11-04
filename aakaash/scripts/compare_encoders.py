@@ -70,14 +70,19 @@ def worker(enc: str, n_products: int, seed: int) -> dict:
         raise SystemExit(f"{enc} index cannot be used ({why or 'the app fell back to ' + str(idx.enc_name)}); nothing measured.")
     cat = catalogue.get_catalogue(s)
     t = time.perf_counter()
-    idx.search("warm up", 5)  # loads the model for sbert; reported apart from per-query latency
+    retrieval.warm_up(s)  # what the API does at start: loads the sbert model and the FAISS index
+    load_s = time.perf_counter() - t
+    t = time.perf_counter()
+    idx.search("warm up", 5)  # the first request after start
     first_s = time.perf_counter() - t
-    lat = []
+    lat, cold = [], []
     for q in FREE_QUERIES:
-        for _ in range(5):
+        for rep in range(5):
             t = time.perf_counter()
             idx.search(q, 5)
             lat.append((time.perf_counter() - t) * 1000)
+            if rep == 0:
+                cold.append(lat[-1])  # the query text is new, so it is encoded, not read from the cache
     proxy = eval_retrieval.run(s, enc, n_products, seed)
     top, sim_lat = {}, []
     for name in esu.NAMED:
@@ -100,8 +105,9 @@ def worker(enc: str, n_products: int, seed: int) -> dict:
                      "top": [{"ingredient": x.ingredient, "similarity": x.similarity,
                               "sentence": x.supporting_sentence, "flagged": bool(x.flags)} for x in g.suggestions]}
     return {"encoder": enc, "label": idx.encoder.label, "index_mb": folder_mb(idx.folder / enc),
-            "first_query_s": round(first_s, 2),
+            "startup_load_s": round(load_s, 2), "first_query_s": round(first_s, 2),
             "label_search_ms_p50": pct(lat, 0.5), "label_search_ms_p95": pct(lat, 0.95), "label_search_queries": len(lat),
+            "label_search_cold_ms_p50": pct(cold, 0.5), "label_search_cold_ms_max": pct(cold, 1.0),
             "proxy_label": PROXY_LABEL,
             "proxy": {q: {k: v[k] for k in ("counted", "hit", "share")} for q, v in proxy["queries"].items()},
             "proxy_products": proxy["products"], "proxy_seed": proxy["seed"],
@@ -131,8 +137,8 @@ def report(a: dict, b: dict, show: int) -> None:
     print("\n== Speed, size, memory (this machine; sbert query time includes encoding the query on the CPU)")
     for r in (a, b):
         print(f"  {r['encoder']:<6} label search p50 {r['label_search_ms_p50']} ms, p95 {r['label_search_ms_p95']} ms "
-              f"({r['label_search_queries']} queries); similar-use p50 {r['similar_use_ms_p50']} ms, p95 {r['similar_use_ms_p95']} ms "
-              f"({r['similar_use_calls']} calls); first query {r['first_query_s']} s; index {r['index_mb']} MB; peak RAM {r['peak_ram_mb']} MB")
+              f"({r['label_search_queries']} queries; new text only: p50 {r['label_search_cold_ms_p50']} ms); similar-use p50 {r['similar_use_ms_p50']} ms, p95 {r['similar_use_ms_p95']} ms "
+              f"({r['similar_use_calls']} calls); load at start {r['startup_load_s']} s; first query {r['first_query_s']} s; index {r['index_mb']} MB; peak RAM {r['peak_ram_mb']} MB")
     print(f"\n== Keyword proxy check ({PROXY_LABEL}; {a['proxy_products']} products, seed {a['proxy_seed']})")
     for r in (a, b):
         for q, v in r["proxy"].items():

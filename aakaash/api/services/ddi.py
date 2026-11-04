@@ -1,6 +1,6 @@
 # SOURCE: NOT IN PAPERS. Serves the Focal Loss interaction-type classifier (medsafe/ddi_model.py) and
 # its measured metrics. A model estimate only: nothing here is read by the risk-level code
-# (medsafe/risk.py, services/intake.py). The model loads on the first request and stays in memory.
+# (medsafe/risk.py, services/intake.py). The model loads at API start (preload) and stays in memory.
 """POST /api/ddi/classify and GET /api/ddi/metrics."""
 from __future__ import annotations
 
@@ -68,6 +68,17 @@ def _get_model(s: Settings):
                        load_ms=(time.perf_counter() - t) * 1000)
         _cache.clear()
     return _loaded
+
+
+def preload(s: Settings) -> bool:
+    """Load the checkpoint at API start so the first request does not. Same readiness rules as classify:
+    with no usable checkpoint nothing is loaded and requests answer not_ready as before. A load error is
+    left for the first request to hit and report, as before. Returns whether the model is now in memory."""
+    if not model_state(s)["ready"]:
+        return False
+    with _lock:
+        _get_model(s)
+    return True
 
 
 def classify(s: Settings, req: DDIClassifyRequest) -> DDIClassifyResponse:
