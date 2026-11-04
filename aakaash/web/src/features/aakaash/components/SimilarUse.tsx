@@ -77,6 +77,8 @@ export function SimilarUse({ id }: { id: string }) {
       <h2 id="su-h">{d.heading}</h2>
       <Disclosure title="Show suggestions">
       <p className="small">{d.note}</p>
+      <p className="small muted">Compared with: {d.encoder_label}.</p>
+      {d.fallback_note && <p className="small" role="status">{d.fallback_note}</p>}
       {d.combination_note && <p className="small muted">{d.combination_note}</p>}
       {d.groups.map((g) => (
         <div key={g.ingredient} className="similar-group">

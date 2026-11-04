@@ -131,10 +131,12 @@ def test_not_ready_when_index_is_stale(env):
     assert r["status"] == "not_ready" and "do not match" in r["reason"]
 
 
-def test_not_ready_when_the_chosen_encoder_is_not_built(env):
+def test_unbuilt_sbert_falls_back_to_tfidf_and_says_so(env):
+    # was not_ready before the sbert wiring; the fuller cases are in test_sbert_wiring.py
     s2 = Settings(**{**env.__dict__, "encoder_name": "sbert"})
     app.dependency_overrides[get_settings] = lambda: s2
-    assert post({"query": "pain"})["status"] == "not_ready"
+    body = post({"query": "pain"})
+    assert body["status"] == "ready" and body["encoder"] == "tfidf" and body["fallback_note"]
 
 
 def test_encoder_name_rejects_unknown(monkeypatch):

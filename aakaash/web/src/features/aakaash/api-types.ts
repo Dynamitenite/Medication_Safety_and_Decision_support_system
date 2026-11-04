@@ -2482,6 +2482,23 @@ export interface components {
             vector_bytes: number | null;
             /** Build Seconds */
             build_seconds: number | null;
+            /**
+             * Configured Encoder
+             * @default
+             */
+            configured_encoder: string;
+            /** Fallback Note */
+            fallback_note: string | null;
+            /** Model */
+            model: string | null;
+            /** Model Revision */
+            model_revision: string | null;
+            /** Device */
+            device: string | null;
+            /** Window Token Budget */
+            window_token_budget: number | null;
+            /** Window Overlap Words */
+            window_overlap_words: number | null;
         };
         /** IngredientDetail */
         IngredientDetail: {
@@ -2972,6 +2989,8 @@ export interface components {
             note: string;
             /** Results */
             results: components["schemas"]["SearchResult"][];
+            /** Fallback Note */
+            fallback_note: string | null;
         };
         /** SearchResult */
         SearchResult: {
@@ -3128,6 +3147,13 @@ export interface components {
              * @default
              */
             encoder: string;
+            /**
+             * Encoder Label
+             * @default
+             */
+            encoder_label: string;
+            /** Fallback Note */
+            fallback_note: string | null;
             /**
              * Is Deep Learning
              * @default false

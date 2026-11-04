@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import re
 import time
+from typing import NamedTuple
 
 import numpy as np
 
@@ -33,16 +34,49 @@ NOTE = ("Passages from US FDA label text, ranked by cosine similarity to your wo
 _STOP: frozenset[str] | None = None
 
 
+SBERT_FIX = ("Build the sbert index on Kaggle with notebooks/build_sbert_index.ipynb, then run "
+             "scripts/install_sbert.py sbert_index.zip from the aakaash folder.")
+
+
+class FallbackInfo(NamedTuple):
+    status: str  # "not_ready"
+    reason: str
+    fix: str
+
+    def text(self) -> str:
+        return f"{self.reason} {self.fix}"
+
+
+def sbert_fallback(settings: Settings) -> FallbackInfo | None:
+    """Set when ENCODER=sbert is configured but its index cannot be used. Nothing is hidden: the answering
+    encoder is reported on every response and this explains why it is not the configured one."""
+    if settings.encoder_name != "sbert":
+        return None
+    if not (settings.index_dir / "manifest.json").is_file():
+        return None
+    try:
+        load_index(settings.index_dir, "sbert")
+    except IndexError_ as e:
+        return FallbackInfo("not_ready", f"The sbert index cannot be used ({e}), so TF-IDF answered instead.", SBERT_FIX)
+    except ValueError as e:
+        return FallbackInfo("not_ready", f"The sbert index cannot be used ({e}), so TF-IDF answered instead.", SBERT_FIX)
+    return None
+
+
 def get_index(settings: Settings) -> tuple[Index | None, str | None]:
-    """(index, None) or (None, reason). Never raises for missing or stale files."""
+    """(index, None) or (None, reason). Never raises for missing or stale files. With ENCODER=sbert and an
+    unusable sbert index it falls back to the TF-IDF index (see sbert_fallback for the reason)."""
     if not (settings.index_dir / "manifest.json").is_file():
         return None, f"The label index {settings.display(settings.index_dir)} has not been built."
     try:
         return load_index(settings.index_dir, settings.encoder_name), None
-    except IndexError_ as e:
-        return None, f"The label index cannot be used: {e}"
-    except ValueError as e:
-        return None, str(e)
+    except (IndexError_, ValueError) as e:
+        if settings.encoder_name == "sbert":
+            try:
+                return load_index(settings.index_dir, "tfidf"), None
+            except (IndexError_, ValueError):
+                pass
+        return None, f"The label index cannot be used: {e}" if isinstance(e, IndexError_) else str(e)
 
 
 def _not_ready(cls, reason: str, **kw):
@@ -129,7 +163,12 @@ def search_labels(settings: Settings, body: SearchLabelsRequest) -> SearchLabels
     return SearchLabelsResponse(
         status="ready", encoder=idx.enc_name, encoder_label=idx.encoder.label,
         is_deep_learning=idx.encoder.is_deep_learning, restricted_to=desc, labels_searched=n_labels,
-        elapsed_ms=round(ms, 2), note=NOTE, results=out)
+        elapsed_ms=round(ms, 2), note=NOTE, results=out, fallback_note=_fallback_text(settings))
+
+
+def _fallback_text(settings: Settings) -> str | None:
+    fb = sbert_fallback(settings)
+    return fb.text() if fb else None
 
 
 def summary(settings: Settings) -> IndexSummaryResponse:
@@ -144,4 +183,7 @@ def summary(settings: Settings) -> IndexSummaryResponse:
         chunk_unit=m["chunk_unit"], is_sample=m["is_sample"], encoders_built=built, active_encoder=idx.enc_name,
         active_encoder_label=idx.encoder.label, is_deep_learning=idx.encoder.is_deep_learning,
         dimension=e.get("dimension"), vectors=e.get("windows") or e.get("nnz"), vector_bytes=e.get("vector_bytes"),
-        build_seconds=e.get("seconds"))
+        build_seconds=e.get("seconds"),
+        model=e.get("model"), model_revision=e.get("model_revision"), device=e.get("device"),
+        window_token_budget=e.get("window_token_budget"), window_overlap_words=e.get("window_overlap_words"),
+        configured_encoder=settings.encoder_name, fallback_note=_fallback_text(settings))

@@ -302,7 +302,7 @@ Use `api.auth.current_user` as the dependency for any new personal endpoint and 
 ## 11. Update 2026-11-03: label search and "Medicines with similar uses"
 
 - RAN on real data (DailyMed part6 only, 4,293 labels, 77,348 chunks over 12 section types): `scripts/build_index.py` with the TF-IDF encoder, `POST /api/search/labels`, `GET /api/medicine/{id}/similar-use`, `GET /api/index/summary`, the "Search this label" card, the similar-uses section, the `/about/data` section, `scripts/eval_retrieval.py` (proxy only) and `scripts/eval_similar_use.py`.
-- NOT RUN: the sbert (BAAI/bge-small-en-v1.5) index. A full CPU build is about 6 hours here (300-chunk probe: 72 s encoding; a build reached 4,096 of 77,348 chunks in about 1,100 s of running time before it was stopped). Resume with `set ENCODER=sbert` and `python scripts/build_index.py` (finished 256-chunk shards are kept). No TF-IDF versus sbert comparison exists yet.
+- NOT RUN: the sbert (BAAI/bge-small-en-v1.5) index. A full CPU build is about 6 hours here (300-chunk probe: 72 s encoding; a build reached 4,096 of 77,348 chunks in about 1,100 s of running time before it was stopped). Resume with `set ENCODER=sbert` and `python scripts/build_index.py` (finished 256-chunk shards are kept). No TF-IDF versus sbert comparison exists yet. Update 2026-11-04: the build moves to a free Kaggle GPU (`notebooks/build_sbert_index.ipynb`, then `scripts/install_sbert.py`); see section 12.
 - No minimum similarity is active (`SIMILAR_USE_MIN` unset). A "Generic wording" flag marks, and never hides, a suggestion whose supporting sentence appears in the uses of several ingredients (commit 18ebd8f).
 - No relevance judgements exist. Only a proxy check ran. `data/eval/similar_use_pairs.jsonl` holds three EXAMPLE lines.
 
@@ -328,3 +328,13 @@ Use `api.auth.current_user` as the dependency for any new personal endpoint and 
 - **Checks in code.** Citations must be ids that were supplied; numbers and units in a rewrite must be in the original; the level is never sent or changed; Critical and High end with the doctor line; claims of safety are dropped.
 - **Not used for.** Alternatives and similar uses (deterministic).
 - **Status.** Built and tested with a fake provider and a mocked HTTP transport. Live calls: see PAPER_TRACE.md (UNTESTED unless a later note says otherwise).
+
+---
+
+## 12. Update 2026-11-04: sbert index on a free GPU (prepared, NOT RUN)
+
+- **Built (code and offline tests only).** `MEDSAFE_DEVICE` (cpu default, cuda, auto) and `build_index.py --device --batch-size`; `notebooks/build_sbert_index.ipynb` (Kaggle: finds `chunks.jsonl` and the top manifest in the attached dataset `medsafe-index`, checks the hash, encodes with `--device cuda`, fails if the GPU is not used or `chunks_sha256` differs, zips `vectors.npy`, `window_chunk.npy`, `manifest.json`); `scripts/install_sbert.py` (hash check, refuses to overwrite without `--force`); `scripts/compare_encoders.py`.
+- **Wiring.** With `ENCODER=sbert` and a valid sbert folder, label search, similar uses and the Search page use it. If the folder is missing or built from other chunks, TF-IDF answers; each response carries `encoder`, `encoder_label` and a `fallback_note`, and `/api/status` shows the encoder component as `not_ready` with a reason and a fix (visible on /about/data). Never silent.
+- **Default unchanged.** TF-IDF stays the default encoder. The switch is the owner's decision after reading the comparison numbers.
+- **Chunks untouched.** `build_index.py --rechunk` is not run: the index stays at 77,348 chunks so that the TF-IDF vectors and the manifest hash stay valid.
+- **NOT RUN.** The Kaggle notebook, the real sbert index, and the comparison. No GPU result exists; no accuracy or relevance claim is made (there are no relevance judgements).

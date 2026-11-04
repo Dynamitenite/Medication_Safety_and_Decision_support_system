@@ -6,6 +6,7 @@
 From the aakaash folder:
     .venv\\Scripts\\python.exe scripts\\build_index.py                # chunks + TF-IDF (default ENCODER)
     set ENCODER=sbert & .venv\\Scripts\\python.exe scripts\\build_index.py   # sbert: OPTIONAL, NOT BUILT (about 6 h on this CPU; downloads the model)
+    ... --device cuda --batch-size 128   # sbert on a GPU (see notebooks/build_sbert_index.ipynb); default device cpu, batch 16
     ... --probe 500            # time 500 chunks with the sbert encoder and stop (no index written)
 Chunks are written once (pass 1, label by label, in batches); each encoder then reads chunks.jsonl."""
 from __future__ import annotations
@@ -26,7 +27,8 @@ sys.path.insert(0, str(HERE))
 
 from dailymed_stats import peak_working_set_mb  # noqa: E402
 from medsafe.chunking import DEFAULT_OVERLAP, DEFAULT_SIZE, chunk_label  # noqa: E402
-from medsafe.encoder import SBERT_MODEL, SbertEncoder, TfidfEncoder, encoder_name  # noqa: E402
+from medsafe.encoder import (SBERT_MODEL, SbertEncoder, TfidfEncoder, default_batch_size,  # noqa: E402
+                             encoder_name, resolve_device)
 from medsafe.forms import classify_label, describe  # noqa: E402
 from medsafe.spl import iter_parts  # noqa: E402
 
@@ -124,13 +126,21 @@ def build_tfidf(folder: Path, top: dict) -> dict:
     return m
 
 
-def build_sbert(folder: Path, top: dict, resume: bool = True) -> dict:
+def build_sbert(folder: Path, top: dict, resume: bool = True, device: str | None = None,
+                batch_size: int | None = None) -> dict:
     out = folder / "sbert"
     shards = out / "shards"
     shards.mkdir(parents=True, exist_ok=True)
     t0 = time.perf_counter()
-    enc = SbertEncoder(SBERT_MODEL)
+    device = resolve_device(device)
+    batch_size = batch_size or default_batch_size(device)
+    enc = SbertEncoder(SBERT_MODEL, device=device)
     _ = enc.model  # load (downloads on first use)
+    gpu = None
+    if device == "cuda":
+        import torch
+        gpu = torch.cuda.get_device_name(0)
+    print(f"sbert device {device}{' (' + gpu + ')' if gpu else ''}, batch size {batch_size}", flush=True)
     revision = getattr(getattr(enc.model[0].auto_model, "config", None), "_commit_hash", None)
     n, n_shard = top["chunks"], 0
     texts, chunk_ids = [], []
@@ -149,7 +159,7 @@ def build_sbert(folder: Path, top: dict, resume: bool = True) -> dict:
             wins += w
             owner += [base + j] * len(w)
             multi += len(w) > 1
-        vec = enc.encode(wins, batch_size=16)
+        vec = enc.encode(wins, batch_size=batch_size)
         np.savez(f, vec=vec, chunk=np.asarray(owner, dtype=np.int64))
         windows_total += len(wins)
         done = base + len(group)
@@ -180,14 +190,15 @@ def build_sbert(folder: Path, top: dict, resume: bool = True) -> dict:
          "chunks_sha256": top["chunks_sha256"], "chunks": n, "dimension": int(V.shape[1]),
          "windows": int(len(V)), "chunks_with_more_than_one_window": int((cnt > 1).sum()),
          "window_token_budget": 500, "window_overlap_words": 32,
+         "device": device, "gpu": gpu, "batch_size": batch_size,
          "vector_bytes": int(V.nbytes), "seconds": round(time.perf_counter() - t0, 1)}
     (out / "manifest.json").write_text(json.dumps(m, indent=1), encoding="utf-8")
     return m
 
 
-def probe(folder: Path, count: int) -> None:
+def probe(folder: Path, count: int, device: str | None = None, batch_size: int | None = None) -> None:
     """Time `count` chunks with the sbert encoder and extrapolate. Writes nothing."""
-    enc = SbertEncoder(SBERT_MODEL)
+    enc = SbertEncoder(SBERT_MODEL, device=device)
     t = time.perf_counter()
     _ = enc.model
     print(f"model load {time.perf_counter() - t:.1f}s")
@@ -200,7 +211,7 @@ def probe(folder: Path, count: int) -> None:
     wins = [w for x in texts for w in enc.windows(x)]
     tw = time.perf_counter() - t
     t = time.perf_counter()
-    enc.encode(wins, batch_size=16)
+    enc.encode(wins, batch_size=batch_size or default_batch_size(device))
     te = time.perf_counter() - t
     total = json.loads((folder / "manifest.json").read_text())["chunks"]
     per = (tw + te) / len(texts)
@@ -217,9 +228,12 @@ def main() -> None:
     ap.add_argument("--max-labels-per-part", type=int, default=None, help="cap per zip; marks the index as a sample")
     ap.add_argument("--rechunk", action="store_true", help="rebuild chunks.jsonl even if present (invalidates other encoders)")
     ap.add_argument("--probe", type=int, default=None, help="time N chunks with sbert and stop")
+    ap.add_argument("--device", choices=["cpu", "cuda", "auto"], default=None,
+                    help="sbert device; default is MEDSAFE_DEVICE, else cpu")
+    ap.add_argument("--batch-size", type=int, default=None, help="sbert batch size; default 16 on cpu, 128 on cuda")
     a = ap.parse_args()
     if a.probe:
-        probe(a.out, a.probe)
+        probe(a.out, a.probe, a.device, a.batch_size)
         return
     t0 = time.perf_counter()
     have = (a.out / "manifest.json").is_file() and not a.rechunk
@@ -234,7 +248,7 @@ def main() -> None:
               f"peak RAM {peak_working_set_mb()} MB")
     name = encoder_name()
     print(f"encoder: {name}")
-    m = build_tfidf(a.out, top) if name == "tfidf" else build_sbert(a.out, top)
+    m = build_tfidf(a.out, top) if name == "tfidf" else build_sbert(a.out, top, device=a.device, batch_size=a.batch_size)
     print(json.dumps(m, indent=1))
     size = sum(f.stat().st_size for f in a.out.rglob("*") if f.is_file())
     print(f"total {time.perf_counter() - t0:.1f}s, peak RAM {peak_working_set_mb()} MB, index folder {size / 1e6:.1f} MB")

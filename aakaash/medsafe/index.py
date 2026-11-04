@@ -187,8 +187,9 @@ def load_index(folder: Path, encoder: str) -> Index:
            (folder / "manifest.json").stat().st_mtime_ns if (folder / "manifest.json").is_file() else 0)
     with _cache_lock:
         if key not in _cache:
+            built = Index(folder, encoder)  # may raise IndexError_: then the cache is left as it was
             _cache.clear()
-            _cache[key] = Index(folder, encoder)
+            _cache[key] = built
         return _cache[key]
 
 

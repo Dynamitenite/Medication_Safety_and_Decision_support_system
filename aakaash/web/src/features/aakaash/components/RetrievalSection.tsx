@@ -14,6 +14,7 @@ export function RetrievalSection() {
       {q.state === "loading" && !q.data && <LoadingBox what="index summary" />}
       {q.state === "error" && <ErrorBox message={q.message} onRetry={q.reload} />}
       {q.data?.status === "not_ready" && <NotReadyBox reason={q.data.reason} fix={q.data.fix} />}
+      {d?.fallback_note && <NotReadyBox title="The configured encoder is not in use" reason={d.fallback_note} />}
       <h3>How retrieval works</h3>
       <ol>
         <li>
@@ -22,10 +23,13 @@ export function RetrievalSection() {
           names come from the label's own LOINC section codes.
         </li>
         <li>
-          <strong>Encoder.</strong> Each chunk becomes a vector. The working encoder is TF-IDF (word overlap, <em>not deep learning</em>). A
-          sentence-transformers option (BAAI/bge-small-en-v1.5, set ENCODER=sbert) is written but <strong>not built</strong>: a CPU build takes
-          about 6 hours, so no sbert index exists and nothing has been measured for it. A chunk longer than that model's limit would be cut into
-          overlapping windows and score as its best window.
+          <strong>Encoder.</strong> Each chunk becomes a vector. The default encoder is TF-IDF (word overlap, <em>not deep learning</em>).
+          The optional encoder (ENCODER=sbert) is BAAI/bge-small-en-v1.5, a <strong>pretrained sentence-embedding model used as is, without
+          fine-tuning</strong>. A chunk longer than the model's 512-token limit is cut into windows of at most 500 tokens that overlap by 32
+          words, and the chunk scores as its best window. The sbert index is built on a free GPU
+          (notebooks/build_sbert_index.ipynb) and installed with scripts/install_sbert.py. If it is configured but missing or built from
+          different chunks, the app answers with TF-IDF and says so. Which encoder answered is shown with every result. No relevance
+          judgement exists, so neither encoder is claimed to be more accurate.
         </li>
         <li>
           <strong>Cosine similarity.</strong> Vectors are length-normalised, so the dot product between a query and a chunk is their cosine
@@ -45,7 +49,15 @@ export function RetrievalSection() {
               ["Chunks", fmt(d.chunks)],
               ["Release files loaded", d.parts_loaded.join(", ") || "none"],
               ["Active encoder", `${d.active_encoder_label}${d.is_deep_learning ? "" : " — baseline"}`],
+              ["Configured encoder", d.configured_encoder || d.active_encoder],
               ["Encoders built", d.encoders_built.join(", ")],
+              ...(d.model
+                ? ([
+                    ["Model", `${d.model} (revision ${d.model_revision ?? "unknown"}), pretrained, not fine-tuned`],
+                    ["Windows", `up to ${d.window_token_budget} tokens, overlap ${d.window_overlap_words} words`],
+                    ["Built on", d.device ?? "unknown"],
+                  ] as [string, string][])
+                : []),
               ["Vectors", `${fmt(d.vectors)}${d.dimension ? ` × ${d.dimension} dimensions` : " non-zero values"} · ${mb(d.vector_bytes)}`],
               ["Encoder build time", d.build_seconds == null ? "–" : `${d.build_seconds.toLocaleString("en-US")} s`],
             ]}

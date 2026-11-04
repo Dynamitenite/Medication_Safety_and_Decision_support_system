@@ -20,6 +20,28 @@ WINDOW_TOKEN_BUDGET = 500   # leaves room for [CLS]/[SEP] under the model's 512-
 WINDOW_OVERLAP_WORDS = 32
 
 
+def resolve_device(requested: str | None = None, cuda_available=None) -> str:
+    """"cpu" (default), "cuda", or "auto" (cuda when torch sees a GPU, else cpu). Read from MEDSAFE_DEVICE when
+    not given. `cuda_available` is a callable for tests; by default torch is imported only for "auto"/"cuda"."""
+    dev = (requested or os.environ.get("MEDSAFE_DEVICE") or "cpu").strip().lower()
+    if dev == "cpu":
+        return "cpu"
+    if dev not in ("cuda", "auto"):
+        raise ValueError(f"MEDSAFE_DEVICE must be 'cpu', 'cuda' or 'auto', not {dev!r}")
+    if cuda_available is None:
+        import torch
+        cuda_available = torch.cuda.is_available
+    have = bool(cuda_available())
+    if dev == "cuda" and not have:
+        raise RuntimeError("MEDSAFE_DEVICE=cuda but no CUDA GPU is available")
+    return "cuda" if have else "cpu"
+
+
+def default_batch_size(requested: str | None = None, cuda_available=None) -> int:
+    """16 on CPU, 128 on GPU. Batch size changes speed only, never the windows or the text encoded."""
+    return 16 if resolve_device(requested, cuda_available) == "cpu" else 128
+
+
 def encoder_name(default: str = "tfidf") -> str:
     name = (os.environ.get("ENCODER") or os.environ.get("MEDSAFE_ENCODER") or default).strip().lower()
     if name not in ("tfidf", "sbert"):
@@ -69,8 +91,9 @@ class SbertEncoder:
     is_deep_learning = True
     dense = True
 
-    def __init__(self, model_name: str = SBERT_MODEL, revision: str | None = None):
+    def __init__(self, model_name: str = SBERT_MODEL, revision: str | None = None, device: str | None = None):
         self.model_name, self.revision = model_name, revision
+        self.requested_device = device
         self._model = None
 
     @property
@@ -81,7 +104,8 @@ class SbertEncoder:
     def model(self):
         if self._model is None:
             from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(self.model_name, revision=self.revision, device="cpu")
+            self._model = SentenceTransformer(self.model_name, revision=self.revision,
+                                              device=resolve_device(self.requested_device))
         return self._model
 
     def windows(self, text: str) -> list[str]:
@@ -107,7 +131,8 @@ class SbertEncoder:
             start = max(end - WINDOW_OVERLAP_WORDS, start + 1)
         return out
 
-    def encode(self, texts: list[str], is_query: bool = False, batch_size: int = 16) -> np.ndarray:
+    def encode(self, texts: list[str], is_query: bool = False, batch_size: int | None = None) -> np.ndarray:
+        batch_size = batch_size or default_batch_size(self.requested_device)
         if is_query:
             texts = [SBERT_QUERY_PREFIX + t for t in texts]
         return self.model.encode(texts, batch_size=batch_size, normalize_embeddings=True,

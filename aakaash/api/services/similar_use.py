@@ -173,6 +173,7 @@ def similar_use(settings: Settings, cid: str, limit: int) -> SimilarUseResponse:
             note="Only a combination-product US label carries this ingredient, so its text also covers other ingredients."
             if from_combo else None, suggestions=sugg))
     return SimilarUseResponse(
-        status="ready", id=cid, name=cat.names[i], encoder=idx.enc_name, is_deep_learning=idx.encoder.is_deep_learning,
+        status="ready", id=cid, name=cat.names[i], encoder=idx.enc_name, encoder_label=idx.encoder.label,
+        fallback_note=retrieval._fallback_text(settings), is_deep_learning=idx.encoder.is_deep_learning,
         min_similarity=settings.similar_use_min, heading=HEADING, note=NOTE,
         combination_note=COMBINATION_NOTE.format(n=len(own)) if len(own) > 1 else None, groups=groups)

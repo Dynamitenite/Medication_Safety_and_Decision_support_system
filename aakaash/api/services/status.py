@@ -74,7 +74,20 @@ def _index(s: Settings) -> ComponentStatus:
 def _encoder(s: Settings) -> ComponentStatus:
     base = dict(id="encoder", label=f"Encoder (configured: {s.encoder_name})")
     manifest = _read_json(s.artifacts_dir / "index" / s.encoder_name / "manifest.json")
-    if manifest is None or "encoder" not in manifest:
+    if s.encoder_name == "sbert":
+        fix = ("Build the sbert index on Kaggle (notebooks/build_sbert_index.ipynb), then run "
+               "scripts/install_sbert.py sbert_index.zip from the aakaash folder.")
+        if manifest is None or "encoder" not in manifest:
+            return ComponentStatus(
+                status="not_ready", **base,
+                reason="The sbert index has not been installed, so TF-IDF answers instead.", fix=fix)
+        top = _read_json(s.artifacts_dir / INDEX_MANIFEST) or {}
+        if manifest.get("chunks_sha256") != top.get("chunks_sha256"):
+            return ComponentStatus(
+                status="not_ready", **base,
+                reason="The sbert index was built from different chunks than the current index, so TF-IDF answers instead.",
+                fix=fix)
+    elif manifest is None or "encoder" not in manifest:
         return ComponentStatus(
             status="not_ready", **base,
             reason=f"The {s.encoder_name} index has not been built.",

@@ -1035,6 +1035,7 @@ class SearchLabelsResponse(Readiness):
     elapsed_ms: float = 0
     note: str = ""
     results: list[SearchResult] = Field(default_factory=list)
+    fallback_note: str | None = None  # set when the configured encoder could not be used and TF-IDF answered
 
 
 class SimilarBrand(AlternativeBrand):
@@ -1076,6 +1077,8 @@ class SimilarUseResponse(Readiness):
     id: str = ""
     name: str = ""
     encoder: str = ""
+    encoder_label: str = ""
+    fallback_note: str | None = None
     is_deep_learning: bool = False
     min_similarity: float | None = None
     heading: str = ""
@@ -1101,6 +1104,13 @@ class IndexSummaryResponse(Readiness):
     vectors: int | None = None
     vector_bytes: int | None = None
     build_seconds: float | None = None
+    configured_encoder: str = ""
+    fallback_note: str | None = None  # set when ENCODER=sbert is configured but TF-IDF answered
+    model: str | None = None
+    model_revision: str | None = None
+    device: str | None = None
+    window_token_budget: int | None = None
+    window_overlap_words: int | None = None
 
 
 # ---- grounded answers (hosted LLM). Every response is a not_ready box when the key, the quota or the provider

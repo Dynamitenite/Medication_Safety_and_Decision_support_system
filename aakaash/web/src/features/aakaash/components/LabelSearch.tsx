@@ -121,6 +121,7 @@ export function LabelSearch({ medicineId, medicineName }: { medicineId: string; 
               {res.restricted_to} ({res.labels_searched} {res.labels_searched === 1 ? "label" : "labels"}) · {res.encoder_label} ·{" "}
               {res.elapsed_ms} ms
             </p>
+            {res.fallback_note && <p className="small" role="status">{res.fallback_note}</p>}
             {res.results.length > 0 && <ul className="evidence-list">{res.results.map((r) => <EvidenceCard key={r.chunk_id} r={r} />)}</ul>}
             <p className="small muted">{res.note}</p>
           </>

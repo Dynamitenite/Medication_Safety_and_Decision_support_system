@@ -61,6 +61,10 @@ def top5(settings, encoders: list[str]) -> None:
     cat = catalogue.get_catalogue(settings)
     for enc in encoders:
         s = with_encoder(settings, enc)
+        got = retrieval.get_index(s)[0]
+        if got is None or got.enc_name != enc:  # the app falls back to TF-IDF; never print that under another name
+            print(f"\n######## encoder: {enc}: index not usable, skipped")
+            continue
         print(f"\n######## encoder: {enc}  (printed for a pharmacist to read; nothing is marked right or wrong)")
         for name in NAMED:
             j = find_ing(cat, name)
@@ -84,6 +88,9 @@ def distribution(settings, encoders: list[str], n: int = 20, seed: int = 13) -> 
     for enc in encoders:
         s = with_encoder(settings, enc)
         idx = retrieval.get_index(s)[0]
+        if idx is None or idx.enc_name != enc:
+            print(f"\n######## encoder: {enc}: index not usable, skipped")
+            continue
         ings, chunks, bounds = similar_use._candidates(cat, idx)
         pool = [j for j in ings if len(similar_use._query_chunks(cat, idx, j)[0])]
         random.Random(seed).shuffle(pool)
