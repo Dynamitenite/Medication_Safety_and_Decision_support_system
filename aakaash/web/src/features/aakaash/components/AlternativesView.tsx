@@ -18,7 +18,7 @@ function priceDiff(d: number | null) {
   return d < 0 ? `${rupees(-d)} less` : `${rupees(d)} more`;
 }
 
-function AltRow({ a, showForm }: { a: AlternativeBrand; showForm?: boolean }) {
+export function AltRow({ a, showForm }: { a: AlternativeBrand; showForm?: boolean }) {
   const diff = priceDiff(a.price_difference);
   // one status badge per row, the most important one; the pack size is already in the text
   const status = a.discontinued

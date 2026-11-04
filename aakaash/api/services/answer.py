@@ -12,9 +12,10 @@ from medsafe import llm
 from ..config import Settings
 from ..schemas import (AnswerSource, AnswerStatusResponse, AskRequest, AskResponse, ExplainFindingRequest,
                        ExplainFindingResponse, SearchLabelsRequest, SimplifyRequest, SimplifyResponse)
-from . import intake, retrieval
+from . import catalogue, intake, retrieval
 
 ASK_K = 5
+ALT_SHOWN = 5  # same count as the Alternatives page shows before "Show all"
 ASK_MAX_TOKENS = 400
 SIMPLIFY_MAX_TOKENS = 1200
 FINDING_MAX_TOKENS = 300
@@ -41,7 +42,18 @@ def status() -> AnswerStatusResponse:
 
 
 # ---- ask ------------------------------------------------------------------------------------------
+def _alternatives_answer(settings: Settings, body: AskRequest) -> AskResponse:
+    """Price and alternatives questions: the Alternatives service's own list, no model, no provider call."""
+    a = catalogue.alternatives(settings, body.medicine_id, False, 100)
+    if a.status == "not_ready":
+        return AskResponse(status="not_ready", reason=a.reason, fix=a.fix)
+    return AskResponse(status="ready", kind="alternatives", alt_note=a.note, alt_form_family=a.form_family,
+                       alt_total=a.same_total, alternatives=a.same[:ALT_SHOWN])
+
+
 def ask(settings: Settings, body: AskRequest) -> AskResponse:
+    if A.is_price_question(body.question):
+        return _alternatives_answer(settings, body)
     try:
         prov = _ready_provider()
     except llm.LLMUnavailable as e:

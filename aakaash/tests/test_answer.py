@@ -369,3 +369,49 @@ def test_status_ready_when_key_set(env, monkeypatch):
     monkeypatch.setenv("LLM_PROVIDER", "nope")
     s = TestClient(app).get("/api/answer/status").json()
     assert s["status"] == "not_ready" and "unknown provider" in s["reason"]
+
+
+# ---- price and alternatives questions: no model ---------------------------------------------------------
+PRICE_QS = [
+    "How much does it cost?", "What is the price of this?", "Is there a cheaper one?", "cheapest option please",
+    "Any alternative to this medicine?", "What are the alternatives?", "Is there a substitute?", "Can I use a generic?",
+    "Is there a generic version", "Which brand is best value?", "other brands with the same salt", "is it expensive",
+    "What would be a less costly option?", "Can I get a cheaper brand?",
+]
+OTHER_QS = [
+    "Can I take it with food?", "What is this medicine used for?", "What are the side effects?", "How often should I take it?",
+    "Does it make me sleepy?", "Can I drink alcohol with it?", "Is it safe in pregnancy?", "What does the tablet look like?",
+    "How should I store it?", "What if I miss a dose?", "Who should not take this?", "Can children use it?",
+]
+
+
+@pytest.mark.parametrize("q", PRICE_QS)
+def test_price_question_detected(q):
+    assert A.is_price_question(q)
+
+
+@pytest.mark.parametrize("q", OTHER_QS)
+def test_other_question_not_price(q):
+    assert not A.is_price_question(q)
+
+
+@pytest.mark.parametrize("q", PRICE_QS[:5])
+def test_price_question_never_calls_provider_and_matches_alternatives(env, monkeypatch, q):
+    monkeypatch.delenv("LLM_API_KEY", raising=False)  # works even with no key
+    c = signed_in()
+    fake = use(monkeypatch, FakeProvider(reply="must not be used"))
+    r = c.post("/api/answer/ask", json={"medicine_id": "1", "question": q}).json()
+    page = c.get("/api/medicine/1/alternatives").json()
+    assert fake.calls == []
+    assert r["status"] == "ready" and r["kind"] == "alternatives" and r["answer"] is None and r["sources"] == []
+    assert r["alternatives"] == page["same"][:5] and r["alt_total"] == page["same_total"] and r["alt_total"] >= 1
+    assert r["alt_note"] == "Same ingredients, strength and form. Not necessarily interchangeable. Confirm with a pharmacist."
+    assert r["ai_label"] == "AI-written from label text"  # field default only; the page shows no label for this kind
+
+
+def test_other_question_still_uses_provider(env, monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", KEY)
+    c = signed_in()
+    fake = use(monkeypatch, FakeProvider(reply="Not found in the retrieved label text."))
+    r = c.post("/api/answer/ask", json={"medicine_id": "1", "question": "pain and fever"}).json()
+    assert r["kind"] == "label" and len(fake.calls) == 1

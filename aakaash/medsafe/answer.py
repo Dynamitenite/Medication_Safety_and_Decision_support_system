@@ -194,3 +194,13 @@ DOSAGE_WORDS = re.compile(r"\b(dos(e|es|age|ing)|how (much|many|often|long|shoul
 
 def is_dosage_question(q: str) -> bool:
     return bool(DOSAGE_WORDS.search(q))
+
+
+# A small keyword rule, no model: a question about money or about other brands is answered from the catalogue
+# (the same list the Alternatives page shows), never by the language model.
+PRICE_WORDS = re.compile(r"\b(price[sd]?|pricing|cost(s|ly)?|cheap(er|est)?|expensive|afford(able)?|"
+                         r"alternatives?|substitut(e|es|ion)|generics?|brands?)\b", re.I)
+
+
+def is_price_question(q: str) -> bool:
+    return bool(PRICE_WORDS.search(q))

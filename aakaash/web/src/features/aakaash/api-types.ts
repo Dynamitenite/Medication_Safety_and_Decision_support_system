@@ -1375,6 +1375,23 @@ export interface components {
              * @default Informational only. Not a substitute for advice from your doctor or pharmacist.
              */
             disclaimer: string;
+            /**
+             * Kind
+             * @default label
+             * @enum {string}
+             */
+            kind: "label" | "alternatives";
+            /** Alt Note */
+            alt_note: string | null;
+            /** Alt Form Family */
+            alt_form_family: string | null;
+            /**
+             * Alt Total
+             * @default 0
+             */
+            alt_total: number;
+            /** Alternatives */
+            alternatives: components["schemas"]["AlternativeBrand"][];
             /** Answer */
             answer: string | null;
             /**

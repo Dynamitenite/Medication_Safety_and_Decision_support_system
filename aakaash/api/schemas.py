@@ -1153,6 +1153,11 @@ class AnswerSource(ApiModel):
 
 
 class AskResponse(AnswerBase):
+    kind: Literal["label", "alternatives"] = "label"  # "alternatives": a price/alternatives question, answered without the model
+    alt_note: str | None = None                       # the sentence shown with the list
+    alt_form_family: str | None = None
+    alt_total: int = 0                                # all same ingredients, strength and form brands
+    alternatives: list[AlternativeBrand] = Field(default_factory=list)  # the cheapest few of them
     answer: str | None = None
     not_found: bool = False
     note: str | None = None

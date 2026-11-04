@@ -65,6 +65,7 @@ for (const vp of VIEWPORTS) {
     await ctx.route("**/api/answer/status", (route) => route.fulfill(json(READY)));
     await ctx.route("**/api/answer/ask", async (route) => {
       const body = route.request().postDataJSON();
+      if (/price|cost|cheap|alternativ|generic|brand|substitut/i.test(body.question)) return route.fallback(); // answered by the REAL server, no model
       asked.push(body.question);
       const real = await (await ctx.request.post("/api/search/labels", { data: { query: body.question, medicine_id: body.medicine_id, k: 5, scope: body.scope } })).json();
       const sources = real.results.filter((x) => x.text && !x.withheld).map((x) => ({ chunk_id: x.chunk_id, section_label: x.section_label, product: x.product, set_id: x.set_id, text: x.text, cited: false }));
@@ -115,6 +116,19 @@ for (const vp of VIEWPORTS) {
       }
     }
     check(`[${tag}] three questions sent`, asked.length === 3);
+
+    // price question: the real server answers from the catalogue, no AI label, same list as the Alternatives page
+    await input.fill("Is there a cheaper alternative?");
+    await page.locator("section[aria-labelledby=ask-h] button[type=submit]").click();
+    await page.waitForSelector("section[aria-labelledby=ask-h] .alt-answer");
+    const alt = page.locator("section[aria-labelledby=ask-h] .alt-answer");
+    const altTxt = (await alt.innerText()).replace(/\s+/g, " ");
+    const rows = await alt.locator(".alt-rows > li").count();
+    const real = await (await ctx.request.get(`/api/medicine/${dolo.id}/alternatives`)).json();
+    check(`[${tag}] price question: sentence shown, no AI label, no model call`, altTxt.includes("Same ingredients, strength and form. Not necessarily interchangeable. Confirm with a pharmacist.") && !/AI-written/i.test(altTxt) && asked.length === 3);
+    check(`[${tag}] price question: at most 5 rows, same names as the Alternatives page, link to all`, rows === Math.min(5, real.same_total) && rows >= 1 && (await alt.locator(".alt-rows > li a").allInnerTexts()).join("|") === real.same.slice(0, 5).map((x) => x.name).join("|") && (await alt.getByRole("link", { name: "See all alternatives" }).getAttribute("href")) === `/alternatives?id=${dolo.id}`);
+    await alt.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `${shots}/ask-alternatives-${tag}.png`, fullPage: false });
 
     await page.goto("/add");
     // a medicine whose label matches its form (the button is not offered on a wrong-form label)

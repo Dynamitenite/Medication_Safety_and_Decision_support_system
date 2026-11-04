@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, errorText } from "../api";
 import type { AnswerSource, AnswerStatusResponse, AskResponse, ExplainFindingRequest, ExplainFindingResponse, SimplifyResponse } from "../api";
 import { createStatusCache } from "./answerStatusCache";
+import { AltRow } from "./AlternativesView";
 import { Disclaimer } from "./Disclaimer";
 import { Field } from "./Form";
 import { cachedPrediction } from "./InteractionType";
@@ -124,6 +125,30 @@ function Sources({ sources, open, onOpen }: { sources: AnswerSource[]; open: str
   );
 }
 
+/** A price or alternatives question, answered from the catalogue with no model: the Alternatives page's own cheapest list. */
+function AlternativesAnswer({ r, medicineId }: { r: AskResponse; medicineId: string }) {
+  return (
+    <div className="ai-box alt-answer">
+      <p><strong>{r.alt_note}</strong></p>
+      {r.alt_total === 0 ? (
+        <p className="muted">No other brand in our database has the same ingredients, strength and form.</p>
+      ) : (
+        <>
+          <p className="small muted">
+            {r.alt_total} {r.alt_total === 1 ? "brand" : "brands"}, cheapest first. Prices are per pack as listed and may be out of date.
+          </p>
+          <ul className="alt-rows">
+            {r.alternatives.map((a) => (
+              <AltRow key={a.id} a={a} />
+            ))}
+          </ul>
+        </>
+      )}
+      <p><Link to={`/alternatives?id=${encodeURIComponent(medicineId)}`}>See all alternatives</Link></p>
+    </div>
+  );
+}
+
 /** "Ask about this medicine": the model answers only from this medicine's retrieved label passages. No history is kept. */
 export function AskMedicine({ medicineId, medicineName }: { medicineId: string; medicineName: string }) {
   const status = useAnswerStatus();
@@ -144,7 +169,7 @@ export function AskMedicine({ medicineId, medicineName }: { medicineId: string; 
       <h2 id="ask-h">Ask about this medicine</h2>
       <p className="small muted">
         Ask in your own words. The answer is written from the US label text for {medicineName} that matches your question, and cites it. Your
-        question is sent to {status.provider === "gemini" ? "Google Gemini" : status.provider}. Do not type your name or health details.
+        question is sent to {status.provider === "gemini" ? "Google Gemini" : status.provider}. Do not type your name or health details. Questions about price or alternatives are answered from our brand list instead, without the AI.
       </p>
       <form onSubmit={submit} className="ls-form">
         <Field label="Your question">
@@ -162,7 +187,7 @@ export function AskMedicine({ medicineId, medicineName }: { medicineId: string; 
         ))}
       </div>
       <Outcome run={run}>
-        {(r) => (
+        {(r) => r.kind === "alternatives" ? <AlternativesAnswer r={r} medicineId={medicineId} /> : (
           <div className="ai-box">
             <AiMark s={r}>
               {" "}· from {r.sources.length} label {r.sources.length === 1 ? "passage" : "passages"}
