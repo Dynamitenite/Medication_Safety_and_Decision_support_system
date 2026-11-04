@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Research prototype UI for subareas A and B. Decision support only. Not medical advice.",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -n api,web -c blue,green \"npm:api\" \"npm:web\"",
+    "api": "cd .. && .venv\\Scripts\\python.exe -m uvicorn api.app:app --port 8000",
+    "web": "vite",
     "predev": "node scripts/copy-ocr.mjs",
     "build": "tsc --noEmit && vite build",
     "prebuild": "node scripts/copy-ocr.mjs",
@@ -33,6 +35,7 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
     "axe-core": "^4.14.0",
+    "concurrently": "^10.0.6",
     "openapi-typescript": "^7.13.0",
     "playwright": "^1.64.1",
     "typescript": "^5.9.3",
