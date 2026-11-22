@@ -12,6 +12,7 @@ artifacts/screens/CREDENTIALS.txt (never printed). Run from aakaash/:  ..\.venv\
 from __future__ import annotations
 
 import json
+import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -56,6 +57,10 @@ START = date(2026, 6, 1)
 
 
 def password() -> str:
+    """DEMO_PASSWORD from the environment (hosted deploy), else the line in artifacts/screens/CREDENTIALS.txt."""
+    env = os.environ.get("DEMO_PASSWORD", "").strip()
+    if env:
+        return env
     kv = dict(l.split(": ", 1) for l in CRED.read_text(encoding="utf8").strip().splitlines() if ": " in l)
     return kv["password"]
 

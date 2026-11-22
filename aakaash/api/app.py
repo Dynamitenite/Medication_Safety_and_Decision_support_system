@@ -2,14 +2,16 @@
 """Run from the aakaash folder:  python -m uvicorn api.app:app --port 8000"""
 import asyncio
 import logging
+import os
 import threading
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from . import auth, db
 from .config import get_settings, load_env_file
@@ -68,10 +70,37 @@ async def lifespan(_app: FastAPI):
 app = FastAPI(title="Medopic",
               description="Decision support only. Not medical advice.",
               lifespan=lifespan)
-app.add_middleware(  # the Vite dev server
-    CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+def _cors_origins() -> list[str]:
+    """The Vite dev server, plus the hosted front end(s) named in CORS_ORIGINS (comma separated, no path)."""
+    extra = [o.strip().rstrip("/") for o in os.environ.get("CORS_ORIGINS", "").split(",") if o.strip()]
+    return ["http://localhost:5173", "http://127.0.0.1:5173", *extra]
+
+
+app.add_middleware(
+    CORSMiddleware, allow_origins=_cors_origins(),
     allow_credentials=True, allow_methods=["GET", "POST", "PUT", "DELETE"], allow_headers=["*"])
 app.include_router(router)
+
+
+def _mount_web(dist: Path) -> None:
+    """Serve the built front end from this app (one address for page and API, used on Hugging Face Spaces).
+    Only when the folder exists, so local development is unchanged. Unknown non-API paths get index.html
+    so page routes such as /profile open on a reload; unknown /api paths stay a plain 404."""
+    root = dist.resolve()
+
+    @app.get("/{path:path}", include_in_schema=False)
+    async def _web(path: str):
+        if path == "api" or path.startswith("api/"):
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        f = (root / path).resolve()
+        if path and f.is_file() and root in f.parents:
+            return FileResponse(f)
+        return FileResponse(root / "index.html")
+
+
+_web_dist = Path(os.environ.get("WEB_DIST") or Path(__file__).resolve().parents[1] / "web_dist")
+if (_web_dist / "index.html").is_file():
+    _mount_web(_web_dist)
 
 
 @app.exception_handler(RequestValidationError)

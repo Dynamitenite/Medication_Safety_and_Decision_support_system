@@ -1,0 +1,47 @@
+# Render Blueprint: backend (Docker web service) + front end (Static Site).
+# Secrets are never written here: every `sync: false` value is typed into the Render dashboard.
+services:
+  - type: web
+    name: medopic-api
+    runtime: docker
+    plan: free            # 512 MB. Measured: the API needs about 510-540 MB, so it may be killed. Use `standard` (2 GB) if so.
+    dockerfilePath: ./aakaash/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/status
+    envVars:
+      - key: DATA_URL           # direct link to hosting_bundle.tar.gz (used by the Docker build)
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: LLM_API_KEY        # Gemini key from Google AI Studio
+        sync: false
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: LLM_MODEL
+        value: gemini-3.5-flash-lite
+      - key: LLM_RPM
+        value: "5"
+      - key: ENCODER
+        value: tfidf
+      - key: MEDSAFE_COOKIE_SAMESITE   # front end and API are on different onrender.com sites, so the login cookie must be SameSite=None
+        value: none
+      - key: CORS_ORIGINS       # the front-end address, e.g. https://medopic.onrender.com (no trailing slash)
+        sync: false
+      - key: DEMO_PASSWORD      # optional: re-creates the demo account arjunnair@gmail.com at every start
+        sync: false
+
+  - type: web
+    name: medopic
+    runtime: static
+    rootDir: aakaash/web
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: VITE_API_URL       # backend address, e.g. https://medopic-api.onrender.com
+        sync: false
+    routes:
+      - type: rewrite           # page routes (/profile, /checker ...) load the app
+        source: /*
+        destination: /index.html

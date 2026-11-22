@@ -76,7 +76,10 @@ export type ExplainFindingRequest = S["ExplainFindingRequest"];
 export type ExplainFindingResponse = S["ExplainFindingResponse"];
 export type Readiness = { status: "ready" | "not_ready"; reason?: string | null; fix?: string | null };
 
-const BASE: string = import.meta.env.VITE_API_BASE ?? "";
+/** Address of the backend. Empty (the default) means the same origin as the page, which is how the Vite proxy
+ *  and a Render rewrite rule reach it. A hosted build sets VITE_API_URL (for example https://medopic-api.onrender.com);
+ *  VITE_API_BASE is the older name and still works. */
+const BASE: string = String(import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE ?? "").trim().replace(/\/+$/, "");
 
 /** `detail` is the server's own sentence (for example "Email or password is incorrect."), safe to show. */
 export class ApiError extends Error {
@@ -111,12 +114,14 @@ function detailOf(detail: unknown): string {
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
-    res = await fetch(`${BASE}${path}`, { credentials: "same-origin", ...init });
+    res = await fetch(`${BASE}${path}`, { credentials: BASE ? "include" : "same-origin", ...init });
   } catch (e) {
     if (e instanceof DOMException && e.name === "AbortError") throw e;
     throw new ApiError(
-      "Cannot reach the API. Start it from the aakaash folder with: " +
-        ".venv\\Scripts\\python.exe -m uvicorn api.app:app --port 8000",
+      import.meta.env.PROD
+        ? "Cannot reach the server. It sleeps when idle and takes about a minute to wake up: wait, then try again."
+        : "Cannot reach the API. Start it from the aakaash folder with: " +
+            ".venv\\Scripts\\python.exe -m uvicorn api.app:app --port 8000",
     );
   }
   if (!res.ok) {

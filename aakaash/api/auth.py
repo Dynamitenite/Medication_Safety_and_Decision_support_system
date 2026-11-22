@@ -113,13 +113,21 @@ def _secure(request: Request) -> bool:
     return request.url.scheme == "https" or os.environ.get("MEDSAFE_COOKIE_SECURE", "").strip() in ("1", "true", "yes")
 
 
+def _samesite() -> str:
+    """lax by default. MEDSAFE_COOKIE_SAMESITE=none is for a front end on another site than the API; the
+    cookie is then always Secure, as browsers require."""
+    v = os.environ.get("MEDSAFE_COOKIE_SAMESITE", "").strip().lower()
+    return v if v in ("lax", "strict", "none") else "lax"
+
+
 def start_session(db: Session, user: User, request: Request, response: Response) -> None:
     token = secrets.token_urlsafe(32)
     db.add(LoginSession(user_id=user.id, token_hash=_token_hash(token),
                         expires_at=utcnow() + timedelta(days=SESSION_DAYS)))
     db.commit()
     response.set_cookie(COOKIE, f"{token}.{_sign(token)}", max_age=SESSION_DAYS * 86400, httponly=True,
-                        samesite="lax", secure=_secure(request), path="/")
+                        samesite=_samesite(),
+                        secure=_secure(request) or _samesite() == "none", path="/")
 
 
 def end_session(db: Session, request: Request, response: Response) -> None:

@@ -1,0 +1,17 @@
+.git
+data
+papers
+hosting_bundle.tar.gz
+**/.env
+**/.env.*
+!**/.env.example
+**/.venv
+**/node_modules
+**/__pycache__
+**/*.db
+**/*.log
+aakaash/artifacts
+aakaash/papers
+aakaash/web
+aakaash/tests
+aakaash/notebooks

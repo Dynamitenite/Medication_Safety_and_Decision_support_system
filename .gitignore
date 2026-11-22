@@ -32,3 +32,10 @@ aakaash/web/public/ocr/
 *.onnx
 checkpoints/
 models/
+
+artifacts/demo/
+aakaash/web/demo-video-timings.json
+
+# hosting
+*.log
+hosting_bundle.tar.gz
