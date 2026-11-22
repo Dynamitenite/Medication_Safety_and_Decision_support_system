@@ -17,8 +17,11 @@ COPY aakaash/requirements.txt /tmp/requirements.txt
 RUN grep -vi '^pytest' /tmp/requirements.txt > /tmp/req-server.txt && pip install -r /tmp/req-server.txt
 
 ARG DATA_URL
-RUN test -n "$DATA_URL" || (echo "Set DATA_URL to the hosting_bundle.tar.gz link" && exit 1)
-RUN curl -fSL --retry 3 "$DATA_URL" -o /tmp/bundle.tar.gz && tar -xzf /tmp/bundle.tar.gz -C /app && rm /tmp/bundle.tar.gz
+# tr strips any space or line break pasted along with the link
+RUN URL="$(printf '%s' "$DATA_URL" | tr -d '[:space:]')" \
+    && test -n "$URL" || (echo "Set DATA_URL to the hosting_bundle.tar.gz link" && exit 1)
+RUN URL="$(printf '%s' "$DATA_URL" | tr -d '[:space:]')" \
+    && curl -fSL --retry 3 "$URL" -o /tmp/bundle.tar.gz && tar -xzf /tmp/bundle.tar.gz -C /app && rm /tmp/bundle.tar.gz
 
 COPY aakaash/api /app/aakaash/api
 COPY aakaash/medsafe /app/aakaash/medsafe
